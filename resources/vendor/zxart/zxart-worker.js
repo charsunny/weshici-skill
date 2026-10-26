@@ -519,6 +519,7 @@ self.onmessage = function (event) {
       allowsShanShuiV3: req.allowsShanShuiV3 === true,
       seed: req.seed,
       variant: req.variant,
+      scene: req.scene,
       params: req.params,
       palette: req.palette,
       width: pw,

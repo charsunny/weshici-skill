@@ -2,6 +2,8 @@
 
 核对日期：2026-10-26。源码：`charsunny/wish` 本机 8.0.1 已提交版本 [`9b1328b3ce9ef9727b05c3f196060147266cb72f`](https://github.com/charsunny/wish/tree/9b1328b3ce9ef9727b05c3f196060147266cb72f)，及 ZixiaoArt [`01293ad`](https://github.com/charsunny/zixiao-kit/tree/01293ad) 的五画风实现（[Wish 合并 PR](https://github.com/charsunny/wish/pull/96)、[依赖合并 PR](https://github.com/charsunny/zixiao-kit/pull/13)）。这里记录可从代码确认的行为，不代表真机导出或跨端像素一致性已验收。
 
+日期页脚补充基准：Wish [`2f795984`](https://github.com/charsunny/wish/commit/2f795984d3260a6915b1828496bc8b585273e892)，二维码右侧新增公历日期，节气/候在下一行；静图与视频共用且日期纳入缓存键。
+
 阅读路径：生成画屏看 1–3；动效和视频看 4–6；组件看 7；执行本 skill 前看 8。下文源码链接固定到这次提交；将来升级须记录新 SHA 并重新检查实现与测试，不能只改日期。
 
 ## 1. 三类配方与执行范围
@@ -143,13 +145,13 @@ Live Photo 是配对 HEIC（失败回退 JPEG）+ MOV，共享 asset identifier�
 
 ## 8. 本仓库 Web 能力与验收边界
 
-本次更新的是 skill 的执行指导与实现参考。下列既有 Web 差异仍需在“严格 iOS 同款”任务中处理，不能仅因文档对齐就宣称运行时已移植：
+v1.3.1 已将静态图和壁纸的排字落到运行时：按返回的诗句框内缩 4% / 3%，使用 1.18 字距、0.62 栏距、常规宋体、独立题跋和原生竖印，并区分 home 与锁屏安全区。长标题超过 8 字另起栏、超过 18 字分两栏；Web 对多栏题跋额外限制可用宽度并将题跋间隔收至 0.45em，避免越界。字体与印章随包提供。`image` 页脚使用北京时间的公历日期（`yyyy年M月d日`）在上、节气/候在下，与二维码右侧对齐；`--date` 可固定日期，默认在本次渲染开始时取当天。iOS 静态分享及分享视频的同一题签也加入了日期，成品缓存键按日期区分。以下差异仍不能称为完整原生移植：
 
 | 位置 | 当前行为 / 使用注意 |
 |---|---|
 | `resources/vendor/zxart/zxart-shanshui-v5.js` | 尚未移植上述五画风的材质、点金与没骨笔法；传入画风字段或换 palette 不等于实现该画风 |
-| `scripts/generate.mjs` | 固定设备预设；scene 匹配目前只返回场景名；不导出 iOS recipe、Widget 或 Live Photo |
-| `resources/templates/media-suite/index.html` | 用 scene 请求 @5 背景、自有 DOM 排字；没有完整采用 iOS 诗句框、用途与安全区 |
+| `scripts/generate.mjs` | 固定设备预设；模板补齐题诗用途、母题、构图和诗句列数/字数；不导出 iOS recipe、Widget 或 Live Photo。静态摘句超容量会报告未展示诗句 |
+| `resources/templates/media-suite/index.html` / `resources/core/huaping-layout.js` | `image` / `wallpaper` 已使用真实诗句框与原生排字比例；仍是 DOM 字形度量，仅提供内置宋体，不含 App 所有字体/简繁转换；`image` 已包含品牌、诗词查找入口码及两行日期/节气页脚，尚无夹注与解析页脚内容，也不宣称像素一致。其他社媒模板不沿用这套版式 |
 | `resources/templates/huaping-motion/index.html` | 自有 0.35s 起点及入场预算，detail/quote 尚未逐项实现第 5 节；现有示例多为 @2 |
 | `resources/core/weishi-video-core.js` | 实际函数叫 `inkUnitState`；默认还有 y 位移、最小错开与压缩；`sealStampState` 为 0.22s、1.18 起始缩放与回弹，不能称 iOS 等值实现 |
 | `WeatherStage` | Web 自有天气实现；生成严格同款前须接入真实 anchors 和 @5 母题去重，不能假设画里总有船 |
