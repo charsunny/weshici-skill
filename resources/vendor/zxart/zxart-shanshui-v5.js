@@ -326,6 +326,12 @@ function normalizeFade(fade) {
   };
 }
 
+// The compose bridge carries a normalized rectangle, not a Swift-style method.
+function verseRect(verse, width, height) {
+  const r = verse.rect;
+  return new CRect(r.x * width, r.y * height, r.width * width, r.height * height);
+}
+
 function Part(canv, mist, near, wash, tooth, fade, plain) {
   if (mist && typeof mist === 'object' && ('canv' in mist || 'near' in mist || 'wash' in mist || 'tooth' in mist || 'fade' in mist || 'plain' in mist || 'mist' in mist)) {
     var opts = mist;
@@ -4101,7 +4107,7 @@ function _ensurePart2DualSignatures() {
   const proto = ShanShuiEngineV5.prototype;
   _wrapDualMethod(proto, "paintingInk", 1, ["digits"], [3]);
   _wrapDualMethod(proto, "inkCurve", 1, ["resolution"], [8]);
-  _wrapDualMethod(proto, "inkLine", 1, ["width", "tone", "dry", "profile"], [1.6, 0.72, 0.14, "center"]);
+  _wrapDualMethod(proto, "inkLine", 1, ["width", "tone", "dry", "profile"], [1.6, 0.72, 0.14, "brush"]);
   _wrapDualMethod(proto, "inkEdges", 1, ["width", "tone", "dry"], [1.4, 0.78, 0.18]);
   _wrapDualMethod(proto, "inkBlot", 2, ["width", "height", "tone", "wash", "dry"], [18, 8, 0.76, true, 0.22]);
   _wrapDualMethod(proto, "paintingStone", 2, ["width", "height", "tone"], [16, 7.5, 0.72]);
@@ -7211,7 +7217,7 @@ class SceneStageV4 {
     this.w = width;
     this.h = height;
     this.palette = palette;
-    this.verse = verse ? verse.rect(width, height).inset(-8, -8) : new CRect(0, 0, 0, 0);
+    this.verse = verse ? verseRect(verse, width, height).inset(-8, -8) : new CRect(0, 0, 0, 0);
     this.engine = new ShanShuiEngineV5('poetry-scene-v1:' + (seed ? (seed.string || seed) : ''));
     this.engine.drawTowers = false;
     this.engine.anchorLog = [];
@@ -7616,7 +7622,8 @@ function generatePoetrySceneV4(req, palette) {
   const quietTop = req.quietTop ?? 0.08;
   const verse = req.verse || null;
   const sceneRaw = req.scene || 'retreat';
-  const scene = typeof sceneRaw === 'object' && sceneRaw !== null ? sceneRaw.scene : sceneRaw;
+  const sceneValue = typeof sceneRaw === 'object' && sceneRaw !== null ? sceneRaw.scene : sceneRaw;
+  const scene = POETRY_SCENE_FROM_RAW[sceneValue] || sceneValue;
   const options = req.options || {};
 
   const stage = new SceneStageV4(seed, w, h, palette, verse, quietTop);
@@ -7634,9 +7641,9 @@ function generatePoetrySceneV4(req, palette) {
     if (record) {
       for (let i = 0; i < shapes.length; i++) {
         if (record.motif === 'sunset' || record.motif === 'sunrise') {
-          shapes[i].fill = C.rgb(171, 64, 51, palette.isDark ? 0.48 : 0.34);
+          shapes[i].fill = [171 / 255, 64 / 255, 51 / 255, palette.isDark ? 0.48 : 0.34];
         } else if (record.motif === 'moon' && palette.isDark) {
-          shapes[i].fill = C.opacity(palette.ink, 0.48);
+          shapes[i].fill = opacity(palette.ink, 0.48);
         }
       }
     }
@@ -7674,7 +7681,7 @@ function generatePoetrySceneV4(req, palette) {
     verse,
     nearSpans,
     sceneElements: stage.elements,
-    anchors: buildAnchorsV5(stage.engine.anchorPieces, w, h, () => false) || {
+    anchors: buildAnchorsV5(stage.engine.anchorPieces, w, h, stage.boats) || {
       boats: stage.boats,
       sky: { y: [0, 0.38] }
     }
@@ -7687,7 +7694,7 @@ function generatePoetrySceneV4(req, palette) {
   };
   for (const part of stage.parts) {
     for (const poly of part.canv) {
-      trace.polygons.push(poly.pts.map(p => ({ x: p.x, y: p.y })));
+      trace.polygons.push(poly.p.map(p => ({ x: p.x, y: p.y })));
     }
   }
 
@@ -7736,7 +7743,7 @@ class PaintingStageV5 {
     if (this.purpose === 'reading' || !verse) {
       this.verse = new CRect(0, 0, 0, 0);
     } else {
-      this.verse = verse.rect(width, height).inset(-8, -8);
+      this.verse = verseRect(verse, width, height).inset(-8, -8);
     }
 
     this.engine = new ShanShuiEngineV5('poetry-painting-v1:' + this.seed);
@@ -10041,7 +10048,7 @@ class PaintingStageV5 {
         'sunset',
         new CRect(x - size / 2, horizon - size * 0.90, size, size),
         false,
-        this.engine.sceneEllipse(40, 40, 24, 24, C.rgb(171, 64, 51, 0.70), 0)
+        this.engine.sceneEllipse(40, 40, 24, 24, C(171, 64, 51, 0.70), 0)
       );
     }
 
@@ -10283,7 +10290,7 @@ function generatePoetryPaintingV5(req, palette) {
   const h = 420 * Math.max(1, ratio);
   const quietTop = req.quietTop ?? 0.08;
   const verse = req.verse || null;
-  const scene = req.scene || 'retreat';
+  const scene = POETRY_SCENE_FROM_RAW[req.scene] || req.scene || 'retreat';
   const options = resolveSceneOptionsForPainting(req.options, scene, typeof seed === 'object' ? (seed.string || seed.seed) : seed);
 
   const stage = new PaintingStageV5(seed, w, h, palette, verse, quietTop, options);
@@ -10301,9 +10308,9 @@ function generatePoetryPaintingV5(req, palette) {
     if (record) {
       for (let i = 0; i < shapes.length; i++) {
         if (record.motif === 'sunset' || record.motif === 'sunrise') {
-          shapes[i].fill = C.rgb(171, 64, 51, palette.isDark ? 0.48 : 0.34);
+          shapes[i].fill = [171 / 255, 64 / 255, 51 / 255, palette.isDark ? 0.48 : 0.34];
         } else if (record.motif === 'moon' && palette.isDark) {
-          shapes[i].fill = C.opacity(palette.ink, 0.48);
+          shapes[i].fill = opacity(palette.ink, 0.48);
         }
       }
     }
@@ -10346,7 +10353,7 @@ function generatePoetryPaintingV5(req, palette) {
     verse,
     nearSpans,
     sceneElements: stage.elements,
-    anchors: buildAnchorsV5(stage.engine.anchorPieces, w, h, () => false) || {
+    anchors: buildAnchorsV5(stage.engine.anchorPieces, w, h, stage.boats) || {
       boats: stage.boats,
       sky: { y: [0, 0.38] }
     }
@@ -10359,7 +10366,7 @@ function generatePoetryPaintingV5(req, palette) {
   };
   for (const part of stage.parts) {
     for (const poly of part.canv) {
-      trace.polygons.push(poly.pts.map(p => ({ x: p.x, y: p.y })));
+      trace.polygons.push(poly.p.map(p => ({ x: p.x, y: p.y })));
     }
   }
 

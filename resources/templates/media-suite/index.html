@@ -3,17 +3,18 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="icon" href="data:,">
 <title>微诗素材与社媒套系渲染引擎 (Weishi Media Suite)</title>
 <style>
   @font-face {
     font-family: "SongSemi";
-    src: url("/fonts/SourceHanSerifSC-SemiBold.otf") format("opentype");
+    src: url("/resources/assets/fonts/SourceHanSerifSC-Bold.otf") format("opentype");
     font-weight: 600;
     font-display: block;
   }
   @font-face {
     font-family: "SongReg";
-    src: url("/fonts/SourceHanSerifSC-Regular.otf") format("opentype");
+    src: url("/resources/assets/fonts/SourceHanSerifSC-Regular.otf") format("opentype");
     font-weight: 400;
     font-display: block;
   }
@@ -66,77 +67,25 @@
     flex-direction: column;
   }
 
-  /* ───── 1. 壁纸题签 (Wallpaper Inscribed) ───── */
-  .wallpaper-inscribed {
-    position: absolute;
-    bottom: 120px;
-    left: 80px;
-    display: flex;
-    flex-direction: row-reverse;
-    gap: 24px;
-    padding: 24px 28px;
-    background: rgba(255, 255, 255, 0.45);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-radius: 8px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-  }
-  .wp-col {
-    writing-mode: vertical-rl;
-    font-family: "SongSemi", serif;
-    font-size: 28px;
-    line-height: 1.35;
-    letter-spacing: 0.20em;
-  }
-  .wp-meta {
-    writing-mode: vertical-rl;
-    font-size: 16px;
-    letter-spacing: 0.22em;
-    opacity: 0.72;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
+  /* Jianyang: poetry and colophon share the artwork's reserved verse box. */
+  .hp-box { position: absolute; display: flex; justify-content: center; align-items: flex-start; }
+  .hp-block { display: flex; align-items: flex-end; flex: none; font-family: "SongReg", serif; font-weight: 400; }
+  .hp-columns { display: flex; flex-direction: row-reverse; align-items: flex-start; flex: none; }
+  .hp-column { position: relative; flex: none; }
+  .hp-glyph { position: absolute; width: 100%; text-align: center; white-space: pre; }
+  .hp-colophon, .hp-author-seal { display: flex; flex-direction: column; align-items: center; flex: none; }
+  .hp-colophon-wide { flex-direction: row; align-items: flex-end; }
+  .hp-seal { display: block; flex: none; object-fit: contain; }
+  .hp-horizontal { flex-direction: column; align-items: center; align-self: center; width: 100%; }
+  .hp-line { line-height: 1.82; letter-spacing: .14em; white-space: nowrap; }
+  .hp-footer { display: flex; align-items: center; justify-content: center; gap: .6em; margin-top: .5em; max-width: 100%; }
+  .hp-credit { text-align: center; }
 
-  /* ───── 2. 静止诗画 (Image Inscribed) ───── */
-  .image-inscribed {
-    position: absolute;
-    inset: 48px;
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 48px;
-  }
-  .im-top {
-    display: flex;
-    justify-content: flex-end;
-  }
-  .im-verses {
-    display: flex;
-    flex-direction: row-reverse;
-    gap: 32px;
-  }
-  .im-col {
-    writing-mode: vertical-rl;
-    font-family: "SongSemi", serif;
-    font-size: 40px;
-    letter-spacing: 0.22em;
-    line-height: 1.4;
-  }
-  .im-bottom {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-  }
-  .im-sign {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    font-size: 18px;
-    letter-spacing: 0.16em;
-    opacity: 0.78;
-  }
+  .hp-share-footer { position: absolute; display: flex; align-items: center; gap: calc(var(--qr-side) * .15); }
+  .hp-share-brand { color: var(--seal-color); white-space: pre; text-align: center; font-size: calc(var(--qr-side) * .36); line-height: 1.44; padding: calc(var(--qr-side) * .1); border: calc(var(--qr-side) * .025) solid; border-radius: calc(var(--qr-side) * .06); }
+  .hp-share-qr { width: calc(var(--qr-side) * 1.3); height: calc(var(--qr-side) * 1.3); padding: calc(var(--qr-side) * .15); background: white; flex: none; }
+  .hp-share-qr svg { width: 100%; height: 100%; display: block; }
+  .hp-share-calendar { position: absolute; bottom: 0; white-space: nowrap; }
 
   /* ───── 3. 小红书 4 联卡片 (Xiaohongshu 3:4) ───── */
   /* Card 1: 封面大图 */
@@ -377,7 +326,12 @@
     <div id="content-layer"></div>
   </div>
 
+<script src="/resources/vendor/qrcode/qrcode.js"></script>
+<script src="/vendor/zxart/zxart-compose.js"></script>
+<script src="/vendor/zxart/zxart-shanshui-v5.js"></script>
 <script type="module">
+  import { mountHuapingFooter } from '/resources/core/huaping-footer.js';
+  import { huapingClauses, huapingPlan, mountHuaping } from '/resources/core/huaping-layout.js';
   import {
     resolvePalette,
     renderZXArt,
@@ -394,7 +348,8 @@
   const poemLines = poemRaw.split(/[，。？！；\n]/).filter(Boolean);
   const author = params.get('author') || '王维';
   const dynasty = params.get('dynasty') || '唐';
-  const scene = params.get('scene') || 'retreat';
+  const matched = window.poetryScene(poemRaw, title);
+  const scene = params.get('scene') || matched.scene;
   const paletteId = params.get('palette') || 'lanhui';
   const scheme = params.get('scheme') || 'light';
   const seed = params.get('seed') || `${title}-${scene}-2026`;
@@ -418,62 +373,44 @@
   stage.style.background = mode === 'wechat-sticker' && subType !== 'xuan' ? 'transparent' : palette.paper;
   stage.style.color = palette.ink;
 
-  // 1. 渲染底层写意山水
+  const inscribed = mode === 'image' || mode === 'wallpaper';
+  const clauses = huapingClauses(poemRaw);
+  const longest = Math.max(1, ...clauses.map(line => Array.from(line).length));
+  const recipe = matched.paintingProcedural(seed, {
+    purpose: 'inscription-v1', quietTop: mode === 'wallpaper' ? 0.32 : 0.18,
+    verseSide: params.get('verse_side') === 'left' ? 'left' : 'right',
+    verseColumns: Math.min(4, clauses.length),
+    verseChars: longest >= 6 && longest <= 8 ? Math.min(10, longest + 2) : longest,
+  });
+  if (scene !== matched.scene) recipe.params.scene.motifs = window.defaultMotifsForScene(scene);
+  let art;
   if (!(mode === 'wechat-sticker' && subType === 'seal')) {
-    await renderZXArt(artCanvas, {
-      generator: 'shanshui@5',
-      seed,
-      scene,
-      palette: { paper: palette.paper, ink: palette.ink },
-      width,
-      height,
+    art = await renderZXArt(artCanvas, {
+      generator: 'shanshui@5', seed, scene,
+      ...(inscribed ? { params: recipe.params } : {}),
+      palette: { paper: palette.paper, ink: palette.ink }, width, height,
     });
+    if (inscribed && !art.ok) throw new Error(`画屏渲染失败: ${art.error}`);
   }
 
-  // 2. 根据 mode 组装排版层
-  if (mode === 'wallpaper') {
-    const isPure = params.get('pure') === 'true' || subType === 'pure';
+  if (inscribed) {
+    const isPure = mode === 'wallpaper' && (params.get('pure') === 'true' || subType === 'pure');
     if (!isPure) {
-      const box = document.createElement('div');
-      box.className = 'wallpaper-inscribed';
-      const col = document.createElement('div');
-      col.className = 'wp-col';
-      col.textContent = poemLines.slice(0, 2).join('　');
-      box.appendChild(col);
-
-      const meta = document.createElement('div');
-      meta.className = 'wp-meta';
-      meta.innerHTML = `${dynasty}·${author}《${title}》<span class="cinnabar-seal">${sealText}</span>`;
-      box.appendChild(meta);
-      contentLayer.appendChild(box);
+      let preferredSize = Infinity;
+      if (longest >= 6 && longest <= 8) {
+        const reference = window.ZXArtCompose.verseLayoutFor('shanshui@5', { ...recipe.params, verse_chars: 5 }, width, height);
+        preferredSize = huapingPlan({ poem: clauses.map(line => Array.from(line).slice(0, 5).join('')).join('，'),
+          title, author, dynasty, verse: reference, width, height, wallpaper: mode === 'wallpaper', shareFooter: mode === 'image' }).fontSize;
+      }
+      window.__huapingPlan = await mountHuaping(contentLayer, {
+        poem: poemRaw, title, author, dynasty, verse: art.verse, width, height,
+        wallpaper: mode === 'wallpaper', shareFooter: mode === 'image', accent: palette.accent || palette.ink, preferredSize,
+      });
+      if (mode === 'image') window.__huapingFooter = mountHuapingFooter(contentLayer, {
+        width, height, title, author, date: params.get('date'), sealColor: palette.seal,
+      });
+      if (window.__huapingPlan.omittedClauses.length) console.warn('画屏摘句未展示：', window.__huapingPlan.omittedClauses.join('，'));
     }
-  } else if (mode === 'image') {
-    const box = document.createElement('div');
-    box.className = 'image-inscribed';
-    box.style.borderColor = palette.ink + '22';
-
-    const top = document.createElement('div');
-    top.className = 'im-top';
-    const verses = document.createElement('div');
-    verses.className = 'im-verses';
-    poemLines.slice(0, 4).forEach((line) => {
-      const c = document.createElement('div');
-      c.className = 'im-col';
-      c.textContent = line;
-      verses.appendChild(c);
-    });
-    top.appendChild(verses);
-    box.appendChild(top);
-
-    const bottom = document.createElement('div');
-    bottom.className = 'im-bottom';
-    const sign = document.createElement('div');
-    sign.className = 'im-sign';
-    sign.innerHTML = `<span>${dynasty} · ${author}《${title}》</span><span class="cinnabar-seal">${sealText}</span>`;
-    bottom.appendChild(sign);
-    box.appendChild(bottom);
-
-    contentLayer.appendChild(box);
   } else if (mode === 'xiaohongshu') {
     if (cardIndex === 1) {
       const card = document.createElement('div');
@@ -600,6 +537,7 @@
   }
 
   // 宣告渲染完成
+  await document.fonts.ready;
   window.READY = true;
 </script>
 </body>

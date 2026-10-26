@@ -103,6 +103,7 @@ function parseCliArgs(argv) {
     else if (a === '--poem' && argv[i + 1]) opts.poem = argv[++i];
     else if (a === '--author' && argv[i + 1]) opts.author = argv[++i];
     else if (a === '--dynasty' && argv[i + 1]) opts.dynasty = argv[++i];
+    else if (a === '--date' && argv[i + 1]) opts.date = argv[++i];
     else if (a === '--scene' && argv[i + 1]) opts.scene = argv[++i];
     else if (a === '--device' && argv[i + 1]) opts.device = argv[++i];
     else if (a === '--ratio' && argv[i + 1]) opts.ratio = argv[++i];
@@ -132,6 +133,8 @@ async function renderCardScreenshot(serverOrigin, queryParams, outPath, width, h
     const url = `${serverOrigin}/resources/templates/media-suite/index.html?${new URLSearchParams(queryParams).toString()}`;
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForFunction(() => window.READY === true, { timeout: 30000 });
+    const omitted = await page.evaluate(() => window.__huapingPlan?.omittedClauses || []);
+    if (omitted.length) console.warn(`   · 画屏为摘句排版，本张未展示：${omitted.join('，')}`);
     fs.mkdirSync(path.dirname(outPath), { recursive: true });
     await page.screenshot({ path: outPath, type: 'png' });
   } finally {
@@ -181,6 +184,7 @@ async function handleImage(serverOrigin, opts, outDir) {
     serverOrigin,
     {
       mode: 'image',
+      date: opts.date || '',
       title: opts.title,
       poem: opts.poem,
       author: opts.author,
@@ -378,6 +382,7 @@ async function main() {
                   选项: --title --workers 4
 
 通用选项:
+  --date <YYYY-MM-DD>  静态分享图日期（默认北京时间当天）
   --scene <name>  强制指定画境 (retreat|fishing|desert|winterForest|spring|...)
   --out <path>    指定输出文件或目录
 `);
