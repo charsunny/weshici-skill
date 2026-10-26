@@ -11,7 +11,7 @@ description: >-
 metadata:
   openclaw:
     emoji: "📜"
-    version: "1.2.0"
+    version: "1.3.0"
     homepage: "https://github.com/charsunny/weshici-skill"
     command: "/weshici"
     optionalEnv:
@@ -30,6 +30,20 @@ metadata:
 
 1. **基础素材生成 (Foundational Assets)**：超高清山水壁纸（iPhone / iPad / Mac 4K）、静止诗意画、基础动态水墨画屏。
 2. **高级社媒成片生成 (Platform-Ready Suites)**：小红书 3:4 四联深度卡片与爆款文案、微信透明底印章/水墨贴图与朋友圈日签、抖音 9:16 短视频（安全区避让、黄金 1.5s 开场 Hook、-14 LUFS 三轨混音与配套文案）。
+
+---
+
+## Wish iOS 画屏对齐入口
+
+做 Wish 同款画屏、壁纸、组件、诗句入画或原生导出说明时，先读 [iOS 画屏实现基准](references/IOS-HUAPING.md)。本次核对基准为 Wish `9b1328b3ce9ef9727b05c3f196060147266cb72f`（本机 8.0.1，核对日期 2026-10-26）；后续更新先检查相关 Swift 实现，不把设计计划当作已实现能力。
+
+- **先定用途再配画**：区分题诗画屏、推荐卡、阅读全文背景；保留 `shanshui@5` 的 `params.scene`（用途、构图、母题）和诗句框。新作中梅、菊、兰等专门花卉沿用 `nonflowers@2`，荷塘走诗意场景。
+- **画风与纸色分开**：画作支持「随诗意」及水墨、浅绛、青绿、金碧、没骨的版本化字段；新作继承当前字体，旧作缺字段保持原貌。Web 快照尚未移植五画风笔法，不能只换 palette 就宣称是原生金碧或没骨。
+- **按成品选择排版与时间线**：锁屏壁纸、锁屏组件、金句分享、全文视频、Live Photo 各有不同规则；不要共用一个安全区或一条入场时间线。
+- **画与天气共用几何**：使用实际返回的诗句框、天空、水面、山脊和舟楫锚点；画里已有日月、雾或雨雪时按 iOS 场景过滤规则处理，避免重复叠加。
+- **明确执行能力**：本仓库 CLI 产出 Web PNG / MP4，不直接写入 Wish 配方库、WidgetKit 或照片库，也不生成可用的原生 Live Photo。现有模板与 iOS 的差异见参考文档末节；需要原生同款时先核对这些差异，不能仅凭相同 `seed` 宣称像素一致。
+
+以下 `/weshici` 是给 Agent 的意图写法；实际执行只使用脚本已支持的命令和参数，不把 iOS 字段直接拼成不存在的 CLI 开关。
 
 ---
 
@@ -124,7 +138,7 @@ node scripts/generate.mjs douyin --title "使至塞上" --workers 4
 
 ## 二、底层 ZixiaoArt ShanShui@5 算法山水模型
 
-微诗词深度集成了来自 `zixiao-kit` 的最新 **ShanShui@5** 程序化国画生成模型：
+本仓库内置 **ShanShui@5** Web 渲染快照。Wish 的实际版本路由、诗句框和场景用途以 [iOS 实现基准](references/IOS-HUAPING.md) 为准：
 
 1. **三远透视构图（Sanyuan Composition）**：
    - 严格继承郭熙《林泉高致》之「高远」、「深远」、「平远」构图法则。
@@ -151,7 +165,7 @@ node scripts/generate.mjs douyin --title "使至塞上" --workers 4
    - 基于 FBM 复合噪声与连续衰减函数模拟山腰云遮雾锁，云气自然融入宣纸底色，无突兀生硬的遮挡边界。
 5. **双向锚点对齐与纯前端零原生依赖**：
    - 画面生成自动导出 `ridges`（山脊线）、`water`（水线）、`boats`（舟楫）、`trees`（树木）、`sky`（留白天光）等逻辑锚点坐标，完美指引字幕、题签与印章的避让与咬合。
-   - 整个渲染链路运行在 Web Worker / OffscreenCanvas / Canvas 2D 之上，完全确定性与离线可运行。
+   - 本仓库画面渲染运行在 Web Worker / OffscreenCanvas / Canvas 2D 之上；字体与媒体已在本地就绪后可离线渲染。iOS 使用原生 ZixiaoArt / CoreGraphics / Metal，不能将两端解释为同一个运行时。
 
 ---
 

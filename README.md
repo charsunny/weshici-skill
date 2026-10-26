@@ -7,9 +7,15 @@
 
 **微诗词（WeShici Skill，快捷指令 `/weshici`）** 是以 **Agent Skill 为主体** 封装的中国古典诗词、二十四节气画屏与东方水墨美学确定性视觉与短视频制片引擎。
 
-本技能遵循标准 Agent Skill 规范（包含 [`SKILL.md`](./SKILL.md)、[`references/`](./references/)、[`scripts/`](./scripts/)、[`resources/`](./resources/) 与 [`examples/`](./examples/)），借鉴并深化了 [`lemomo-ai/lemo-opuscar`](https://github.com/lemomo-ai/lemo-opuscar) 的「将视频视为时间 $t$ 的纯函数 `window.render(t)` + 三层导演知识库」理念，深度结合 [子晓套件 `ZixiaoKit`](https://github.com/charsunny/zixiao-kit) 的最新 **ShanShui@5 算法山水模型**、中国传统色配色体系、真实人声词级对齐（Audio-First Cue Grid）和程序化东方拟音（古琴泛音、落墨、朱印闷响、宣纸翻页），彻底攻克通用生成式 AI 视频在汉字书法乱码、水墨留白失真与声画脱节上的痛点。
+本技能遵循标准 Agent Skill 规范（包含 [`SKILL.md`](./SKILL.md)、[`references/`](./references/)、[`scripts/`](./scripts/)、[`resources/`](./resources/) 与 [`examples/`](./examples/)），借鉴并深化了 [`lemomo-ai/lemo-opuscar`](https://github.com/lemomo-ai/lemo-opuscar) 的「将视频视为时间 $t$ 的纯函数 `window.render(t)` + 三层导演知识库」理念，深度结合 [子晓套件 `ZixiaoKit`](https://github.com/charsunny/zixiao-kit) 的 **ShanShui@5 Web 渲染快照**、中国传统色配色体系、真实人声词级对齐（Audio-First Cue Grid）和程序化东方拟音（古琴泛音、落墨、朱印闷响、宣纸翻页），彻底攻克通用生成式 AI 视频在汉字书法乱码、水墨留白失真与声画脱节上的痛点。
 
 ---
+
+## Wish iOS 8.0.1 对齐
+
+使用 Wish 同款画屏前，先读 [iOS 画屏实现基准](references/IOS-HUAPING.md)。本次按本机已提交的 8.0.1 代码更新 skill：五种画风与随诗意、字体继承和简繁缓存、锁屏留白、分享页脚、视频时间线及实况导出规则。
+
+这是执行指导与源码基准更新。现有 Web 模板仍有明确差异，尤其尚无原生五画风笔法、Widget 与 Live Photo 配对导出；文档列出了逐项能力边界，不把相同 seed 当作跨端像素一致的保证。
 
 ## ⚡ 斜杠指令唤起 (`/weshici`)
 
@@ -48,7 +54,7 @@ graph TD
 
 ## 一、底层算法引擎升级：ZixiaoArt ShanShui@5
 
-深度同步子晓开源套件 [`charsunny/zixiao-kit`](https://github.com/charsunny/zixiao-kit) 的最新程序化国画模型：
+内置来自子晓开源套件 [`charsunny/zixiao-kit`](https://github.com/charsunny/zixiao-kit) 的程序化国画 Web 快照：
 
 1. **宋元画理三远透视构图（Sanyuan Composition）**：
    - 严格继承北宋郭熙《林泉高致》之「高远」、「深远」、「平远」三大透视法。
@@ -232,6 +238,7 @@ weshici-skill/
 ├── package.json                     # CLI 命令入口与依赖声明
 ├── references/                      # 导演与风格知识库 (渐进式加载)
 │   ├── DIRECTOR.md                  # 导演企划、TREATMENT 模板与两阶段把关手册
+│   ├── IOS-HUAPING.md               # Wish iOS 8.0.1 源码基准与 Web 差异
 │   ├── TECHNIQUE.md                 # 确定性渲染契约 (window.render(t) / EV / TEXTS(t))
 │   └── styles/                      # 五大东方美学风格手册 (STYLE.md)
 │       ├── huaping-motion/STYLE.md  # 01 动态画屏 · 节气与每日一诗

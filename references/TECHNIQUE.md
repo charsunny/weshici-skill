@@ -43,29 +43,29 @@ window.TEXTS = function (t) {
 
 ## 2. 微诗核心动效原语（`@weishi/video-core`）
 
-引入 `/tools/video-studio/core/weishi-video-core.js` 即可直接调用与 iOS 端（`docs/HUAPING_MOTION_PLAN.md`）逐参数对齐的原语：
+引入 `/resources/core/weishi-video-core.js` 使用本仓库的 Web 原语。以下描述当前 JS 实现；iOS 的准确值与各输出类别规则见 [iOS 画屏实现基准](IOS-HUAPING.md)，两者不能混称逐参数一致。
 
 ### 2.1 诗句墨洇入场与落印（`HuapingInkReveal`）
-严格对齐 `ios/Shared/Huaping/HuapingInkReveal.swift`：
-- **单字/单行墨洇（`inkRevealState(t, startTime, index, stagger)`）**：
+当前 `resources/core/weishi-video-core.js`：
+- **单字/单行墨洇（`inkUnitState(t, startTime, index, totalUnits, options)`）**：
   - 单单元时长：`0.25s`，缓动 `easeOut`（三次方）
   - 模糊：`blur(6px → 0px)`
   - 缩放：`scale(1.06 → 1.0)`
   - 不透明度：`opacity(0 → 1)`
-  - 单元错开 `stagger`：逐字默认 `0.12s`（约每秒 4 字，贴合朗读节奏）；按行默认 `0.30s`（整段入场压缩在 `≤ 2.5s` 内完成）。
+  - 单元错开默认 `0.12s`，`maxSpan` 默认 `2.2s`，错开下限 `0.03s`；因此很长文本不保证满足跨度预算。默认还带 `6px` 的 y 位移。原生视频的压缩上限不可仅靠这些默认值实现。
 - **朱印落下（`sealStampState(t, stampStartTime)`）**：
-  - 在最后一个字完成墨洇后 `0.30s` 触发，时长 `0.20s`
-  - 缩放：`scale(1.15 → 1.0)`，配合 `easeOutBack` 微弹性落定
+  - 触发点由模板传入；Web 默认时长 `0.22s`
+  - Web 缩放：`scale(1.18 → 1.0)`，`easeOutBack` 回弹；iOS 是 `0.20s`、`1.15 → 1.0`、三次 ease-out 无回弹。严格同款任务应先修正此差异
   - 同步在 `window.EV` 登记 `{ t: stampStartTime, sfx: 'seal-stamp', gain: -4 }`。
 - **视频总时长公式（`computeHuapingDuration(charCount, entryEnd)`）**：
   $$\text{DUR} = \lceil \text{entryEnd} + \text{clamp}(\text{charCount} \times 0.3,\ 6,\ 20) \rceil$$
 
 ### 2.2 程序化山水与花鸟接入（`renderZXArt`）
-直接复用仓库内与 iOS 逐形状一致的 Web Worker（`/vendor/zxart/zxart-worker.js`）：
+使用仓库内 Web Worker（`/vendor/zxart/zxart-worker.js`）。这是旧 @2 配方的调用示例；新山水/荷塘需要完整 @5 场景配方，见 [选画与复现规则](IOS-HUAPING.md#2-当前选画用途与复现输入)。Web 快照未包含原生五画风笔法，不保证与最新 iOS 逐形状一致：
 ```js
-import { renderZXArt } from '/tools/video-studio/core/weishi-video-core.js';
+import { renderZXArt } from '/resources/core/weishi-video-core.js';
 
-await renderZXArt(bgCanvas, {
+const result = await renderZXArt(bgCanvas, {
   generator: 'shanshui@2', // 或 'shanshui@1' | 'nonflowers@1' | 'nonflowers@2'
   seed: 'hanlu-dufu-2026',
   variant: 'distant',
@@ -74,11 +74,12 @@ await renderZXArt(bgCanvas, {
   width: 1080,
   height: 1920,
 });
+if (!result.ok) throw new Error('程序化画屏未成功渲染，不能将简化回退图作为成品');
 ```
-- **镜头缓推规范**：背景画布随时间缓慢推进 `scale = 1 + 0.02 * (t / DUR)`（最大不超过 `2%`），**文字层与左上角水印保持绝对静止**，避免阅读眩晕。
+- **镜头缓推规范**：全文视频的背景画布随时间缓慢推进 `scale = 1 + 0.02 * (t / DUR)`（最大不超过 `2%`），**文字层与左上角水印保持绝对静止**，避免阅读眩晕。金句视频仅在有余韵或天气时推镜，使用 smooth 曲线；不能把此线性公式套给 Live Photo。
 
 ### 2.3 七种时令天气与语义锚点动效（`WeatherStage`）
-对齐 `docs/HUAPING_MOTION_PLAN.md` §3.2，所有天气只用当前配色的 **墨色 / 纸白 / 朱砂印色**，绝不用彩色发光粒子：
+以下为 Web 模板的天气设计；原生的数量、周期和母题去重见 [天气层规则](IOS-HUAPING.md#4-天气层场景母题与动效预算)。接入时必须用真实 anchors 判断天空、水面与船，不能硬写 `hasBoat: true`。天气取当前纸墨色系，不使用彩色发光粒子：
 1. `rain`（细雨）：细斜淡墨线（长 `14–26px`，不透明度 `≤ 0.25`），落入水面区激起椭圆涟漪。
 2. `snow`（飞雪）：纸白圆点（半径 `1.5–3.5px`），随正弦微风慢落，触水即融。
 3. `mist`（山岚）：贴合远山腰部的多层横向柔雾带，随 `t` 缓慢横移。
@@ -91,7 +92,7 @@ await renderZXArt(bgCanvas, {
 
 ## 3. 拟音（Foley）与广播级响度管线
 
-`bin/render.mjs` 内置程序化合成器（`core/foley.mjs`），无需外部音频素材即可根据 `window.EV` 生成 48kHz 立体声 WAV 音轨并与配乐/人声混音：
+`scripts/render.mjs` 内置程序化合成器（`resources/core/foley.mjs`），无需外部音频素材即可根据 `window.EV` 生成 48kHz 立体声 WAV 音轨并与配乐/人声混音：
 - `qin-harmonic`：古琴泛音（空灵五度泛音衰减，适合开场或转场）
 - `ink-drop`：宣纸落墨/水滴泛涟（适合诗句起笔）
 - `seal-stamp`：木石印章落纸闷响（适合朱印盖下瞬间）
