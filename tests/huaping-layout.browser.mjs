@@ -36,6 +36,7 @@ try {
       return { footer: window.__huapingFooter, footerRect: document.querySelector('.hp-share-footer') ? rect(document.querySelector('.hp-share-footer')) : null,
         dateRect: document.querySelector('.hp-share-date') ? rect(document.querySelector('.hp-share-date')) : null,
         tagRect: document.querySelector('.hp-share-tag') ? rect(document.querySelector('.hp-share-tag')) : null,
+        brandRect: document.querySelector('.hp-share-brand') ? rect(document.querySelector('.hp-share-brand')) : null,
         qrRect: document.querySelector('.hp-share-qr') ? rect(document.querySelector('.hp-share-qr')) : null,
         plan: window.__huapingPlan, block: document.querySelector('.hp-block') ? rect(document.querySelector('.hp-block')) : null,
         glyphs: [...document.querySelectorAll('.hp-glyph, .hp-seal')].map(rect),
@@ -58,6 +59,9 @@ try {
       assert.equal(result.footer.dateText, '2026年10月26日');
       assert.equal(result.footer.tag, '霜降 · 初候');
       assert.ok(result.dateRect.x > result.qrRect.right && result.dateRect.bottom <= result.tagRect.y + 1);
+      const calendarCenter = (result.dateRect.y + result.tagRect.bottom) / 2;
+      for (const r of [result.qrRect, result.brandRect]) assert.ok(Math.abs(calendarCenter - (r.y + r.bottom) / 2) < 1,
+        `${name}: calendar, brand and QR should share a vertical center`);
       assert.ok(result.block.bottom < result.footerRect.y && result.tagRect.bottom < height);
     } else assert.equal(result.footer, undefined);
     if (out) await page.screenshot({ path: path.join(out, `${name}.png`) });
