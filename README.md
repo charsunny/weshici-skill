@@ -11,6 +11,17 @@
 
 ---
 
+## 画屏／壁纸与诗词海报
+
+原版 `image` / `wallpaper` 保留淡墨、留白与背景感。新增 **`poster` 诗词海报**：大字、浓色、分层山水，面向社交分享与主题组图，支持青绿朱砂、黛蓝月夜、暖金墨山三种配色。
+
+海报使用独立的确定性 Canvas 插画模板，当前输出 **1080×1440（3:4）PNG**；不是 App 画风，也不替代壁纸。详细说明见 [诗词海报规范](references/POETRY-POSTER.md)。
+
+```bash
+node scripts/generate.mjs poster --title "早发白帝城" --author "李白" --poem "轻舟已过，万重山" --palette qinglv --layout hero --out out/poster-qingzhou
+node scripts/generate.mjs poster --manifest examples/poster-ludi.json --out out/poster-ludi
+```
+
 ## Wish iOS 8.0.1 对齐
 
 使用 Wish 同款画屏前，先读 [iOS 画屏实现基准](references/IOS-HUAPING.md)。本次按本机已提交的 8.0.1 代码更新 skill：五种画风与随诗意、字体继承和简繁缓存、锁屏留白、分享页脚、视频时间线及实况导出规则。
@@ -28,6 +39,7 @@
 ```text
 /weshici wallpaper <诗题> [诗句] [--device iphone|ipad|mac-4k] [--pure]
 /weshici image <诗题> <诗句> [--ratio 3:4|1:1|16:9|9:16]
+/weshici poster <诗题> <摘选诗句> [--author 作者]
 /weshici xiaohongshu <诗题> <诗句> [--author 作者]
 /weshici wechat <词语/诗句> [--type seal|xuan|card]
 /weshici douyin <诗题> [诗句]
@@ -52,6 +64,7 @@ graph TD
     C --> C1["📕 小红书 3:4 四联深度卡片套系 + 爆款文案"]
     C --> C2["💬 微信透明印章 / 宣纸贴图 / 朋友圈日签"]
     C --> C3["🎵 抖音 9:16 短视频 (黄金1.5s Hook / 安全区 / -14 LUFS)"]
+    C --> C4["诗词海报 poster：大字浓色 / 单张与主题组图 / 3:4 PNG"]
 ```
 
 ---

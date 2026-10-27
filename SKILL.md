@@ -3,7 +3,7 @@ name: weshici-skill
 description: >-
   Deterministic Oriental-aesthetics & Chinese classical poetry visual & video production studio
   (微诗词 · WeShici Skill). Trigger via `/weshici` or use whenever the user wants to plan, direct, preview,
-  audit, or render shanshui wallpapers (山水壁纸), static poetry images (诗意画), motion screens (动态画屏),
+  audit, or render shanshui wallpapers (山水壁纸), static poetry images (诗意画), social poetry posters (诗词海报), motion screens (动态画屏),
   Xiaohongshu 4-card suites (小红书图文), WeChat stickers & daily cards (微信贴图/日签), Douyin videos (抖音短视频),
   ink-wash poetry stories (写意水墨), poet historical footprint maps (诗人行迹舆图), or poem song MVs (一曲诗词)
   using deterministic pure-web rendering (`window.render(t)`), ZixiaoArt procedural shanshui@5,
@@ -11,7 +11,7 @@ description: >-
 metadata:
   openclaw:
     emoji: "📜"
-    version: "1.3.2"
+    version: "1.4.0"
     homepage: "https://github.com/charsunny/weshici-skill"
     command: "/weshici"
     optionalEnv:
@@ -32,6 +32,17 @@ metadata:
 2. **高级社媒成片生成 (Platform-Ready Suites)**：小红书 3:4 四联深度卡片与爆款文案、微信透明底印章/水墨贴图与朋友圈日签、抖音 9:16 短视频（安全区避让、黄金 1.5s 开场 Hook、-14 LUFS 三轨混音与配套文案）。
 
 ---
+
+## 先选用途：画屏／壁纸与诗词海报
+
+| 分类 | 视觉重点 | 使用入口 |
+| --- | --- | --- |
+| 画屏／壁纸 | 淡墨、留白、山水作衬景；壁纸为时钟和图标留空间 | `image` / `wallpaper` |
+| **诗词海报** | 大字、浓色、分层山水；诗句与画面共同成为主体，适合社交分享及主题组图 | **`poster`** |
+
+用户要「这一版海报」「大字浓色分享图」或主题诗词海报组图时，读 [诗词海报规范](references/POETRY-POSTER.md)，使用独立 `poetry-poster` 模板。它是确定性 Canvas 插画，不是 ShanShui@5 或 App 五画风；不要套用 iOS 画屏排版，也不要把海报当作锁屏壁纸。两类长期并存，原版保持不变。
+
+`poster` 当前导出 3:4 PNG，支持青绿朱砂、黛蓝月夜、暖金墨山三种配色，以及主题封面＋逐诗海报。与 `xiaohongshu` 的「封面／精读／画理／壁纸」四卡叙事套系不同；用户只要诗句海报时走 `poster`。
 
 ## Wish iOS 画屏对齐入口
 
@@ -56,6 +67,7 @@ metadata:
 ```text
 /weshici wallpaper <诗题> [诗句] [--device iphone|ipad|mac-4k] [--pure]
 /weshici image <诗题> <诗句> [--ratio 3:4|1:1|16:9|9:16]
+/weshici poster <诗题> <摘选诗句> [--author 作者]
 /weshici xiaohongshu <诗题> <诗句> [--author 作者]
 /weshici wechat <词语/诗句> [--type seal|xuan|card]
 /weshici douyin <诗题> [诗句]
@@ -102,6 +114,18 @@ node scripts/generate.mjs video --title "山居秋暝" --duration 10
 ---
 
 ### 2. 高级社媒成片生成 (Platform-Ready Suites)
+
+#### 诗词海报 (`poster`)
+
+```bash
+# 单张：明确选择要放大的诗句，默认 1080×1440
+node scripts/generate.mjs poster --title "早发白帝城" --author "李白" --poem "轻舟已过，万重山" --palette qinglv --layout hero --out out/poster-qingzhou
+
+# 主题组图：JSON 中逐张指定摘句、配色与画面元素
+node scripts/generate.mjs poster --manifest examples/poster-ludi.json --out out/poster-ludi
+```
+
+组图输出每张 PNG、并排预览和可复现的 manifest。完整字段、今日推荐取数和校验要求见 [诗词海报规范](references/POETRY-POSTER.md)。
 
 #### 📕 小红书 3:4 四联深度卡片套系 (`xiaohongshu`)
 专为小红书视觉流与知识类图文爆款打造，一次性生成 `1080×1440` 四联卡片与配套发布文案：

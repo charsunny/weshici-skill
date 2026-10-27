@@ -18,6 +18,7 @@ import path from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import { generatePosters } from './poster.mjs';
 
 import {
   STUDIO_ROOT,
@@ -82,7 +83,7 @@ function parseCliArgs(argv) {
   const command = argv[2] || 'help';
   const opts = {
     title: '山居秋暝',
-    poem: '空山新雨后，天气晚来秋。明月松间照，清泉石上流。',
+    poem: command === 'poster' ? '明月松间照，清泉石上流。' : '空山新雨后，天气晚来秋。明月松间照，清泉石上流。',
     author: '王维',
     dynasty: '唐',
     scene: '',
@@ -104,6 +105,11 @@ function parseCliArgs(argv) {
     else if (a === '--author' && argv[i + 1]) opts.author = argv[++i];
     else if (a === '--dynasty' && argv[i + 1]) opts.dynasty = argv[++i];
     else if (a === '--date' && argv[i + 1]) opts.date = argv[++i];
+    else if (a === '--manifest' && argv[i + 1]) opts.manifest = argv[++i];
+    else if (a === '--palette' && argv[i + 1]) opts.palette = argv[++i];
+    else if (a === '--layout' && argv[i + 1]) opts.layout = argv[++i];
+    else if (a === '--theme' && argv[i + 1]) opts.theme = argv[++i];
+    else if (a === '--seed' && argv[i + 1]) opts.seed = argv[++i];
     else if (a === '--scene' && argv[i + 1]) opts.scene = argv[++i];
     else if (a === '--device' && argv[i + 1]) opts.device = argv[++i];
     else if (a === '--ratio' && argv[i + 1]) opts.ratio = argv[++i];
@@ -374,6 +380,10 @@ async function main() {
                   选项: --title --poem --duration 10
 
 高级社媒命令:
+  poster         诗词海报：大字、浓色、分层山水，1080×1440 PNG
+                  单张: --title --poem --author --palette (qinglv|yueye|nuanjin)
+                        --layout (horizontal|vertical|hero) --theme --date --seed
+                  组图: --manifest <JSON>；--out 指定输出目录
   xiaohongshu     生成小红书 3:4 (1080×1440) 4 联卡片与爆款文案 (封面/精读/画理/壁纸)
                   选项: --title --poem --author
   wechat-sticker  生成微信透明印章贴图、微水墨贴图与朋友圈日签卡
@@ -400,6 +410,9 @@ async function main() {
         break;
       case 'image':
         await handleImage(origin, opts, outDir);
+        break;
+      case 'poster':
+        await generatePosters(origin, opts, outDir);
         break;
       case 'xiaohongshu':
         await handleXiaohongshu(origin, opts, outDir);

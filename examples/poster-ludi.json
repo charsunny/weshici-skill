@@ -1,0 +1,124 @@
+{
+  "date": "2026-10-27",
+  "theme": "芦荻",
+  "cards": [
+    {
+      "layout": "cover",
+      "title": "芦荻",
+      "lines": [
+        "芦荻"
+      ],
+      "subtitle": "六首诗里的\n江上秋声",
+      "palette": "qinglv",
+      "motifs": [
+        "sun",
+        "reeds",
+        "boat"
+      ]
+    },
+    {
+      "title": "秋兴八首",
+      "author": "杜甫",
+      "poem": "夔府孤城落日斜，每依南斗望京华。\n听猨实下三声泪，奉使虚随八月查。\n画省香炉违伏枕，山楼粉堞隐悲笳。\n请看石上藤萝月，已暎洲前芦荻花。",
+      "lines": [
+        "请看石上藤萝月",
+        "已暎洲前芦荻花"
+      ],
+      "palette": "yueye",
+      "layout": "vertical",
+      "motifs": [
+        "moon",
+        "reeds",
+        "boat"
+      ],
+      "subtitle": "月下芦花"
+    },
+    {
+      "title": "西塞山怀古",
+      "author": "刘禹锡",
+      "poem": "西晋楼船下益州，金陵王气黯然收。\n千寻铁锁沈江底，一片降旛出石头。\n人世几回伤往事，山形依旧枕江流。\n今逢四海为家日，故垒萧萧芦荻秋。",
+      "lines": [
+        "人世几回伤往事",
+        "山形依旧枕江流"
+      ],
+      "palette": "nuanjin",
+      "layout": "horizontal",
+      "motifs": [
+        "sun",
+        "reeds",
+        "fortress"
+      ],
+      "subtitle": "故垒萧萧芦荻秋"
+    },
+    {
+      "title": "减字木兰花",
+      "author": "张孝祥",
+      "poem": "江头送客。\n枫叶荻花秋索索。\n弦索休弹。\n清泪无多怕湿衫。\n故人相遇。\n不醉如何归得去。\n我醉望归。\n烟满空江月满堤。",
+      "lines": [
+        "烟满空江",
+        "月满堤"
+      ],
+      "palette": "yueye",
+      "layout": "hero",
+      "motifs": [
+        "moon",
+        "reeds",
+        "maple",
+        "boat"
+      ],
+      "subtitle": "枫叶荻花秋索索"
+    },
+    {
+      "title": "长相思",
+      "author": "王质",
+      "poem": "山青青。\n水青青。\n两岸萧萧芦荻林。\n水深村又深。\n风泠泠。\n露泠泠。\n一叶扁舟深处横。\n垂杨鸥不惊。",
+      "lines": [
+        "山青青",
+        "水青青"
+      ],
+      "palette": "qinglv",
+      "layout": "hero",
+      "motifs": [
+        "reeds",
+        "boat",
+        "heron"
+      ],
+      "subtitle": "两岸萧萧芦荻林"
+    },
+    {
+      "title": "送荻栽与秀才朱观",
+      "author": "徐铉",
+      "poem": "羡子清吟处，茅斋面碧流。\n解憎莲艳俗，唯欠荻花幽。\n鹭立低枝晚，风惊折叶秋。\n赠君须种取，不必树忘忧。",
+      "lines": [
+        "羡子清吟处",
+        "茅斋面碧流"
+      ],
+      "palette": "nuanjin",
+      "layout": "horizontal",
+      "motifs": [
+        "reeds",
+        "pine",
+        "cottage",
+        "heron"
+      ],
+      "subtitle": "唯欠荻花幽"
+    },
+    {
+      "title": "玉山岭上作",
+      "author": "权德舆",
+      "poem": "悠悠驱匹马，征路上连冈。\n晚翠深云窦，寒苔净石梁。\n荻花偏似雪，枫叶不禁霜。\n愁见前程远，空郊下夕阳。",
+      "lines": [
+        "荻花偏似雪",
+        "枫叶不禁霜"
+      ],
+      "palette": "nuanjin",
+      "layout": "horizontal",
+      "motifs": [
+        "sun",
+        "reeds",
+        "maple"
+      ],
+      "subtitle": "暮秋 · 芦白枫红"
+    }
+  ]
+}
