@@ -21,11 +21,15 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
   const has = motif => card.motifs.includes(motif);
   const X = x => x * W, Y = y => y * H;
   const horizon = Y(terrain.horizon);
-  const fadeTop = Y(0.835), fadeBottom = Y(0.9);
+  const fadeTop = Y(0.85), fadeBottom = Y(0.9);
   const cover = card.layout === 'cover';
   const wind = terrain.main === 'left' ? 1 : -1;
   // Trunks and stems: ink on light paper; on dark paper a muted light so they do not glow.
   const stroke = dark ? mix(paper, paint.line, 0.55) : paint.line;
+  // Mountains dissolve into mist. At night the mist is a shade brighter than the paper (moonlit haze).
+  const mist = dark ? mix(paper, ink, 0.1) : paper;
+  // Boat, hut and figures: ink by day; a muted light at night, so 泥金 stays a line colour.
+  const figure = dark ? mix(paper, ink, 0.55) : paint.line;
 
   // ---- brush primitives ----
   function polyline(pts, ctx = g) {
@@ -122,15 +126,25 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
         g.stroke();
       }
     } else if (has('sun')) {
-      const disc = g.createRadialGradient(cx, cy, 0, cx, cy, rad);
-      const tone = mix(paper, seal, dark ? 0.45 : 0.38);
-      disc.addColorStop(0, tone);
-      disc.addColorStop(0.93, tone);
+      // Cinnabar, not a pink disc: solid at the heart, the edge bleeding into the paper.
+      const sr = W * 0.035;
+      const tone = mix(card.cinnabar.seal, card.cinnabar.secondary, 0.22);
+      const disc = g.createRadialGradient(cx, cy, 0, cx, cy, sr * 1.12);
+      disc.addColorStop(0, rgba(tone, dark ? 0.86 : 0.82));
+      disc.addColorStop(0.62, rgba(tone, dark ? 0.8 : 0.74));
+      disc.addColorStop(0.86, rgba(tone, 0.45));
       disc.addColorStop(1, rgba(tone, 0));
       g.fillStyle = disc;
       g.beginPath();
-      g.arc(cx, cy, rad, 0, Math.PI * 2);
+      g.arc(cx, cy, sr * 1.12, 0, Math.PI * 2);
       g.fill();
+      for (let k = 0; k < 260; k++) {
+        const a = rand() * Math.PI * 2, d = Math.sqrt(rand()) * sr * 0.9;
+        g.globalAlpha = r(0.04, 0.12);
+        g.fillStyle = rand() < 0.5 ? paper : mix(tone, ink, 0.3);
+        g.fillRect(cx + Math.cos(a) * d, cy + Math.sin(a) * d, r(1, 2.5), r(1, 2));
+      }
+      g.globalAlpha = 1;
     }
     g.restore();
   }
@@ -158,7 +172,7 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
   function rangeTones(range) {
     const d = range.depth;
     const far = d < 0.2;
-    const strength = far ? (dark ? 0.42 : 0.34) : (dark ? 0.5 : 0.42) + d * 0.45;
+    const strength = far ? (dark ? 0.42 : 0.34) : (dark ? 0.56 : 0.56) + d * (dark ? 0.38 : 0.44);
     return {
       crest: mix(paper, far ? paint.far : paint.top, strength),
       body: mix(paper, far ? paint.far : paint.body, strength * (far ? 0.6 : 0.55)),
@@ -179,8 +193,8 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
     const grad = ctx.createLinearGradient(0, top, 0, base);
     grad.addColorStop(0, crest);
     grad.addColorStop(0.45, mix(crest, body, 0.4));
-    grad.addColorStop(0.78, mix(body, paper, 0.5));
-    grad.addColorStop(1, paper);
+    grad.addColorStop(0.78, mix(body, mist, 0.5));
+    grad.addColorStop(1, mist);
     ctx.fillStyle = grad;
     ctx.fill();
     ctx.clip();
@@ -201,7 +215,7 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
     for (let k = 0; k < bands; k++) {
       ctx.save();
       ctx.translate(0, k * 3.2);
-      ctx.globalAlpha = 0.26 * Math.pow(1 - k / bands, 1.4);
+      ctx.globalAlpha = (range.depth < 0.2 ? 0.26 : 0.34) * Math.pow(1 - k / bands, 1.4);
       ctx.strokeStyle = crest;
       ctx.lineWidth = 7;
       polyline(pts, ctx);
@@ -209,10 +223,10 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
       ctx.restore();
     }
     // Keep the foot in mist all the way across.
-    const mist = ctx.createLinearGradient(0, base - Y(0.06), 0, base);
-    mist.addColorStop(0, rgba(paper, 0));
-    mist.addColorStop(1, rgba(paper, 1));
-    ctx.fillStyle = mist;
+    const foot = ctx.createLinearGradient(0, base - Y(0.06), 0, base);
+    foot.addColorStop(0, rgba(mist, 0));
+    foot.addColorStop(1, rgba(mist, 1));
+    ctx.fillStyle = foot;
     ctx.fillRect(0, base - Y(0.06), W, Y(0.06) + 6);
     ctx.restore();
   }
@@ -254,15 +268,9 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
       brush(seg, t => w * (0.45 + 0.55 * Math.sin(Math.PI * t)), paint.line, dark ? 0.62 : 0.7);
       i = end + (rand() < 0.3 ? Math.floor(r(1, 3)) : 0);
     }
-    // Moss dots near the summits.
+    // Moss dots in a few clusters on the upper slopes, set back from the contour, with gaps between.
     const top = Math.max(...range.peaks.map(p => p.h));
-    for (let k = 0; k < 46; k++) {
-      const j = Math.floor(rand() * pts.length);
-      const [x, y] = pts[j];
-      if ((base - y) / H < top * 0.45) continue;
-      const n = 1 + Math.floor(rand() * 3);
-      for (let m = 0; m < n; m++) dot(x + r(-7, 7), y + r(-1, 6), r(1.6, 3.4), r(1.1, 2.2), r(-0.6, 0.6), paint.line, dark ? r(0.3, 0.55) : r(0.55, 0.85));
-    }
+    mossClusters(pts, base, top * 0.35, 3 + Math.floor(rand() * 5));
     // A stand of distant trees along one stretch of the ridge.
     const start = Math.floor(r(0.15, 0.7) * pts.length), span = Math.floor(r(15, 40));
     for (let j = start; j < Math.min(pts.length, start + span); j += 1 + Math.floor(rand() * 2)) {
@@ -271,6 +279,38 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
       const h = r(5, 12);
       brush([[x, y + 3], [x + r(-1, 1), y - h]], taper(r(2.2, 3.4), 0.6), paint.line, r(0.35, 0.6));
     }
+  }
+
+  function ridgeYAt(pts, x) {
+    return pts[Math.max(0, Math.min(pts.length - 1, Math.round((x + 12) / 3)))][1];
+  }
+  function mossClusters(pts, base, minHeight, clusters) {
+    const alpha = () => (dark ? r(0.35, 0.6) : r(0.6, 0.9));
+    for (let c = 0; c < clusters; c++) {
+      let j = 0, tries = 0;
+      do { j = Math.floor(rand() * pts.length); } while ((base - pts[j][1]) / H < minHeight && ++tries < 30);
+      if (tries >= 30) continue;
+      const cx = pts[j][0], spread = r(6, 20), drop = r(3, 16);
+      const n = 2 + Math.floor(Math.pow(rand(), 1.5) * 8);
+      for (let m = 0; m < n; m++) {
+        const x = cx + (rand() + rand() - 1) * spread;
+        const y = ridgeYAt(pts, x) + drop + (rand() + rand() - 1) * spread * 0.35;
+        if (y < ridgeYAt(pts, x) + 1.5) continue;
+        // Mostly round dots, some flat horizontal dabs.
+        const flat = rand() < 0.35;
+        dot(x, y, flat ? r(2.6, 4.6) : r(1.4, 3), flat ? r(0.9, 1.5) : r(1.2, 2.4), flat ? r(-0.15, 0.15) : r(0, Math.PI), paint.line, alpha());
+      }
+    }
+  }
+
+  // A thin layer of haze lying on the water line.
+  function horizonMist() {
+    const band = g.createLinearGradient(0, horizon - Y(0.035), 0, horizon + Y(0.045));
+    band.addColorStop(0, rgba(mist, 0));
+    band.addColorStop(0.45, rgba(mist, dark ? 0.75 : 0.5));
+    band.addColorStop(1, rgba(mist, 0));
+    g.fillStyle = band;
+    g.fillRect(0, horizon - Y(0.035), W, Y(0.08));
   }
 
   // ---- water ----
@@ -385,14 +425,15 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
       return pts[Math.round(t * 60)][1];
     };
     const outline = [...pts, [pts.at(-1)[0], H + 10], [left ? -20 : W + 20, H + 10]];
-    const crest = mix(paper, paint.top, dark ? 0.8 : 0.85);
-    const body = mix(paper, paint.body, dark ? 0.55 : 0.45);
+    const crest = mix(paper, paint.top, dark ? 0.82 : 0.9);
+    const body = mix(paper, paint.body, dark ? 0.4 : 0.32);
     g.save();
     polyline(outline);
     g.closePath();
     const grad = g.createLinearGradient(0, top - Y(0.02), 0, fadeBottom);
-    grad.addColorStop(0, mix(crest, body, 0.5));
-    grad.addColorStop(0.5, body);
+    grad.addColorStop(0, crest);
+    grad.addColorStop(0.3, mix(crest, body, 0.55));
+    grad.addColorStop(0.65, mix(body, paper, 0.55));
     grad.addColorStop(1, paper);
     g.fillStyle = grad;
     g.fill();
@@ -407,13 +448,22 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
       g.stroke();
       g.restore();
     }
-    // Folded-ribbon strokes across the slope.
-    for (let k = 0; k < 26; k++) {
-      const t = r(0.05, 0.9);
-      const x = left ? t * reach : W - t * reach;
-      const y = bankTop(x) + r(10, 60);
-      const len = r(30, 90) * (left ? 1 : -1);
-      brush([[x, y], [x + len * 0.6, y + r(-2, 2)], [x + len, y + r(4, 12)]], taper(r(1.2, 2.2), 0.3), paint.line, r(0.18, 0.35));
+    // Boulders: a second and third contour inside the slope, each with strokes hanging from it.
+    for (let j = 1; j <= 2; j++) {
+      const a = Math.floor(r(0.05, 0.35) * pts.length), b = Math.min(pts.length - 1, a + Math.floor(r(0.3, 0.55) * pts.length));
+      const drop = j * r(26, 40);
+      const rock = pts.slice(a, b + 1).map(([x, y], i, all) => [x, y + drop * Math.sin(Math.PI * (0.25 + 0.75 * i / all.length))]);
+      brush(rock, t => 2.2 * (0.4 + 0.6 * Math.sin(Math.PI * t)), paint.line, 0.5);
+      for (let k = 0; k < 14; k++) {
+        const [x, y] = rock[Math.floor(rand() * rock.length)];
+        const len = r(14, 40), dir = (left ? 1 : -1) * r(0.2, 0.6);
+        brush([[x, y + 2], [x + dir * len, y + len]], taper(r(1, 1.8), 0.2), paint.line, r(0.18, 0.32));
+      }
+    }
+    for (let k = 0; k < 16; k++) {
+      const [x, y] = pts[Math.floor(r(0.02, 0.9) * pts.length)];
+      const len = r(16, 46), dir = (left ? 1 : -1) * r(0.1, 0.5);
+      brush([[x, y + 3], [x + dir * len, y + len]], taper(r(1, 1.8), 0.2), paint.line, r(0.16, 0.3));
     }
     g.restore();
     let i = 0;
@@ -422,10 +472,7 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
       brush(pts.slice(i, i + run), t => 3 * (0.5 + 0.5 * Math.sin(Math.PI * t)), paint.line, 0.78);
       i += run - 1;
     }
-    for (let k = 0; k < 22; k++) {
-      const [x, y] = pts[Math.floor(r(0, 0.8) * pts.length)];
-      dot(x + r(-5, 5), y + r(0, 5), r(1.8, 3.6), r(1.2, 2.2), r(-0.5, 0.5), paint.line, r(0.6, 0.9));
-    }
+    mossClusters(pts, Y(1), 0, 3 + Math.floor(rand() * 3));
     const tip = pts.at(-1);
     for (let k = 0; k < 6; k++) {
       const y = tip[1] + r(4, 22);
@@ -442,46 +489,88 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
     for (const box of boxes) if (x >= X(box.x0) - 40 && x <= X(box.x1) + 40) limit = Math.max(limit, Y(box.y1) + 36);
     return limit;
   }
-  // Needles as half-wheels of short strokes (松针); a branch ends in a flat, layered cloud of them.
-  function needleFan(cx, cy, len, color, spread = 0.95) {
-    const n = 16 + Math.floor(rand() * 6);
-    const tilt = r(-0.2, 0.2);
+  // 松针: wheels of short needles opening upward, gathered into clumps with dense hearts and loose edges.
+  function needleWheel(cx, cy, len, color) {
+    const n = 18 + Math.floor(rand() * 9);
+    const from = Math.PI * r(0.9, 1.0), to = Math.PI * r(2.0, 2.1);
     for (let k = 0; k < n; k++) {
-      const a = Math.PI * (1.5 - spread / 2 + spread * k / (n - 1)) + tilt + r(-0.04, 0.04);
-      const l = len * r(0.7, 1.05);
-      brush([[cx, cy], [cx + Math.cos(a) * l, cy + Math.sin(a) * l * 0.55]], taper(1.4, 0.3), color, r(0.75, 0.95));
+      const a = from + (to - from) * k / (n - 1) + r(-0.04, 0.04);
+      const l = len * r(0.75, 1.05);
+      const c = Math.cos(a), s = Math.sin(a) * 0.7;
+      brush([[cx + c * l * 0.12, cy + s * l * 0.12], [cx + c * l, cy + s * l]], taper(1.5, 0.35), color, r(0.75, 0.95));
     }
   }
-  function needleCloud(cx, cy, width, color, wash) {
-    for (let k = 0; k < 4; k++) dot(cx + r(-0.3, 0.3) * width, cy + r(-2, 4), width * r(0.22, 0.34), width * r(0.06, 0.1), r(-0.1, 0.1), wash, dark ? 0.22 : 0.16);
-    const fans = 6 + Math.floor(rand() * 4);
-    for (let k = 0; k < fans; k++) {
-      const t = (k + 0.5) / fans - 0.5;
-      needleFan(cx + t * width + r(-4, 4), cy + Math.abs(t) * width * 0.18 + r(-3, 3), width * r(0.17, 0.22), color);
+  function needleClump(cx, cy, size, color) {
+    const wheels = 4 + Math.floor(rand() * 5);
+    for (let k = 0; k < wheels; k++) {
+      const u = (rand() + rand() - 1), v = (rand() + rand() - 1);
+      needleWheel(cx + u * size * 0.55, cy + v * size * 0.16, size * r(0.2, 0.3) * (1 - Math.abs(u) * 0.35), color);
     }
   }
   function pine(x, y, h) {
     h = Math.min(h, y - ceilingAt(x));
     if (h < 70) return;
-    const sway = (rand() < 0.5 ? -1 : 1) * h * r(0.1, 0.22);
-    const trunk = bezier([x, y], [x - sway * 0.5, y - h * 0.3], [x + sway * 1.2, y - h * 0.6], [x + sway * 0.6, y - h * 0.94], 34);
-    brush(trunk, t => h * (0.055 - 0.04 * t) * (1 + 0.15 * Math.sin(t * 19)), stroke, 0.92);
-    const needles = dark ? mix(paper, paint.top, 0.9) : mix(paint.top, paint.line, 0.5);
-    const wash = dark ? paint.top : mix(paper, paint.top, 0.8);
-    const branches = 3 + Math.floor(rand() * 3);
+    // The trunk turns twice rather than curving smoothly.
+    const sway = (rand() < 0.5 ? -1 : 1) * h * r(0.08, 0.16);
+    const knots = [[x, y], [x + sway * r(-0.7, -0.1), y - h * r(0.3, 0.38)], [x + sway * r(0.7, 1.2), y - h * r(0.6, 0.68)], [x + sway * r(0.1, 0.6), y - h * 0.95]];
+    const trunk = [];
+    for (let i = 0; i < knots.length - 1; i++) {
+      const [ax, ay] = knots[i], [bx, by] = knots[i + 1];
+      const seg = bezier([ax, ay], [ax + (bx - ax) * 0.2, ay + (by - ay) * 0.4], [ax + (bx - ax) * 0.75, ay + (by - ay) * 0.7], [bx, by], 12);
+      trunk.push(...(i ? seg.slice(1) : seg));
+    }
+    const width = t => h * (0.05 - 0.032 * t);
+    const left = [], right = [];
+    trunk.forEach(([px, py], i) => {
+      const [x1, y1] = trunk[Math.max(0, i - 1)], [x2, y2] = trunk[Math.min(trunk.length - 1, i + 1)];
+      const len = Math.hypot(x2 - x1, y2 - y1) || 1, w = width(i / (trunk.length - 1)) / 2;
+      left.push([px - (y2 - y1) / len * w, py + (x2 - x1) / len * w]);
+      right.push([px + (y2 - y1) / len * w, py - (x2 - x1) / len * w]);
+    });
+    const bark = dark ? mix(paper, ink, 0.2) : mix(paper, paint.body, 0.26);
+    const edge = dark ? (card.palette === 'qingdai' ? paint.line : mix(paper, paint.line, 0.7)) : paint.line;
+    g.save();
+    g.fillStyle = bark;
+    polyline([...left, ...right.slice().reverse()]);
+    g.closePath();
+    g.fill();
+    g.restore();
+    brush(left, t => 2.4 * (0.6 + 0.4 * Math.sin(Math.PI * t)) + 0.4, edge, dark ? 0.6 : 0.9);
+    brush(right, t => 1.8 * (0.6 + 0.4 * Math.sin(Math.PI * t)) + 0.4, edge, dark ? 0.5 : 0.85);
+    // Shade one side of the trunk, then scatter 鳞皴 scales: small open ovals, not a pattern.
+    const shade = right.map(([rx, ry], i) => [rx + (left[i][0] - rx) * 0.3, ry + (left[i][1] - ry) * 0.3]);
+    brush(shade, t => width(t) * 0.45, dark ? mix(paper, ink, 0.1) : mix(paper, paint.body, 0.5), dark ? 0.6 : 0.45);
+    for (let k = 0; k < Math.floor(h / 9); k++) {
+      const i = Math.floor(r(0.04, 0.85) * (left.length - 1));
+      const [lx, ly] = left[i], [rx, ry] = right[i];
+      const u = r(0.25, 0.75), w = Math.hypot(rx - lx, ry - ly);
+      const angle = Math.atan2(ry - ly, rx - lx);
+      g.save();
+      g.strokeStyle = rgba(edge, dark ? 0.4 : 0.55);
+      g.lineWidth = r(0.8, 1.3);
+      g.beginPath();
+      g.ellipse(lx + (rx - lx) * u, ly + (ry - ly) * u, w * r(0.12, 0.2), w * r(0.06, 0.1), angle + r(-0.3, 0.3), r(0, 1), Math.PI * r(1.2, 1.9));
+      g.stroke();
+      g.restore();
+    }
+    const needles = dark ? mix(paint.top, ink, 0.45) : mix(paint.top, paint.line, 0.6);
+    const limb = dark ? mix(paper, ink, 0.38) : stroke;
+    const branches = 4 + Math.floor(rand() * 3);
     for (let k = 0; k < branches; k++) {
-      const at = 0.5 + (k / branches) * 0.42 + r(-0.03, 0.03);
+      const at = 0.46 + (k / branches) * 0.44 + r(-0.03, 0.03);
       const [bx, by] = trunk[Math.floor(at * (trunk.length - 1))];
-      const dir = k % 2 ? 1 : -1;
-      const len = h * r(0.2, 0.36) * (1.15 - at * 0.5);
-      const rise = h * r(-0.03, 0.05);
-      const end = [bx + dir * len, by - rise];
-      const branch = bezier([bx, by], [bx + dir * len * 0.3, by + h * 0.03], [bx + dir * len * 0.65, by - rise - h * 0.04], end, 14);
-      brush(branch, taper(h * 0.016, h * 0.004), stroke, 0.9);
-      needleCloud(end[0] - dir * len * 0.25, end[1] - h * 0.01, len * r(0.9, 1.2), needles, wash);
+      const dir = (k % 2 ? 1 : -1) * (rand() < 0.15 ? -1 : 1);
+      const len = h * r(0.2, 0.34) * (1.15 - at * 0.55);
+      // Out and slightly down, then a turn upward (蟹爪).
+      const elbow = [bx + dir * len * r(0.45, 0.6), by + h * r(0.01, 0.04)];
+      const end = [elbow[0] + dir * len * r(0.4, 0.55), elbow[1] - h * r(0.03, 0.07)];
+      brush([[bx, by], [(bx + elbow[0]) / 2, (by + elbow[1]) / 2 + 2], elbow], taper(h * 0.017, h * 0.011), limb, 0.9);
+      brush([elbow, [(elbow[0] + end[0]) / 2, (elbow[1] + end[1]) / 2 - 1], end], taper(h * 0.011, h * 0.004), limb, 0.9);
+      needleClump(end[0] - dir * len * 0.08, end[1] - h * 0.01, len * r(0.75, 1.0), needles);
+      if (rand() < 0.6) needleClump(elbow[0], elbow[1] - h * 0.02, len * r(0.45, 0.6), needles);
     }
     const [tx, ty] = trunk.at(-1);
-    needleCloud(tx, ty, h * r(0.22, 0.3), needles, wash);
+    needleClump(tx, ty - h * 0.01, h * r(0.22, 0.3), needles);
   }
   function maple(x, y, h) {
     h = Math.min(h, y - ceilingAt(x));
@@ -543,7 +632,7 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
     g.scale(s, s);
     g.fillStyle = paper;
     g.fillRect(-36, -30, 64, 30);
-    g.strokeStyle = paint.line;
+    g.strokeStyle = figure;
     g.lineWidth = 1.6;
     g.strokeRect(-36, -30, 64, 30);
     g.restore();
@@ -554,13 +643,13 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
     g.closePath();
     g.fill();
     g.restore();
-    brush(roof, taper(2.4, 1.4), paint.line, 0.85);
+    brush(roof, taper(2.4, 1.4), figure, 0.85);
     for (let k = 0; k < 12; k++) {
       const t = k / 11, tx = x + (-22 + 44 * t) * s, bx = x + (-46 + 86 * t) * s;
-      brush([[tx, y - 58 * s], [bx, y - 30 * s]], taper(0.9, 0.3), paint.line, 0.35);
+      brush([[tx, y - 58 * s], [bx, y - 30 * s]], taper(0.9, 0.3), figure, 0.35);
     }
     g.save();
-    g.fillStyle = rgba(paint.line, 0.75);
+    g.fillStyle = rgba(figure, 0.75);
     g.fillRect(x - 6 * s, y - 22 * s, 11 * s, 22 * s);
     g.fillRect(x - 28 * s, y - 22 * s, 12 * s, 9 * s);
     g.restore();
@@ -591,10 +680,10 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
   }
   function boat(x, y, s) {
     const hull = bezier([x - 46 * s, y - 6 * s], [x - 20 * s, y + 8 * s], [x + 22 * s, y + 8 * s], [x + 48 * s, y - 9 * s], 18);
-    brush(hull, t => 7 * s * Math.sin(Math.PI * t) + 1, paint.line, 0.9);
+    brush(hull, t => 7 * s * Math.sin(Math.PI * t) + 1, figure, 0.9);
     // A fisherman in a straw hat, with a rod over the water.
     g.save();
-    g.fillStyle = paint.line;
+    g.fillStyle = figure;
     g.globalAlpha = 0.9;
     g.beginPath();
     g.moveTo(x - 4 * s, y - 3 * s); g.lineTo(x - 1 * s, y - 18 * s); g.lineTo(x + 9 * s, y - 18 * s); g.lineTo(x + 11 * s, y - 3 * s);
@@ -604,15 +693,15 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
     g.closePath(); g.fill();
     g.restore();
     const dir = wind;
-    brush([[x + 6 * s, y - 10 * s], [x + dir * 40 * s, y - 34 * s], [x + dir * 76 * s, y - 48 * s]], taper(1.4, 0.4), paint.line, 0.8);
+    brush([[x + 6 * s, y - 10 * s], [x + dir * 40 * s, y - 34 * s], [x + dir * 76 * s, y - 48 * s]], taper(1.4, 0.4), figure, 0.8);
     g.save();
-    g.strokeStyle = rgba(paint.line, 0.4);
+    g.strokeStyle = rgba(figure, 0.4);
     g.lineWidth = 0.7;
     g.beginPath(); g.moveTo(x + dir * 76 * s, y - 48 * s); g.lineTo(x + dir * 80 * s, y + 10 * s); g.stroke();
     g.restore();
     for (let k = 0; k < 5; k++) {
       const yy = y + (8 + k * 4) * s, half = (40 - k * 6) * s * r(0.6, 1);
-      brush([[x - half + r(-4, 4), yy], [x + half, yy]], taper(1.4, 0.3), paint.line, 0.22 - k * 0.03);
+      brush([[x - half + r(-4, 4), yy], [x + half, yy]], taper(1.4, 0.3), figure, 0.22 - k * 0.03);
     }
   }
   // The old fort sits on the flattest high stretch of the massif: a low wall and one gate tower.
@@ -676,6 +765,7 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
   if (has('fortress')) fortress();
   reflections();
   ripples();
+  horizonMist();
   const spits = terrain.spits.map(spit);
   const shore = bank();
 

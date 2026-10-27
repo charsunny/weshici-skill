@@ -47,7 +47,8 @@ function cluster(rand, x, h, spread, lean) {
   return peaks;
 }
 
-export function posterTerrain(seed, layout = 'horizontal') {
+// `sky` (optional) is the lowest edge of the text block; the main summit then rises to just below it.
+export function posterTerrain(seed, layout = 'horizontal', sky = null) {
   const frame = FRAMES[layout] || FRAMES.horizontal;
   const rand = posterRandom(seed);
   const r = (a, b) => a + (b - a) * rand();
@@ -67,7 +68,8 @@ export function posterTerrain(seed, layout = 'horizontal') {
   const far = { depth: 0, base: horizon, peaks: farPeaks, noise: noiseTable(rand), rough: round(r(0.005, 0.01)) };
 
   // Middle range: the main massif on one side; its tallest summit is the painting's anchor.
-  const mainHeight = r(...frame.mainHeight);
+  const reachSky = sky == null ? null : Math.min(0.32, Math.max(frame.mainHeight[0], horizon - sky));
+  const mainHeight = reachSky == null ? r(...frame.mainHeight) : reachSky * r(0.86, 1);
   const mainX = layout === 'vertical' ? r(0.16, 0.32) : r(0.14, 0.42);
   const reach = layout === 'vertical' ? r(0.5, 0.62) : r(0.5, 0.8);
   const spread = layout === 'vertical' ? r(0.2, 0.28) : r(0.15, 0.26);

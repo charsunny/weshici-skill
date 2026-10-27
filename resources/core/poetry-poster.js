@@ -84,6 +84,8 @@ export function preparePosterManifest(input) {
       colors: entry[appearance], paint: entry.painting[appearance],
       // A dark poster still prints its QR code dark-on-light so it scans.
       qr: { tile: entry.light.surface, ink: entry.light.ink },
+      // The setting sun is cinnabar in both appearances: the light seal warmed toward its ochre.
+      cinnabar: { seal: entry.light.seal, secondary: entry.light.secondary },
     };
   });
   return { date, theme, cards };

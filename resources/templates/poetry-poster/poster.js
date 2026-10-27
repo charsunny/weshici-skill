@@ -62,7 +62,9 @@ const boxes = [...document.querySelectorAll('.type > *')].map(el => {
   const rect = el.getBoundingClientRect();
   return { x0: rect.left / W, y0: rect.top / H, x1: rect.right / W, y1: rect.bottom / H };
 });
-const terrain = fitTerrain(posterTerrain(card.seed, card.layout), boxes);
+// Horizontal layouts let the painting climb to just under the text; vertical keeps its tall frame.
+const sky = card.layout === 'vertical' ? null : Math.max(...boxes.map(box => box.y1)) + 0.035;
+const terrain = fitTerrain(posterTerrain(card.seed, card.layout, sky), boxes);
 paintPoster(document.getElementById('art'), card, terrain, boxes);
 
 window.poster = { ...card, source: url, terrain };
