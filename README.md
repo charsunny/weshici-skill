@@ -13,12 +13,12 @@
 
 ## 画屏／壁纸与诗词海报
 
-原版 `image` / `wallpaper` 保留淡墨、留白与背景感。新增 **`poster` 诗词海报**：大字、浓色、分层山水，面向社交分享与主题组图，支持青绿朱砂、黛蓝月夜、暖金墨山三种配色。
+原版 `image` / `wallpaper` 保留淡墨、留白与背景感。新增 **`poster` 诗词海报**：大字诗句为主角，底色近中性、留白充足，设色山水按种子生成，面向社交分享与主题组图。配色用 App 的七套主题色 × 浅深，缺省随节气；朱色只在一方印。
 
-海报使用独立的确定性 Canvas 插画模板，当前输出 **1080×1440（3:4）PNG**；不是 App 画风，也不替代壁纸。详细说明见 [诗词海报规范](references/POETRY-POSTER.md)。
+海报使用独立的确定性 Canvas 插画模板，当前输出 **1080×1440（3:4）PNG**；配色取自 App，画法不是 App 画屏，也不替代壁纸。详细说明见 [诗词海报规范](references/POETRY-POSTER.md)。
 
 ```bash
-node scripts/generate.mjs poster --title "早发白帝城" --author "李白" --poem "轻舟已过，万重山" --palette qinglv --layout hero --out out/poster-qingzhou
+node scripts/generate.mjs poster --title "早发白帝城" --author "李白" --poem "轻舟已过，万重山" --palette canglang --layout hero --out out/poster-qingzhou
 node scripts/generate.mjs poster --manifest examples/poster-ludi.json --out out/poster-ludi
 ```
 
@@ -64,7 +64,7 @@ graph TD
     C --> C1["📕 小红书 3:4 四联深度卡片套系 + 爆款文案"]
     C --> C2["💬 微信透明印章 / 宣纸贴图 / 朋友圈日签"]
     C --> C3["🎵 抖音 9:16 短视频 (黄金1.5s Hook / 安全区 / -14 LUFS)"]
-    C --> C4["诗词海报 poster：大字浓色 / 单张与主题组图 / 3:4 PNG"]
+    C --> C4["诗词海报 poster：App 主题色 / 单张与主题组图 / 3:4 PNG"]
 ```
 
 ---

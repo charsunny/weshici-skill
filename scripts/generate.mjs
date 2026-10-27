@@ -107,6 +107,7 @@ function parseCliArgs(argv) {
     else if (a === '--date' && argv[i + 1]) opts.date = argv[++i];
     else if (a === '--manifest' && argv[i + 1]) opts.manifest = argv[++i];
     else if (a === '--palette' && argv[i + 1]) opts.palette = argv[++i];
+    else if (a === '--appearance' && argv[i + 1]) opts.appearance = argv[++i];
     else if (a === '--layout' && argv[i + 1]) opts.layout = argv[++i];
     else if (a === '--theme' && argv[i + 1]) opts.theme = argv[++i];
     else if (a === '--seed' && argv[i + 1]) opts.seed = argv[++i];
@@ -380,8 +381,9 @@ async function main() {
                   选项: --title --poem --duration 10
 
 高级社媒命令:
-  poster         诗词海报：大字、浓色、分层山水，1080×1440 PNG
-                  单张: --title --poem --author --palette (qinglv|yueye|nuanjin)
+  poster         诗词海报：App 主题色、留白与山水，1080×1440 PNG
+                  单张: --title --poem --author --palette (seasonal|yaqing|moon-white|xiang-leaf|canglang|ousi|qingdai|rouge)
+                        --appearance (light|dark)
                         --layout (horizontal|vertical|hero) --theme --date --seed
                   组图: --manifest <JSON>；--out 指定输出目录
   xiaohongshu     生成小红书 3:4 (1080×1440) 4 联卡片与爆款文案 (封面/精读/画理/壁纸)

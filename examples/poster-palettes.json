@@ -1,0 +1,286 @@
+{
+  "date": "2026-10-27",
+  "theme": "配色样张",
+  "cards": [
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "poem": "空山新雨后，天气晚来秋。\n明月松间照，清泉石上流。\n竹喧归浣女，莲动下渔舟。\n随意春芳歇，王孙自可留。",
+      "lines": [
+        "明月松间照",
+        "清泉石上流"
+      ],
+      "layout": "horizontal",
+      "palette": "yaqing",
+      "appearance": "light",
+      "motifs": [
+        "moon",
+        "pine",
+        "boat",
+        "reeds"
+      ],
+      "caption": "鸦青 · 浅",
+      "seed": "poster-palettes"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "poem": "空山新雨后，天气晚来秋。\n明月松间照，清泉石上流。\n竹喧归浣女，莲动下渔舟。\n随意春芳歇，王孙自可留。",
+      "lines": [
+        "明月松间照",
+        "清泉石上流"
+      ],
+      "layout": "horizontal",
+      "palette": "yaqing",
+      "appearance": "dark",
+      "motifs": [
+        "moon",
+        "pine",
+        "boat",
+        "reeds"
+      ],
+      "caption": "鸦青 · 深",
+      "seed": "poster-palettes"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "poem": "空山新雨后，天气晚来秋。\n明月松间照，清泉石上流。\n竹喧归浣女，莲动下渔舟。\n随意春芳歇，王孙自可留。",
+      "lines": [
+        "明月松间照",
+        "清泉石上流"
+      ],
+      "layout": "horizontal",
+      "palette": "moon-white",
+      "appearance": "light",
+      "motifs": [
+        "moon",
+        "pine",
+        "boat",
+        "reeds"
+      ],
+      "caption": "月白 · 浅",
+      "seed": "poster-palettes"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "poem": "空山新雨后，天气晚来秋。\n明月松间照，清泉石上流。\n竹喧归浣女，莲动下渔舟。\n随意春芳歇，王孙自可留。",
+      "lines": [
+        "明月松间照",
+        "清泉石上流"
+      ],
+      "layout": "horizontal",
+      "palette": "moon-white",
+      "appearance": "dark",
+      "motifs": [
+        "moon",
+        "pine",
+        "boat",
+        "reeds"
+      ],
+      "caption": "月白 · 深",
+      "seed": "poster-palettes"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "poem": "空山新雨后，天气晚来秋。\n明月松间照，清泉石上流。\n竹喧归浣女，莲动下渔舟。\n随意春芳歇，王孙自可留。",
+      "lines": [
+        "明月松间照",
+        "清泉石上流"
+      ],
+      "layout": "horizontal",
+      "palette": "xiang-leaf",
+      "appearance": "light",
+      "motifs": [
+        "moon",
+        "pine",
+        "boat",
+        "reeds"
+      ],
+      "caption": "缃叶 · 浅",
+      "seed": "poster-palettes"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "poem": "空山新雨后，天气晚来秋。\n明月松间照，清泉石上流。\n竹喧归浣女，莲动下渔舟。\n随意春芳歇，王孙自可留。",
+      "lines": [
+        "明月松间照",
+        "清泉石上流"
+      ],
+      "layout": "horizontal",
+      "palette": "xiang-leaf",
+      "appearance": "dark",
+      "motifs": [
+        "moon",
+        "pine",
+        "boat",
+        "reeds"
+      ],
+      "caption": "缃叶 · 深",
+      "seed": "poster-palettes"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "poem": "空山新雨后，天气晚来秋。\n明月松间照，清泉石上流。\n竹喧归浣女，莲动下渔舟。\n随意春芳歇，王孙自可留。",
+      "lines": [
+        "明月松间照",
+        "清泉石上流"
+      ],
+      "layout": "horizontal",
+      "palette": "canglang",
+      "appearance": "light",
+      "motifs": [
+        "moon",
+        "pine",
+        "boat",
+        "reeds"
+      ],
+      "caption": "苍筤 · 浅",
+      "seed": "poster-palettes"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "poem": "空山新雨后，天气晚来秋。\n明月松间照，清泉石上流。\n竹喧归浣女，莲动下渔舟。\n随意春芳歇，王孙自可留。",
+      "lines": [
+        "明月松间照",
+        "清泉石上流"
+      ],
+      "layout": "horizontal",
+      "palette": "canglang",
+      "appearance": "dark",
+      "motifs": [
+        "moon",
+        "pine",
+        "boat",
+        "reeds"
+      ],
+      "caption": "苍筤 · 深",
+      "seed": "poster-palettes"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "poem": "空山新雨后，天气晚来秋。\n明月松间照，清泉石上流。\n竹喧归浣女，莲动下渔舟。\n随意春芳歇，王孙自可留。",
+      "lines": [
+        "明月松间照",
+        "清泉石上流"
+      ],
+      "layout": "horizontal",
+      "palette": "ousi",
+      "appearance": "light",
+      "motifs": [
+        "moon",
+        "pine",
+        "boat",
+        "reeds"
+      ],
+      "caption": "藕丝 · 浅",
+      "seed": "poster-palettes"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "poem": "空山新雨后，天气晚来秋。\n明月松间照，清泉石上流。\n竹喧归浣女，莲动下渔舟。\n随意春芳歇，王孙自可留。",
+      "lines": [
+        "明月松间照",
+        "清泉石上流"
+      ],
+      "layout": "horizontal",
+      "palette": "ousi",
+      "appearance": "dark",
+      "motifs": [
+        "moon",
+        "pine",
+        "boat",
+        "reeds"
+      ],
+      "caption": "藕丝 · 深",
+      "seed": "poster-palettes"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "poem": "空山新雨后，天气晚来秋。\n明月松间照，清泉石上流。\n竹喧归浣女，莲动下渔舟。\n随意春芳歇，王孙自可留。",
+      "lines": [
+        "明月松间照",
+        "清泉石上流"
+      ],
+      "layout": "horizontal",
+      "palette": "qingdai",
+      "appearance": "light",
+      "motifs": [
+        "moon",
+        "pine",
+        "boat",
+        "reeds"
+      ],
+      "caption": "青黛 · 浅",
+      "seed": "poster-palettes"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "poem": "空山新雨后，天气晚来秋。\n明月松间照，清泉石上流。\n竹喧归浣女，莲动下渔舟。\n随意春芳歇，王孙自可留。",
+      "lines": [
+        "明月松间照",
+        "清泉石上流"
+      ],
+      "layout": "horizontal",
+      "palette": "qingdai",
+      "appearance": "dark",
+      "motifs": [
+        "moon",
+        "pine",
+        "boat",
+        "reeds"
+      ],
+      "caption": "青黛 · 深",
+      "seed": "poster-palettes"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "poem": "空山新雨后，天气晚来秋。\n明月松间照，清泉石上流。\n竹喧归浣女，莲动下渔舟。\n随意春芳歇，王孙自可留。",
+      "lines": [
+        "明月松间照",
+        "清泉石上流"
+      ],
+      "layout": "horizontal",
+      "palette": "rouge",
+      "appearance": "light",
+      "motifs": [
+        "moon",
+        "pine",
+        "boat",
+        "reeds"
+      ],
+      "caption": "胭脂 · 浅",
+      "seed": "poster-palettes"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "poem": "空山新雨后，天气晚来秋。\n明月松间照，清泉石上流。\n竹喧归浣女，莲动下渔舟。\n随意春芳歇，王孙自可留。",
+      "lines": [
+        "明月松间照",
+        "清泉石上流"
+      ],
+      "layout": "horizontal",
+      "palette": "rouge",
+      "appearance": "dark",
+      "motifs": [
+        "moon",
+        "pine",
+        "boat",
+        "reeds"
+      ],
+      "caption": "胭脂 · 深",
+      "seed": "poster-palettes"
+    }
+  ]
+}
