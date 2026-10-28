@@ -2,6 +2,7 @@
 // of t (references/TECHNIQUE.md): no Math.random, no accumulated state. Ink and paper only — the
 // seal stays the one spot of red. Plans come from huaping-video.js (pickWeather / afterglowPlan).
 import { clamp, seeded } from './huaping-video.js';
+import { drawCinnabarSun } from './cinnabar-sun.js';
 
 const rgba = (hex, alpha) => {
   const n = parseInt(hex.slice(1), 16);
@@ -55,23 +56,15 @@ function drawMoon(ctx, t, scene, paper, ink, dark, k) {
   ctx.fill();
 }
 
-// The setting sun is the seal's cinnabar, 3.5% of the width, smaller and softer than the seal reads.
+// Only when the painting has no sun of its own: the poster's cinnabar sun.
 function drawSun(ctx, t, scene, k) {
   const { x, y } = skySpot(scene, k);
-  const r = scene.width * 0.035;
-  const cy = y + 40 * k + t * 1.2 * k;
-  const g = ctx.createRadialGradient(x, cy, r * 0.2, x, cy, r * 1.12);
-  g.addColorStop(0, rgba(scene.cinnabar, 0.82));
-  g.addColorStop(0.88, rgba(scene.cinnabar, 0.78));
-  g.addColorStop(1, rgba(scene.cinnabar, 0));
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(x, cy, r * 1.12, 0, Math.PI * 2);
-  ctx.fill();
+  drawCinnabarSun(ctx, { cx: x, cy: y + 40 * k + t * 1.2 * k, width: scene.width, ...scene.cinnabar,
+    ink: scene.colors.ink, paper: scene.colors.paper, dark: scene.appearance === 'dark', rand: seeded(`${scene.seed}-sun`) });
 }
 
 // One thin band of mist drifting slowly across the mountains' waist.
-function drawMist(ctx, t, { width: W, height: H, afterglow, seed }, color, dark, k) {
+function drawMist(ctx, t, { width: W, height: H, afterglow, seed, beat }, color, dark, k) {
   const { y, height, direction } = afterglow.mist;
   const cy = y * H;
   const band = height * H;
@@ -83,7 +76,9 @@ function drawMist(ctx, t, { width: W, height: H, afterglow, seed }, color, dark,
     const x = ((rand() * 1.6 - 0.3) * W + drift + W * 1.6) % (W * 1.6) - W * 0.3;
     const dy = (rand() - 0.5) * band * 0.9;
     const g = ctx.createRadialGradient(x, cy + dy, 0, x, cy + dy, span);
-    const a = (dark ? 0.07 : 0.5) * (0.6 + 0.4 * rand());
+    // On a song the band breathes with the bar (four beats): the far hills come and go a little.
+    const breath = beat ? 1 + 0.18 * Math.sin((t / (beat * 4)) * Math.PI * 2) : 1;
+    const a = (dark ? 0.05 : 0.22) * (0.6 + 0.4 * rand()) * breath;
     g.addColorStop(0, rgba(color, a));
     g.addColorStop(0.55, rgba(color, a * 0.45));
     g.addColorStop(1, rgba(color, 0));
@@ -97,11 +92,14 @@ function drawMist(ctx, t, { width: W, height: H, afterglow, seed }, color, dark,
 }
 
 // Rings that open on the water and fade, plus a soft wash of lines under each boat.
-function drawRipples(ctx, t, { width: W, height: H, afterglow }, ink, dark, k) {
+// With a `beat` (seconds), every ring opens on a beat and lasts two or four beats.
+function drawRipples(ctx, t, { width: W, height: H, afterglow, beat }, ink, dark, k) {
   ctx.save();
   ctx.lineCap = 'round';
   for (const r of afterglow.ripples) {
-    const p = ((t / r.period) + r.phase) % 1;
+    const period = beat ? beat * (r.period > 3.3 ? 4 : 2) : r.period;
+    const phase = beat ? Math.round(r.phase * 4) / 4 : r.phase;
+    const p = ((t / period) + phase) % 1;
     const rx = r.size * W * (0.2 + 0.8 * p);
     const alpha = Math.sin(Math.PI * p) * (dark ? 0.22 : 0.2);
     ctx.strokeStyle = rgba(ink, alpha);

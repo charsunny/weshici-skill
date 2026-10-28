@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import {
   resolveVideoPalette, byline, typeFloorIssues, clipVerseRect, VIDEO_SAFE, inkRevealPlan, inkGlyphState,
   sealState, videoDuration, pushScale, pickWeather, geeseCount, afterglowPlan,
-  artPlacement, paintingStats, placeOffset, liftRect, storyTimeline, leafGone, readableWindow,
+  artPlacement, paintingStats, placeOffset, liftRect, storyTimeline, leafGone, readableWindow, knockOutSun, deepenInk, songTimeline,
 } from '../resources/core/huaping-video.js';
 import { huapingClauses, huapingPlan } from '../resources/core/huaping-layout.js';
 import { sealStampState } from '../resources/core/weishi-video-core.js';
@@ -217,3 +217,50 @@ test('ink-story leaves follow the reading and stay long enough for readcheck', (
     near(leafGone(first.out, first, story.dissolve), 1);
   }
 });
+
+test('the engine\'s pink sun is found and laid back to paper; ink elsewhere is untouched', () => {
+  const w = 30, h = 30, paper = [243, 246, 247];
+  const data = new Uint8ClampedArray(w * h * 4);
+  for (let i = 0; i < data.length; i += 4) data.set([...paper, 255], i);
+  const px = (x, y, c) => data.set(c, (y * w + x) * 4);
+  for (let y = 8; y <= 12; y++) for (let x = 18; x <= 22; x++) px(x, y, [218, 184, 186]); // #AB4033 at 0.34
+  px(17, 10, [236, 228, 227]); // the disc's soft edge (#AB4033 at 0.1)
+  px(5, 20, [30, 38, 46]); // an ink stroke
+  const sun = knockOutSun(data, w, h, paper);
+  assert.ok(Math.abs(sun.x - 20) < 1e-9 && Math.abs(sun.y - 10) < 1e-9);
+  assert.equal(sun.count, 25);
+  assert.deepEqual([...data.slice((10 * w + 20) * 4, (10 * w + 20) * 4 + 3)], paper);
+  assert.deepEqual([...data.slice((10 * w + 17) * 4, (10 * w + 17) * 4 + 3)], paper, 'the edge goes too');
+  assert.deepEqual([...data.slice((20 * w + 5) * 4, (20 * w + 5) * 4 + 3)], [30, 38, 46]);
+  const blank = new Uint8ClampedArray(16).fill(240);
+  assert.equal(knockOutSun(blank, 2, 2, [240, 240, 240]), null);
+});
+
+test('deepening the ink leaves paper and grain alone and pushes strokes away from the paper', () => {
+  const paper = [240, 240, 240];
+  const data = new Uint8ClampedArray([240, 240, 240, 255, 235, 236, 234, 255, 200, 200, 200, 255, 20, 20, 20, 255]);
+  deepenInk(data, paper);
+  assert.deepEqual([...data.slice(0, 3)], [240, 240, 240]);
+  assert.deepEqual([...data.slice(4, 7)], [235, 236, 234], 'grain is left alone');
+  assert.ok(data[8] < 200 - 40, `a pale stroke darkens: ${data[8]}`);
+  assert.deepEqual([...data.slice(12, 15)], [0, 0, 0], 'already dark ink clamps');
+  // On dark paper the same rule brightens light strokes.
+  const night = new Uint8ClampedArray([110, 120, 130, 255]);
+  deepenInk(night, [17, 26, 32]);
+  assert.ok(night[0] > 110);
+});
+
+test('a sung line inks in across its sung time and the seal lands inside the song', () => {
+  const r = recipe('sumuzhe-fanzhongyan-mv');
+  const glyphCounts = r.lyrics.map(l => huapingClauses(l.text).join('').length);
+  const song = songTimeline({ lyrics: r.lyrics, glyphCounts });
+  song.lines.forEach((line, i) => {
+    assert.equal(line.times.length, glyphCounts[i]);
+    assert.equal(line.times[0], r.lyrics[i].start);
+    assert.equal(line.end, r.lyrics[i + 1]?.start ?? r.lyrics[i].end);
+    assert.ok(line.times.at(-1) + 0.25 <= line.end, `line ${i + 1} is fully inked before the next starts`);
+    assert.ok(line.end - line.times[0] >= Math.max(1.5, glyphCounts[i] * 0.22), 'readcheck dwell');
+  });
+  assert.ok(song.sealAt < r.duration);
+});
+

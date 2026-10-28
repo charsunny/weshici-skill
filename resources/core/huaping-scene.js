@@ -5,8 +5,9 @@ import { renderZXArt } from './weishi-video-core.js';
 import { huapingClauses } from './huaping-layout.js';
 import {
   resolveVideoPalette, artPlacement, paintingStats, placeOffset, liftRect, clipVerseRect,
-  pickWeather, geeseCount, afterglowPlan,
+  pickWeather, geeseCount, afterglowPlan, knockOutSun, deepenInk, seeded,
 } from './huaping-video.js';
+import { drawCinnabarSun } from './cinnabar-sun.js';
 
 const OVERRIDES = ['seed', 'scene', 'composition', 'artHeight', 'quietTop', 'verseSide'];
 const SKY = ['moon', 'crescent', 'sunrise', 'sunset', 'stars', 'snow', 'rain', 'afterRain', 'mist'];
@@ -55,7 +56,9 @@ export function applyPalette(palettes, recipe, params, plan) {
     term: recipe.term, date: recipe.date, night: plan.night,
   });
   for (const [slot, value] of Object.entries(palette.colors)) document.documentElement.style.setProperty(`--${slot}`, value);
-  palette.cinnabar = palettes.palettes[palette.id].light.seal;
+  // The sun is cinnabar from the light palette in both appearances (poster v2).
+  const { seal, secondary } = palettes.palettes[palette.id].light;
+  palette.cinnabar = { seal, secondary };
   return palette;
 }
 
@@ -84,6 +87,7 @@ export async function paintFrame(target, plan, palette, { width: W, height: H })
       { avoid: { x: r.x * W, y: r.y * artHeight, width: r.width * W, height: r.height * artHeight } });
     if (!best || stats.mass > best.stats.mass) best = { canvas, result, stats, artHeight, paper, stripHeight };
   }
+  await finishPainting(best, plan, palette, W);
   const place = artPlacement({ width: W, height: H, artHeight: best.artHeight,
     offset: placeOffset({ frameHeight: H, artHeight: best.artHeight, contentBottom: best.stats.bottom }) });
   target.width = W;
@@ -98,18 +102,23 @@ export async function paintFrame(target, plan, palette, { width: W, height: H })
   ctx.fillStyle = `rgb(${paper.join(',')})`;
   ctx.fillRect(0, 0, W, H);
   if (blank) {
-    // Tiles alternate mirrored / upright, so every join meets the same row of grain.
+    // Tiles alternate mirrored / upright, so every join meets the same row of grain, and each is
+    // shifted sideways (wrapping round) so the grain does not repeat in visible bands.
+    const shift = seeded(`${plan.art.seed}-paper`);
     for (let bottom = place.offset, flip = true; bottom > 0; bottom -= stripHeight, flip = !flip) {
-      const top = bottom - stripHeight;
-      ctx.save();
-      if (flip) {
-        ctx.translate(0, bottom);
-        ctx.scale(1, -1);
-        ctx.drawImage(best.canvas, 0, 0, W, stripHeight, 0, 0, W, stripHeight);
-      } else {
-        ctx.drawImage(best.canvas, 0, 0, W, stripHeight, 0, top, W, stripHeight);
+      // The tile touching the painting stays unshifted, so that join is exact.
+      const dx = bottom === place.offset ? 0 : Math.round(shift() * W);
+      for (const x of [dx, dx - W]) {
+        ctx.save();
+        if (flip) {
+          ctx.translate(0, bottom);
+          ctx.scale(1, -1);
+          ctx.drawImage(best.canvas, 0, 0, W, stripHeight, x, 0, W, stripHeight);
+        } else {
+          ctx.drawImage(best.canvas, 0, 0, W, stripHeight, x, bottom - stripHeight, W, stripHeight);
+        }
+        ctx.restore();
       }
-      ctx.restore();
     }
   }
   ctx.drawImage(best.canvas, 0, place.offset);
@@ -136,13 +145,50 @@ export async function paintFrame(target, plan, palette, { width: W, height: H })
   const lift = rect => clipVerseRect(liftRect(place.rect(rect), { top: 0.11, clear: regionClear }), { width: W, height: H });
   return {
     width: W, height: H, place, inked, lift, artHeight: best.artHeight,
-    verse: { ...best.result.verse, rect: lift(best.result.verse.rect) },
+    // First row of the painting's ink in the frame (px), for text that sits just above it.
+    contentTop: best.stats.top == null ? null : place.offset + best.stats.top,
+    verse: { ...best.result.verse, rect: lift(best.result.verse.rect), engineRect: best.result.verse.rect },
     anchors: place.anchors(best.result.anchors),
     reference: (params) => {
       const reference = window.ZXArtCompose.verseLayoutFor('shanshui@5', params, W, place.height);
       return { ...reference, rect: lift(reference.rect) };
     },
   };
+}
+
+/**
+ * Light paper: the ink is made more solid so the painting carries in a thumbnail (the paper and the
+ * composition are untouched). The engine paints its sun as a translucent pink disc over a disc of flat
+ * paper; the sun is found in that render, the same painting is rendered again without the sun motif,
+ * and the poster's cinnabar sun goes where the engine put its own.
+ */
+async function finishPainting(best, plan, palette, W) {
+  const suns = ['sunset', 'sunrise'];
+  let sun = null;
+  if (plan.motifs.some(m => suns.includes(m))) {
+    const found = best.canvas.getContext('2d').getImageData(0, 0, W, best.artHeight).data;
+    sun = knockOutSun(found, W, best.artHeight, best.paper);
+    if (sun) {
+      const params = { ...plan.art.params, scene: { ...plan.art.params.scene, motifs: plan.motifs.filter(m => !suns.includes(m)) } };
+      const canvas = document.createElement('canvas');
+      const result = await renderZXArt(canvas, {
+        generator: 'shanshui@5', seed: plan.art.seed, scene: plan.scene, params,
+        palette: { paper: palette.colors.paper, ink: palette.colors.ink }, width: W, height: best.artHeight,
+      });
+      if (!result.ok) throw new Error(`画屏渲染失败（${result.error || 'fallback'}），不能用简化山水代替`);
+      Object.assign(best, { canvas, result });
+    }
+  }
+  const ctx = best.canvas.getContext('2d');
+  if (palette.appearance === 'light') {
+    const image = ctx.getImageData(0, 0, W, best.artHeight);
+    deepenInk(image.data, best.paper);
+    ctx.putImageData(image, 0, 0);
+  }
+  if (sun) {
+    drawCinnabarSun(ctx, { cx: sun.x, cy: sun.y, width: W, ...palette.cinnabar, ink: palette.colors.ink,
+      paper: palette.colors.paper, dark: palette.appearance === 'dark', rand: seeded(`${plan.art.seed}-sun`) });
+  }
 }
 
 /** Mean RGB of the first `pixels` pixels of an RGBA buffer. */

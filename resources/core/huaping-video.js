@@ -137,6 +137,66 @@ export function paintingStats(data, width, height, paper, { avoid = null, thresh
 }
 
 /**
+ * The engine paints its sun as a translucent #AB4033 disc, which reads pink on light paper. Finds it
+ * (pixels clearly warmer than the paper — the paintings are otherwise ink on paper), returns its
+ * centre, and fills it, edge included, with the colour around it, so the cinnabar sun can replace it.
+ */
+export function knockOutSun(data, width, height, paper, { warmth = 24, edge = 8 } = {}) {
+  // Warmth is measured relative to the paper's own tint, on both red−green and red−blue.
+  const rg = paper[0] - paper[1], rb = paper[0] - paper[2];
+  const warm = (i, limit) => data[i] - data[i + 1] - rg > limit && data[i] - data[i + 2] - rb > limit;
+  let sx = 0, sy = 0, n = 0, x0 = width, y0 = height, x1 = -1, y1 = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (!warm((y * width + x) * 4, warmth)) continue;
+      sx += x; sy += y; n++;
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+    }
+  }
+  if (!n) return null;
+  // Fill with what lies around the disc (paper, or a painted bank it overlaps), not flat paper,
+  // so no ring shows where the engine's larger disc was.
+  const pad = Math.max(x1 - x0, y1 - y0) * 0.3 + 2;
+  const ys = [Math.max(0, Math.floor(y0 - pad)), Math.min(height - 1, Math.ceil(y1 + pad))];
+  const xs = [Math.max(0, Math.floor(x0 - pad)), Math.min(width - 1, Math.ceil(x1 + pad))];
+  const around = [0, 0, 0];
+  let m = 0;
+  for (let y = ys[0]; y <= ys[1]; y++) {
+    for (let x = xs[0]; x <= xs[1]; x++) {
+      const i = (y * width + x) * 4;
+      if (warm(i, edge)) continue;
+      for (let k = 0; k < 3; k++) around[k] += data[i + k];
+      m++;
+    }
+  }
+  const fill = m ? around.map(v => Math.round(v / m)) : paper;
+  for (let y = ys[0]; y <= ys[1]; y++) {
+    for (let x = xs[0]; x <= xs[1]; x++) {
+      const i = (y * width + x) * 4;
+      if (warm(i, edge)) data.set(fill, i);
+    }
+  }
+  const cx = sx / n, cy = sy / n;
+  return { x: cx, y: cy, count: n };
+}
+
+/**
+ * Makes the ink more solid without touching the paper: each pixel's distance from the paper grows
+ * by up to `gain`, ramping in above the paper grain so the grain itself is left alone.
+ */
+export function deepenInk(data, paper, { gain = 2.4, grain = 8, ramp = 20 } = {}) {
+  const lum = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b;
+  const base = lum(...paper);
+  for (let i = 0; i < data.length; i += 4) {
+    const d = Math.abs(base - lum(data[i], data[i + 1], data[i + 2]));
+    if (d <= grain) continue;
+    const f = 1 + (gain - 1) * clamp((d - grain) / ramp);
+    for (let k = 0; k < 3; k++) data[i + k] = Math.max(0, Math.min(255, Math.round(paper[k] + (data[i + k] - paper[k]) * f)));
+  }
+  return data;
+}
+
+/**
  * Where the painting goes: bottom-aligned, and lower only when its last stroke would otherwise end
  * above `target` — then the bare paper under it is cropped so that stroke lands at `target` (by
  * default the top of the platform's bottom bar, 1 − 380/1920). Only blank paper is ever lost.
@@ -233,6 +293,22 @@ export function leafGone(t, leaf, dissolve = 0.6) {
 /** When a leaf reads (opacity ≥ 0.5): from its first glyph half-inked until it is half dissolved. */
 export function readableWindow(leaf, dissolve = 0.6) {
   return [leaf.times[0] + 0.125, leaf.out - dissolve / 2];
+}
+
+// ---------------------------------------------------------------- song timeline
+
+/**
+ * A sung line inks in across its sung time: glyphs spread over 70% of the line (at most `pace` s per
+ * glyph), each the App's 0.25s reveal. A line is current until the next one starts. The seal lands
+ * 0.3s after the last glyph of the last line.
+ */
+export function songTimeline({ lyrics, glyphCounts, pace = 0.5 }) {
+  const lines = lyrics.map((l, i) => {
+    const end = lyrics[i + 1]?.start ?? l.end;
+    const span = Math.min(glyphCounts[i] * pace, Math.max(0.3, (end - l.start) * 0.7));
+    return { times: Array.from({ length: glyphCounts[i] }, (_, j) => l.start + j * span / glyphCounts[i]), end };
+  });
+  return { lines, sealAt: lines.at(-1).times.at(-1) + 0.25 + 0.3 };
 }
 
 // ---------------------------------------------------------------- weather and afterglow

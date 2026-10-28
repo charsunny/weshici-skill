@@ -3,51 +3,38 @@
   "title": "苏幕遮 · 怀旧",
   "dynasty": "宋",
   "author": "范仲淹",
-  "album": "一曲诗词 · 宋词秋声",
+  "palette": "moon-white",
+  "appearance": "light",
+  "paletteNote": "词写秋景（黄叶、秋色），取秋季对应的月白；词中没有节气，不写 term。",
   "duration": 20,
   "bpm": 76,
   "audioMode": "voice+foley",
   "voice": "/assets/wish/audio/mureka-2026-08-29/audio/006-苏幕遮_碧云天.mp3",
   "voiceSeek": 14,
-  "paletteId": "yaqing",
-  "scheme": "dark",
-  "seal": "微詩",
   "procedural": {
-    "generator": "shanshui@2",
-    "seed": "sumuzhe-1019",
-    "variant": "远山",
-    "params": {
-      "density": 0.86,
-      "quiet_top": 0.45,
-      "verse_side": "top",
-      "verse_columns": 4,
-      "verse_chars": 8
-    }
+    "generator": "shanshui@5",
+    "seed": "sumuzhe-1019"
   },
   "lyrics": [
     {
       "start": 0.4,
       "end": 5.2,
-      "text": "碧云天，黄叶地。",
-      "note": "秋空澄澈如碧玉，黄叶铺地，立尽天地苍茫。"
+      "text": "碧云天，黄叶地。"
     },
     {
       "start": 5.2,
       "end": 10.2,
-      "text": "秋色连波，波上寒烟翠。",
-      "note": "秋水共长天相连，渺渺江波笼罩寒烟翠雾。"
+      "text": "秋色连波，波上寒烟翠。"
     },
     {
       "start": 10.2,
       "end": 15.2,
-      "text": "山映斜阳天接水。",
-      "note": "暮山映照落日余晖，水天相接浩渺无际。"
+      "text": "山映斜阳天接水。"
     },
     {
       "start": 15.2,
       "end": 20.0,
-      "text": "芳草无情，更在斜阳外。",
-      "note": "芳草不谙游子羁旅愁肠，绵延向斜阳之外。"
+      "text": "芳草无情，更在斜阳外。"
     }
   ]
 }
