@@ -106,3 +106,11 @@
 证据位于 `out/theme-art-validation/`：`elements-before`、`elements-after`、`elements-reading`、`elements-replay`、`elements-legacy-layout`、`element-legacy-engine-checks.json` 和 `element-comparison-checks.json`。验收页可由 `node scripts/theme-art-review.mjs` 重建。
 
 本轮改善了上文列出的岸脚与深色梅枝问题；程序松针、部分花簇造型和枝叶疏密仍有程序化痕迹。点染采用景物范围与细笔筛选，不等于完成原生青绿笔法。App 与视频模板未修改，仍等待用户统一审美验收。
+
+## 山体与树冠笔触试验（2026-10-28，painted-v2）
+
+用户指出山体仍主要由线条构成、树叶过细。本轮新增显式 `painted-v2`：保留上一轮主题、纸面、排字及景物位置，重新生成山体内部淡染、阴面与短皴笔；松冠和一般叶簇改为成组墨点，松针仅作少量提示。新笔触采用独立随机序列，保留原构图所需的随机消耗和边界。默认继续使用 refined-v1，App 未修改。
+
+四张《山居秋暝》《春日》浅深样本已加入验收页顶部。四组排字、景物范围相同，四张保存配方重放 PNG 相同；三个 refined-v1 山水／花卉引擎样本与 a6d7129 输出哈希相同。58 项 Node 测试通过；专项检查覆盖确定性、画面及天气锚点、有限坐标与色值、切回旧处理不受状态污染；松冠样本图元少于旧版四分之一。桌面与手机验收页无横向溢出。证据：brush-after、brush-replay、brush-comparison-checks.json、brush-legacy-checks.json。
+
+视觉判断：块面和叶簇比前版明确，但仍有山形柱状、部分叶簇规则、皴染过渡偏程序化的问题，不能视为已达到传统山水画水平。现有外形限制了内部笔触能改善的程度；后续应将山势、山石转折与皴染一同设计。本轮作为方向试验保留，不提升为默认，也不以测试通过代替审美验收。

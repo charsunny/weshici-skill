@@ -11,7 +11,7 @@ function engine(flowers = false) {
   if (flowers) context.ZXArtCompose.installShims(context);
   const file = flowers ? 'nonflowers/main.js' : 'zxart-shanshui-v5.js';
   vm.runInContext(fs.readFileSync(new URL(`../resources/vendor/zxart/${file}`, import.meta.url), 'utf8'), context);
-  return context.ZXArtCompose;
+  return { ...context.ZXArtCompose, Engine:context.ShanShuiEngineV5 };
 }
 const palette = { paper:'#243B30', ink:'#E3EBE2', accent:'#8FCBA8', secondary:'#D9A27A' };
 const params = { quiet_top:.18, verse_side:'right', verse_columns:2, verse_chars:5, element_treatment:'refined-v1' };
@@ -59,4 +59,28 @@ test('flower point colour changes stems, preserves petals and remains determinis
   assert.equal(json(tinted.trace), json(plain.trace));
   assert.equal(json(tinted), json(api.generate(request)));
   assert.throws(() => api.generate({ ...request, params:{ element_treatment:'typo' } }));
+});
+
+test('painted study changes mountain and crown brushwork without moving the scene or changing defaults', () => {
+  const api = engine();
+  const request = { generator:'shanshui@5', seed:'study-山居秋暝', variant:'retreat',
+    params:{ ...params, scene:{ motifs:['pine', 'bamboo', 'hut', 'stream', 'moon'], purpose:'inscription-v1', composition:'corner' } },
+    palette, width:1080, height:1440 };
+  const before = api.generate(request);
+  const after = api.generate({ ...request, params:{ ...request.params, element_treatment:'painted-v2' } });
+  assert.equal(json(after.verse), json(before.verse));
+  assert.equal(json(after.sceneElements), json(before.sceneElements), 'asset bounds and scene placement stay fixed');
+  assert.equal(json(after.anchors), json(before.anchors), 'weather and subject anchors stay fixed');
+  const fineTree = new api.Engine('crown-count'), groupedTree = new api.Engine('crown-count');
+  groupedTree.paintedStudySeed = 'crown-count';
+  const fineCrown = fineTree.paintingPineNeedles(0, 0, 50, 15);
+  const groupedCrown = groupedTree.paintingPineNeedles(0, 0, 50, 15);
+  assert.ok(groupedCrown.length < fineCrown.length * .25, 'crown uses fewer marks; whole-scene counts also include new wash planes');
+  assert.notEqual(json(after.layers), json(before.layers));
+  for (const layer of after.layers) for (const shape of layer.shapes) {
+    assert.ok([...shape.points].every(Number.isFinite));
+    for (const color of [shape.fill, shape.stroke]) if (color) assert.ok(color.every(v => Number.isFinite(v) && v >= 0 && v <= 1));
+  }
+  assert.equal(json(after), json(api.generate({ ...request, params:{ ...request.params, element_treatment:'painted-v2' } })));
+  assert.equal(json(before), json(api.generate(request)), 'experiment has no state leakage into refined-v1');
 });

@@ -2731,6 +2731,121 @@ Object.assign(ShanShuiEngineV5.prototype, {
   },
 
   /// 矾头 and stacked shoulders, with dry folds flowing down from the ridge.
+  // Study geometry keeps the original asset bounds so scene placement and anchors do not drift.
+  paintingStudyBounds(source) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const poly of source) for (const p of poly.p) {
+      x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y);
+      x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y);
+    }
+    return { x0, y0, x1, y1, mask:this.poly([P(x0, y0), P(x1, y1)], { fil:C.clear, str:null }) };
+  },
+
+  paintingStudyMassif(source, ridge, width, height) {
+    const brush = new ShanShuiEngineV5('mass-v2:' + this.paintedStudySeed + ':' + width + ':' + height);
+    const bounds = this.paintingStudyBounds(source);
+    const top = (x) => {
+      const index = ridge.findIndex(p => p.x >= x);
+      if (index <= 0) return ridge[0].y;
+      const a = ridge[index - 1], b = ridge[index];
+      return a.y + (b.y - a.y) * (x - a.x) / Math.max(.001, b.x - a.x);
+    };
+    const inside = p => {
+      const x = Math.max(0, Math.min(width, p.x));
+      return P(x, Math.max(top(x) + .5, Math.min(height + 1, p.y)));
+    };
+    const c = [source[0], bounds.mask];
+    // A continuous pale body, with open ridges between overlapping shaded faces.
+    const contour = t => ridge.map(p => P(p.x, p.y + (height + 1 - p.y) * t));
+    for (let band = 0; band < 18; band++) {
+      const t = band / 18;
+      c.push(brush.poly([...contour(t), ...contour((band + 1) / 18).reverse()], {
+        fil:C.gray(0, .11 + .10 * Math.sin(t * Math.PI)), str:null
+      }));
+    }
+    for (let face = 0; face < 5; face++) {
+      const u = [.16, .31, .48, .65, .80][face] + (brush.r() - .5) * .07;
+      const x = width * u, y = top(x) + height * (.035 + (face % 3) * .06);
+      const depth = (height - y) * (.48 + brush.r() * .34);
+      if (depth < height * .15) continue;
+      const side = u < .5 ? -1 : 1;
+      const path = brush.inkCurve([P(x, y), P(x + side * width * .015, y + depth * .28),
+        P(x + side * width * .065, y + depth * .60), P(x + side * width * .14, y + depth)], 10);
+      const span = width * (.11 + brush.r() * .06);
+      const edge = t => path.map((p, i) => {
+        const v = i / (path.length - 1);
+        const swell = Math.pow(Math.sin(v * Math.PI), .65);
+        return inside(P(p.x + span * t * swell, p.y + depth * .04 * t));
+      });
+      // Broad damp washes carry the volume; feather the outer edge across narrow bands.
+      for (let band = 0; band < 14; band++) {
+        const t = band / 14;
+        c.push(brush.poly([...edge(t), ...edge((band + 1) / 14).reverse()], {
+          fil:C.gray(0, .30 * Math.pow(1 - t, 1.15)), str:null
+        }));
+      }
+      // Broken, variable-width dry marks follow the face instead of spanning the whole mountain.
+      for (let group = 0; group < 7; group++) {
+        const at = 1 + group * 4 + Math.trunc(brush.r() * 4);
+        const root = path[Math.min(at, path.length - 1)];
+        const reach = height * (.035 + brush.r() * .055);
+        const marks = 4 + Math.trunc(brush.r() * 4);
+        for (let mark = 0; mark < marks; mark++) {
+          const dx = span * (.04 + brush.r() * .6), dy = (brush.r() - .5) * reach;
+          const start = inside(P(root.x + dx, root.y + dy));
+          const bend = side * (.05 + brush.r() * .3);
+          const points = [start, inside(P(start.x + reach * bend, start.y + reach * .35)),
+            inside(P(start.x + reach * bend * .6, start.y + reach * .65)),
+            inside(P(start.x + reach * bend * 1.6, start.y + reach))];
+          c.push(...brush._slopeStroke(brush.inkCurve(points, 3), 3 + brush.r() * 5, .14 + brush.r() * .16,
+            [.1, .9, .65, .45, .02], .86));
+        }
+        if (group % 2 === 0) {
+          c.push(...brush.inkBlot(root.x + span * .12, root.y, width * (.005 + brush.r() * .005),
+            .4, -.2, .35 + brush.r() * .15));
+        }
+      }
+    }
+    // Broken contour: stronger at turns, with lifted gaps on the lit shoulders.
+    for (let i = 0; i < ridge.length - 2; i += 9) {
+      const run = ridge.slice(i, Math.min(ridge.length, i + 7));
+      c.push(...brush._slopeStroke(run, 1.5 + brush.r() * 1.4, .30 + brush.r() * .13,
+        [.1, .75, .65, .4, .02], .65));
+    }
+    return c.map((poly, index) => {
+      if (index < 2) return poly;
+      const p = clonePoly(poly);
+      p.p = p.pts = p.p.map(inside);
+      return p;
+    });
+  },
+
+  paintingStudyCrown(source, x, y, width, height, pine) {
+    const brush = new ShanShuiEngineV5('crown-v2:' + this.paintedStudySeed + ':' + [x, y, width, height, pine].join(':'));
+    const b = this.paintingStudyBounds(source);
+    const c = [b.mask];
+    // Unequal grouped dabs leave gaps between foliage shelves; avoid radial fans of identical needles.
+    const count = pine ? 8 : 10;
+    for (let k = 0; k < count; k++) {
+      const t = k / (count - 1);
+      const px = x + (t - .5) * width * .72 + (brush.r() - .5) * width * .16;
+      const py = y - height * (.08 + .38 * Math.sin(t * Math.PI)) + (brush.r() - .5) * height * .8;
+      const radius = width * (.08 + brush.r() * .09);
+      c.push(...brush.inkBlot(px, py, radius * 1.5, .45, -.15, .10));
+      c.push(...brush.inkBlot(px, py, radius, pine ? .58 : .75, -.3 + brush.r() * .6, .42 + brush.r() * .23));
+      if (pine && k % 3 === 0) {
+        c.push(...brush.inkLine([P(px - radius * .5, py + 1), P(px, py - height * .38)],
+          1.1, .42, .45));
+      }
+    }
+    return c.map((poly, index) => {
+      if (index === 0) return poly;
+      const p = clonePoly(poly);
+      p.p = p.pts = p.p.map(pt => P(Math.max(b.x0, Math.min(b.x1, pt.x)), Math.max(b.y0, Math.min(b.y1, pt.y))));
+      return p;
+    });
+  },
+
   paintingMassif(profile, terraced = false) {
     if (terraced && typeof terraced === 'object') {
       terraced = Boolean(terraced.terraced);
@@ -2972,6 +3087,7 @@ Object.assign(ShanShuiEngineV5.prototype, {
         c.push(...this.inkLine([P(x - 2, y - treeH * 0.5), P(x + 1.5, y - treeH * 0.7)], 2.0, 0.72 + this.r() * 0.13, 0.28, 'lens'));
       }
     }
+    if (this.paintedStudySeed) return this.paintingStudyMassif(c, ridge, width, height);
     // Preserve bearing silhouette at index 0; simplify interior fibres within 0.16 asset units.
     return c.map((polygon, index) => {
       if (index === 0) return polygon;
@@ -5205,7 +5321,7 @@ Object.assign(ShanShuiEngineV5.prototype, {
       }
       c.push(...this.inkBlot(p.x, p.y, 1.0, 0.5, 0, 0.8));
     }
-    return c;
+    return this.paintedStudySeed ? this.paintingStudyCrown(c, x, y, width, height, true) : c;
   },
 });
 
@@ -5489,7 +5605,7 @@ Object.assign(ShanShuiEngineV5.prototype, {
         ));
       }
     }
-    return c;
+    return this.paintedStudySeed && !flowering ? this.paintingStudyCrown(c, x, y, width, height, false) : c;
   },
 
   paintingTree(kind) {
@@ -8121,7 +8237,7 @@ class PaintingStageV5 {
       this.parts.push(Part.near(object.canv));
     }
 
-    if (this.elementTreatment === 'refined-v1') {
+    if (['refined-v1', 'painted-v2'].includes(this.elementTreatment)) {
       this.parts[this.parts.length - 1].detail = { motif, bounds:actual };
     }
 
@@ -8684,9 +8800,9 @@ class PaintingStageV5 {
         }
         const guestInk = this.engine.paintingInk(guest.canv, 2);
         const fade = { top:r.minY + r.height * 0.55, bottom:r.maxY, seed:this.engine.inkSeed() };
-        const part = this.elementTreatment === 'refined-v1'
+        const part = ['refined-v1', 'painted-v2'].includes(this.elementTreatment)
           ? new Part(guestInk, { near:true, fade }) : new Part(guestInk, null, fade);
-        if (this.elementTreatment === 'refined-v1') part.detail = { motif:'guestMountain', bounds:r };
+        if (['refined-v1', 'painted-v2'].includes(this.elementTreatment)) part.detail = { motif:'guestMountain', bounds:r };
         this.parts.push(part);
       }
       peakBox = new CRect(peakBox.minX, peakBox.minY, peakBox.width * (deep ? 0.86 : 0.98), peakBox.height);
@@ -8738,9 +8854,9 @@ class PaintingStageV5 {
           }
         }
         const fade = { top:r.maxY - r.height * 0.42, bottom:r.maxY - r.height * 0.04, seed:this.engine.inkSeed() };
-        const part = this.elementTreatment === 'refined-v1'
+        const part = ['refined-v1', 'painted-v2'].includes(this.elementTreatment)
           ? new Part(object.canv, { near:true, fade }) : new Part(object.canv, null, fade);
-        if (this.elementTreatment === 'refined-v1') part.detail = { motif:'mainMountain', bounds:r };
+        if (['refined-v1', 'painted-v2'].includes(this.elementTreatment)) part.detail = { motif:'mainMountain', bounds:r };
         this.parts.push(part);
         this.engine.noted('ridge', object.canv);
         this.elements.push({
@@ -9470,7 +9586,7 @@ class PaintingStageV5 {
     if (farShoreScenes.has(scene) && (this.structure === 'level' || this.structure === 'deep')) {
       const shore = this.fitted(this.engine.paintingFarShore(), this.slot(0, this.composition === 'oppositeBank' ? 0.24 : 0.30, 1, 0.16));
       if (shore) {
-        this.parts.push(this.elementTreatment === 'refined-v1' ? new Part(shore.canv, { fade:{
+        this.parts.push(['refined-v1', 'painted-v2'].includes(this.elementTreatment) ? new Part(shore.canv, { fade:{
           top:shore.bounds.maxY - shore.bounds.height * 0.65, bottom:shore.bounds.maxY, seed:17
         } }) : new Part(shore.canv));
         this.elements.push({
@@ -10334,6 +10450,7 @@ function generatePoetryPaintingV5(req, palette) {
 
   const stage = new PaintingStageV5(seed, w, h, palette, verse, quietTop, options);
   stage.elementTreatment = req.elementTreatment;
+  if (req.elementTreatment === 'painted-v2') stage.engine.paintedStudySeed = String(seed);
   stage.compose(scene, options);
 
   const layers = [];
@@ -10343,9 +10460,9 @@ function generatePoetryPaintingV5(req, palette) {
     const part = stage.parts[index];
     const shapes = [];
     const record = stage.celestialLayers.find(r => r.layer === index);
-    appendPaintingShapesV5(part.canv, req.elementTreatment === 'refined-v1' ? record?.motif : 'scene', palette, shapes);
+    appendPaintingShapesV5(part.canv, ['refined-v1', 'painted-v2'].includes(req.elementTreatment) ? record?.motif : 'scene', palette, shapes);
     // Night ink stays subordinate to type; preserve celestial colour and atmospheric distance.
-    if (req.elementTreatment === 'refined-v1' && palette.isDark && !record && !part.mist) {
+    if (['refined-v1', 'painted-v2'].includes(req.elementTreatment) && palette.isDark && !record && !part.mist) {
       for (const shape of shapes) {
         for (const key of ['fill', 'stroke']) {
           if (shape[key]) shape[key] = shape[key].map((v, channel) => channel < 3
@@ -10353,8 +10470,8 @@ function generatePoetryPaintingV5(req, palette) {
         }
       }
     }
-    if (req.elementTreatment === 'refined-v1') tintPaintingDetailsV5(shapes, part.detail, palette);
-    if (record && req.elementTreatment !== 'refined-v1') {
+    if (['refined-v1', 'painted-v2'].includes(req.elementTreatment)) tintPaintingDetailsV5(shapes, part.detail, palette);
+    if (record && !['refined-v1', 'painted-v2'].includes(req.elementTreatment)) {
       for (let i = 0; i < shapes.length; i++) {
         if (record.motif === 'sunset' || record.motif === 'sunrise') {
           shapes[i].fill = [171 / 255, 64 / 255, 51 / 255, palette.isDark ? 0.48 : 0.34];
@@ -10384,7 +10501,7 @@ function generatePoetryPaintingV5(req, palette) {
         shapes,
         // V5 stores floorY/depth; the Web WashNoise renderer consumes top/bottom.
         // Keep the original path stable and repair the bridge only for the versioned study treatment.
-        fade: req.elementTreatment === 'refined-v1'
+        fade: ['refined-v1', 'painted-v2'].includes(req.elementTreatment)
           ? { top:part.fade.floorY - part.fade.depth, bottom:part.fade.floorY, seed:part.fade.seed }
           : normalizeFade(part.fade)
       });

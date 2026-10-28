@@ -73,7 +73,7 @@ export function resolveStudy(input, palettes) {
   const colors = { ...palettes.palettes[theme][appearance] };
   colors.paper = (appearance === 'dark' ? DARK_PAPER : LIGHT_PAPER)[theme] || colors.paper;
   const elementTreatment = input.elementTreatment || 'refined-v1';
-  if (!['original', 'refined-v1'].includes(elementTreatment)) throw new Error('未知元素处理版本');
+  if (!['original', 'refined-v1', 'painted-v2'].includes(elementTreatment)) throw new Error('未知元素处理版本');
   return {
     theme, appearance, artwork, artPalette, flower, seed, title, author, poem, fullPoem, date, purpose,
     requested: { theme:requestedTheme, artwork:requestedArtwork, artPalette:requestedArtPalette },
@@ -84,7 +84,7 @@ export function resolveStudy(input, palettes) {
     // Zero engine grain; one shared quiet paper layer is applied by the study template.
     paperStrength:0,
     artColors: { paper: colors.paper, ink: palettes.palettes[artPalette][appearance].ink,
-      ...(elementTreatment === 'refined-v1' ? { accent:palettes.palettes[artPalette][appearance].accent,
+      ...(elementTreatment !== 'original' ? { accent:palettes.palettes[artPalette][appearance].accent,
         secondary:palettes.palettes[artPalette][appearance].secondary } : {}) },
     generator: artwork === 'none' ? null : artwork === 'flowers' ? 'nonflowers@2' : 'shanshui@5',
   };

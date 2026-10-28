@@ -22,6 +22,9 @@ node scripts/theme-art-study.mjs examples/theme-art-fonts.json out/theme-art-val
 # 元素优化：花茎、岸脚、山尖／茅草／枝叶的主题点染
 node scripts/theme-art-study.mjs examples/theme-art-elements.json out/theme-art-validation/elements-after
 
+# 山体块面与树冠墨簇试验（显式 painted-v2，不切换默认值）
+node scripts/theme-art-study.mjs examples/theme-art-brush.json out/theme-art-validation/brush-after
+
 # 重放已保存的作品；直接使用保存的颜色、请求及诗句框
 node scripts/theme-art-study.mjs out/theme-art-validation/round-c/recipes.json out/theme-art-validation/replay-all
 
@@ -67,7 +70,7 @@ node scripts/theme-art-motion-check.mjs out/theme-art-validation/motion
 | flower | 显式自然、梅、荷、菊、兰优先；未指定时使用识别到的花卉，否则自然。用户要独立荷花时同时设 artwork=flowers、flower=荷 |
 | artPalette | 默认 follow-theme；显式七套 id 可锁定墨色与点染色。绘画 paper 始终与界面纸色相同，花瓣原色不取 accent |
 | purpose | inscription 题诗画屏：用显式 excerpt，否则用 poem；reading 全文：使用完整 poem（或 fullPoem），不采用 excerpt |
-| elementTreatment | 新作默认 refined-v1，修正花茎明暗、景物淡出与深色高亮，并启用局部主题点染；original 保留原处理，供对照 |
+| elementTreatment | 新作默认 refined-v1，修正花茎明暗、景物淡出与深色高亮，并启用局部主题点染；original 保留原处理，供对照；painted-v2 显式试验山体块面与树冠墨簇，尚非默认 |
 | font | 独立于主题和题材，默认 source_han_serif；可选下表中的 App 字体 id 或自定义本地文件对象 |
 
 摘句每一行必须在原诗中存在；全文超出固定阅读区直接报错，交由调用方明确分篇。此入口不自动分页，也没有动态字体/任意画幅适配。
@@ -116,6 +119,16 @@ node scripts/theme-art-motion-check.mjs out/theme-art-validation/motion
 - 山脚与远岸使用有效的淡出参数，减轻截断感；保留同种子的山水几何、诗句框、景物与天气锚点。
 
 这是 Web 细部修订，不是植物解剖或完整青绿笔法重写。点染位置按景物范围与细笔大小筛选，不承诺所有种子的每片叶子、每根茅草都可独立设色。原图位于 `elements-before`，新版位于 `elements-after`，验收页顶部提供局部放大与全部浅深对照。
+
+## 山体与树冠笔触试验
+
+`elementTreatment=painted-v2` 在 refined-v1 的主题点染、深色与淡出处理之上，替换山体内部笔触和松树／一般阔叶树的叶簇。花卉生成器保持 refined-v1 的处理；柳枝、竹叶和开花树并未重写。
+
+试验先用旧生成过程固定构图所需的随机序列与外形边界，再用独立种子生成块面和墨簇；因此更换笔触不移动题字、景物范围或天气锚点。山体采用连续淡染、阴面分区、较短且不均匀的皴笔与断续轮廓；松冠减少放射状细针，保留少量提示线。这个过渡实现仍计算原笔触以保持布局，不宣称已经优化生成耗时。
+
+当前四张固定浅深样本用于比较方向。山势沿用旧轮廓，仍可能偏柱状；墨簇仍可见程序化形状。默认保留 refined-v1，用户验收前不自动替换其他配方或 App。后续应继续从山势、山石转折、皴染关系与树冠疏密改进，不把添加噪点、提高细节数量或整体模糊等同于传统笔法。
+
+技法参考：[亚洲艺术博物馆《Brushstrokes》](https://education.asianart.org/wp-content/uploads/sites/6/2019/09/Brushstrokes.pdf) 对线、墨与干湿用笔的说明；[大都会博物馆《夏山图》](https://www.metmuseum.org/art/collection/search/39915) 对皴笔与墨染配合的说明。这里是据此选择的程序试验方向，不是对某一名家笔法的完整复原。
 
 ## 保存与复现
 

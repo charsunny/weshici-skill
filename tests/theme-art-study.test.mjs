@@ -111,3 +111,13 @@ test('new element treatment follows the art palette while original treatment omi
   assert.equal(original.artColors.accent, undefined);
   assert.throws(() => resolveStudy({ ...base, elementTreatment:'typo' }, palettes));
 });
+
+test('painted-v2 is opt-in and retains theme colours, font and poem', () => {
+  const before = resolveStudy(base, palettes);
+  const after = resolveStudy({ ...base, elementTreatment:'painted-v2' }, palettes);
+  assert.equal(before.elementTreatment, 'refined-v1');
+  assert.equal(after.elementTreatment, 'painted-v2');
+  assert.deepEqual(after.artColors, before.artColors);
+  assert.deepEqual(after.font, before.font);
+  assert.equal(after.poem, before.poem);
+});

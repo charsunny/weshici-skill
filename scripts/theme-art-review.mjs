@@ -16,6 +16,29 @@ const motion=JSON.parse(fs.readFileSync(path.join(root,'motion/checks.json'),'ut
 const parts=[`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>微诗 · 主题与诗画验收</title>
 <style>body{margin:0;background:#f4f5f3;color:#1d2926;font:16px/1.75 system-ui,sans-serif}main{max-width:1180px;margin:0 auto;padding:56px 24px}h1{font:36px/1.4 serif;margin:12px 0}h2{font-size:25px;margin:44px 0 12px}h3{font-size:18px;margin:26px 0 10px}p{max-width:850px;color:#4d5c57}nav{display:flex;gap:22px;flex-wrap:wrap;margin:28px 0}a{color:#2e6a4e}small{color:#60736b}section{border-top:1px solid #d9dfdb;padding-bottom:28px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.sample{text-decoration:none;display:block}.sample img{width:100%;display:block;border:1px solid #d5dbd7;box-sizing:border-box}.sample span{display:block;padding:9px 0;font-size:13px}.sheet{display:block;max-width:100%;margin:18px 0}summary{cursor:pointer;padding:14px 0;font-weight:600}.note{padding:16px 20px;background:#e9eee9;border-left:3px solid #758f7d}code{font-size:14px}@media(max-width:700px){main{padding:28px 16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}h1{font-size:28px}}</style>
 <main><small>WESHICI SKILL · 2026-10-28 · A–D 统一验收</small><h1>主题相随，诗画各有其意</h1><p>本轮验证主题、绘画与阅读用途的关系。App 尚未修改。点击任意小样查看原图；这页保留全部结果和已知限制，等待统一审美验收。</p><nav><a href="#reading">全文阅读</a><a href="#inscription">题诗画屏</a><a href="#themes">三主题对照</a><a href="#motion">动态抽查</a><a href="#checks">验证与限制</a></nav>`];
+// Brushwork study is opt-in; keep the accepted theme and element treatments available below.
+const brushChecks = path.join(root, 'brush-after/checks.json');
+if (fs.existsSync(brushChecks)) {
+ const after = JSON.parse(fs.readFileSync(brushChecks, 'utf8')).records;
+ const before = JSON.parse(fs.readFileSync(path.join(root, 'elements-after/checks.json'), 'utf8')).records;
+ parts.push('<style>.brush-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:920px}.brush-pair svg{display:block;width:100%}</style><section id="brush"><h2>笔触试验 · 山有块面，树有疏密</h2><p>左为上一轮主题点染版，右为本轮试验。固定外形、景物位置、字体与纸色；山体改用连续淡染、阴面块面和短皴笔，树冠改用成组墨簇与少量提示线。尚未切换默认版本。</p>');
+ after.forEach((next, index) => {
+  const previous = before.find(r => r.config.seed === next.config.seed && r.config.theme === next.config.theme && r.config.appearance === next.config.appearance && r.config.artwork === 'shanshui');
+  if (!previous) throw new Error('缺少笔触对照基线');
+  parts.push(`<h3>${esc(next.config.title)} · ${next.config.appearance === 'light' ? '浅色' : '深色'}</h3><div class="brush-pair">`);
+  for (const [directory, record, label] of [['elements-after', previous, '上一轮'], ['brush-after', next, '笔触试验']]) {
+   parts.push(`<a class="sample" href="${directory}/${record.name}.png"><img loading="lazy" src="${directory}/${record.name}.png" alt="${label}"><span>${label}</span></a>`);
+  }
+  parts.push('</div>');
+  if (index < 2) {
+   parts.push('<details><summary>放大山体与松冠</summary><div class="brush-pair">');
+   for (const [directory, record] of [['elements-after', previous], ['brush-after', next]]) parts.push(`<svg viewBox="180 340 415 690"><image href="${directory}/${record.name}.png" width="1080" height="1440"/></svg>`);
+   parts.push('</div></details>');
+  }
+ });
+ parts.push('<p>试验仍有山形偏柱状、部分叶簇偏规则的问题，不能视为成熟国画效果。这里验证块面与笔触尺度的方向，后续需继续处理山势、皴笔与墨染的关系。参考 <a href="https://education.asianart.org/wp-content/uploads/sites/6/2019/09/Brushstrokes.pdf">亚洲艺术博物馆笔墨教材</a>，程序实现属于近似。</p><p><a href="brush-after/checks.json">检查记录</a> · <a href="brush-after/recipes.json">试验配方</a></p></section>');
+}
+
 // Element comparison preserves the pre-treatment images instead of regenerating the baseline.
 const elementChecks = path.join(root, 'elements-after/checks.json');
 if (fs.existsSync(elementChecks)) {
