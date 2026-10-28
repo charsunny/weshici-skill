@@ -1985,7 +1985,7 @@
     var polys = [];
     // Versioned study treatment: retain original centerlines and random draws, correct only stem shading.
     var stemPaint = null;
-    if (['refined-v1', 'painted-v2'].includes(req.elementTreatment)) {
+    if (['refined-v1', 'painted-v2', 'landscape-v3'].includes(req.elementTreatment)) {
       var originalStem = g.stem;
       g.stem = function (args) {
         var previous = stemPaint;
@@ -2052,7 +2052,7 @@
       hooks.onFillRect = null;
     }
     var state = { woody: Math.random() <= 0.5, childBranchColor: null, form: 'original', petalSeg: null };
-    state.refined = ['refined-v1', 'painted-v2'].includes(req.elementTreatment);
+    state.refined = ['refined-v1', 'painted-v2', 'landscape-v3'].includes(req.elementTreatment);
     var PAR = g.genParams();
     applySeason(season, PAR, state, req.density);
     if (typeof req.hue === 'number' && isFinite(req.hue)) {
@@ -2269,7 +2269,7 @@
     var palette = makePalette(req.palette || {});
     var ep = engineParams(req.params);
     var elementTreatment = (req.params && req.params.element_treatment) || 'original';
-    if (!['original', 'refined-v1', 'painted-v2'].includes(elementTreatment)) throw new Error('unknown element_treatment');
+    if (!['original', 'refined-v1', 'painted-v2', 'landscape-v3'].includes(elementTreatment)) throw new Error('unknown element_treatment');
     var base = {
       width: req.width,
       height: req.height,

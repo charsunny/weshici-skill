@@ -16,6 +16,19 @@ const motion=JSON.parse(fs.readFileSync(path.join(root,'motion/checks.json'),'ut
 const parts=[`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>微诗 · 主题与诗画验收</title>
 <style>body{margin:0;background:#f4f5f3;color:#1d2926;font:16px/1.75 system-ui,sans-serif}main{max-width:1180px;margin:0 auto;padding:56px 24px}h1{font:36px/1.4 serif;margin:12px 0}h2{font-size:25px;margin:44px 0 12px}h3{font-size:18px;margin:26px 0 10px}p{max-width:850px;color:#4d5c57}nav{display:flex;gap:22px;flex-wrap:wrap;margin:28px 0}a{color:#2e6a4e}small{color:#60736b}section{border-top:1px solid #d9dfdb;padding-bottom:28px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.sample{text-decoration:none;display:block}.sample img{width:100%;display:block;border:1px solid #d5dbd7;box-sizing:border-box}.sample span{display:block;padding:9px 0;font-size:13px}.sheet{display:block;max-width:100%;margin:18px 0}summary{cursor:pointer;padding:14px 0;font-weight:600}.note{padding:16px 20px;background:#e9eee9;border-left:3px solid #758f7d}code{font-size:14px}@media(max-width:700px){main{padding:28px 16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}h1{font-size:28px}}</style>
 <main><small>WESHICI SKILL · 2026-10-28 · A–D 统一验收</small><h1>主题相随，诗画各有其意</h1><p>本轮验证主题、绘画与阅读用途的关系。App 尚未修改。点击任意小样查看原图；这页保留全部结果和已知限制，等待统一审美验收。</p><nav><a href="#reading">全文阅读</a><a href="#inscription">题诗画屏</a><a href="#themes">三主题对照</a><a href="#motion">动态抽查</a><a href="#checks">验证与限制</a></nav>`];
+const landscapeChecks = path.join(root, 'landscape-after/checks.json');
+if (fs.existsSync(landscapeChecks)) {
+ const records = JSON.parse(fs.readFileSync(landscapeChecks,'utf8')).records;
+ const before = JSON.parse(fs.readFileSync(path.join(root,'brush-after/checks.json'),'utf8')).records;
+ const sample = (directory,r,label) => `<a class="sample" href="${directory}/${r.name}.png"><img loading="lazy" src="${directory}/${r.name}.png" alt="${esc(label)}"><span>${esc(label)}</span></a>`;
+ parts.push('<section id="landscape"><h2>山势与笔法重构 · 教材约束下的种子生成</h2><p>对照亚洲艺术博物馆 Brushstrokes 的点叶、皴法和提按图版，将峰肩、岩面转折、皴笔及墨染一起生成。主导皴法为披麻或斧劈近似，同一种子可以重放。App 尚未迁移。</p><p><a href="landscape-brush/index.html">先看：一笔 → 皴法 → 山体的证明页</a> · <a href="https://education.asianart.org/wp-content/uploads/sites/6/2019/09/Brushstrokes.pdf#page=40">教材图版（PDF 第 40–45 页）</a></p><style>.landscape-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:960px}</style>');
+ for(const index of [0,1]) parts.push(`<h3>${index?'深色':'浅色'} · 旧稿与结构重做</h3><div class="landscape-pair">${sample('brush-after',before[index],'painted-v2 · 固定轮廓')}${sample('landscape-after',records[index],`landscape-v3 · ${records[index].brushwork?.technique==='axe'?'斧劈':'披麻'}近似`)}</div>`);
+ parts.push('<h3>多种子 · 同一首诗</h3><div class="grid">');
+ for(const r of records.slice(4,12)) parts.push(sample('landscape-after',r,`${r.config.seed} · ${r.config.appearance==='dark'?'深':'浅'} · ${r.brushwork?.technique==='axe'?'斧劈':'披麻'}`));
+ parts.push('</div><h3>其他诗意与全文阅读</h3><div class="grid">');
+ for(const r of [...records.slice(2,4),...records.slice(12)]) parts.push(sample('landscape-after',r,`${r.config.title} · ${r.config.purpose==='reading'?'全文阅读':names[r.config.theme]}`));
+ parts.push('</div><p>审图重点：峰肩有错落与遮掩，皴笔沿岩面转折，明面有留白，树冠成组而非椭圆贴片。仍属程序笔法近似：局部岩面、树冠与坡岸可见规则感，尚未模拟真实水墨扩散；不能将检查通过等同于传统画作水准。</p><p><a href="landscape-after/checks.json">14 张检查记录</a> · <a href="landscape-after/recipes.json">保存配方</a> · <a href="landscape-tests.txt">回归测试</a></p></section>');
+}
 // Brushwork study is opt-in; keep the accepted theme and element treatments available below.
 const brushChecks = path.join(root, 'brush-after/checks.json');
 if (fs.existsSync(brushChecks)) {

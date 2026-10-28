@@ -540,7 +540,8 @@ self.onmessage = function (event) {
       ms: Date.now() - t0,
       verse: drawing.verse || null,
       anchors: drawing.anchors || null,
-      sceneElements: drawing.sceneElements || null
+      sceneElements: drawing.sceneElements || null,
+      ...(drawing.brushwork ? {brushwork:drawing.brushwork} : {})
     }, [bitmap]);
   } catch (error) {
     self.postMessage({ ok: false, error: String((error && error.message) || error) });

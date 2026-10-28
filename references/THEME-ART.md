@@ -111,6 +111,8 @@ node scripts/theme-art-motion-check.mjs out/theme-art-validation/motion
 
 ## 元素处理与局部点染
 
+山势与笔法联动验证使用 `elementTreatment: "landscape-v3"`。详见 [教材到生成规则的对应说明](LANDSCAPE-BRUSHWORK.md)；包含披麻／斧劈近似、提按与枯湿、结构化种子及多种子审图入口。允许更新山体和景物边界，天气锚点随实际几何更新；不再沿用 painted-v2 的固定轮廓限制。默认处理与 App 不变。
+
 `refined-v1` 通过 Worker 的 `params.element_treatment` 显式启用；现有其他入口不传此参数，仍走 original。此字段和实际点染色随请求保存，不在重放时重新解析。
 
 - 山水在已放置景物的范围内筛选少量细笔：山体上段用 accent，屋顶上半部用 secondary，树冠与枝干细笔用 accent。保留大面积纸色遮罩和主要墨骨，不给整幅画加色罩。

@@ -256,6 +256,7 @@ export function renderZXArt(canvas, req, workerUrl = '/vendor/zxart/zxart-worker
             verse: data.verse,
             anchors: data.anchors,
             sceneElements: data.sceneElements,
+            ...(data.brushwork ? {brushwork:data.brushwork} : {}),
           });
         } else {
           drawFallbackShanShui(canvas, req);

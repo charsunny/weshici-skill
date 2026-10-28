@@ -10,8 +10,13 @@ function engine(flowers = false) {
   vm.runInContext(fs.readFileSync(new URL('../resources/vendor/zxart/zxart-compose.js', import.meta.url), 'utf8'), context);
   if (flowers) context.ZXArtCompose.installShims(context);
   const file = flowers ? 'nonflowers/main.js' : 'zxart-shanshui-v5.js';
-  vm.runInContext(fs.readFileSync(new URL(`../resources/vendor/zxart/${file}`, import.meta.url), 'utf8'), context);
-  return { ...context.ZXArtCompose, Engine:context.ShanShuiEngineV5 };
+  let source=fs.readFileSync(new URL(`../resources/vendor/zxart/${file}`, import.meta.url), 'utf8');
+  // Expose the private seed/rectangle helpers in the test VM only; keep the public bundle unchanged.
+  if (!flowers) source=source.replace('  PaintingStageV5,\n  generatePoetryPaintingV5',
+    '  landscapeBrushEngineV5, CRect, PaintingStageV5,\n  generatePoetryPaintingV5');
+  vm.runInContext(source, context);
+  return { ...context.ZXArtCompose, Engine:context.ShanShuiEngineV5,
+    landscapeBrushEngine:context.landscapeBrushEngineV5, Stage:context.PaintingStageV5, Rect:context.CRect };
 }
 const palette = { paper:'#243B30', ink:'#E3EBE2', accent:'#8FCBA8', secondary:'#D9A27A' };
 const params = { quiet_top:.18, verse_side:'right', verse_columns:2, verse_chars:5, element_treatment:'refined-v1' };
@@ -83,4 +88,62 @@ test('painted study changes mountain and crown brushwork without moving the scen
   }
   assert.equal(json(after), json(api.generate({ ...request, params:{ ...request.params, element_treatment:'painted-v2' } })));
   assert.equal(json(before), json(api.generate(request)), 'experiment has no state leakage into refined-v1');
+});
+
+test('structural landscape is seeded, preserves the verse and required subjects, and updates its geometry', () => {
+  const api = engine();
+  const request = { generator:'shanshui@5', seed:'study-山居秋暝', variant:'retreat',
+    params:{ ...params, scene:{ motifs:['pine','hut','stream','moon'], purpose:'inscription-v1', composition:'corner' } },
+    palette, width:1080, height:1440 };
+  const legacy = api.generate(request);
+  const nextRequest = {...request,params:{...request.params,element_treatment:'landscape-v3'}};
+  const next = api.generate(nextRequest);
+  assert.equal(json(next.verse),json(legacy.verse));
+  assert.notEqual(json(next.trace),json(legacy.trace),'mountain geometry is rebuilt, not just recoloured');
+  assert.notEqual(json(next.anchors),json(legacy.anchors),'weather anchors follow rebuilt geometry');
+  assert.equal(next.brushwork.version,'landscape-v3');
+  assert.ok(['hemp','axe'].includes(next.brushwork.technique));
+  for (const motif of ['mainMountain','pine','hut']) assert.ok(next.sceneElements.some(e=>e.motif===motif),motif);
+  for (const layer of next.layers) for (const shape of layer.shapes) {
+    assert.ok([...shape.points].every(Number.isFinite));
+    for (const color of [shape.fill,shape.stroke]) if(color) assert.ok(color.every(v=>Number.isFinite(v)&&v>=0&&v<=1));
+  }
+  assert.equal(json(next),json(api.generate(nextRequest)),'same seed replays every stroke');
+  assert.notEqual(json(next.layers),json(api.generate({...nextRequest,seed:'ridge-02'}).layers));
+  assert.equal(json(legacy),json(api.generate(request)),'new brush state cannot leak into older treatments');
+});
+
+test('brush vocabulary leaves dry gaps and supports distinct pressure, side loading and cun families', () => {
+  const api=engine(), path=[{x:0,y:0},{x:25,y:2},{x:50,y:0}];
+  const dry=new api.Engine('brush-proof').paintingBrushStroke(path,{width:12,moisture:.1});
+  const wet=new api.Engine('brush-proof').paintingBrushStroke(path,{width:12,moisture:.7});
+  const area=p=>Math.abs(p.p.reduce((sum,q,i)=>{const r=p.p[(i+1)%p.p.length];return sum+q.x*r.y-r.x*q.y;},0)/2);
+  assert.ok(dry.reduce((sum,p)=>sum+area(p),0)<wet.reduce((sum,p)=>sum+area(p),0)*.6,
+    'dry hair ribbons cover less paper than wet ink, without painting white over existing strokes');
+  assert.ok(dry.every(p=>p.fil.r===0),'exposed paper is transparent');
+  const mountains=[];
+  for(const technique of ['hemp','axe']) {
+    const e=new api.Engine('ridge-01');e.landscapeSeed='ridge-01';e.landscapeTechnique=technique;
+    mountains.push(e.paintingMountain('folded',false,1.4));
+  }
+  assert.notEqual(json(mountains[0]),json(mountains[1]));
+  assert.notEqual(json(wet),json(new api.Engine('brush-proof').paintingBrushStroke(path,{width:12,moisture:.7,oblique:1})));
+});
+
+test('versioned seed streams distinguish nearby and reordered strings, and buildings clear trunks', () => {
+  const api=engine();
+  const seeds=Array.from({length:20},(_,i)=>'ridge-'+String(i+1).padStart(2,'0'));
+  const values=seeds.map(seed=>api.landscapeBrushEngine('cun:'+seed).r());
+  assert.equal(new Set(values).size,20);
+  assert.ok(values.some(v=>v<.5)&&values.some(v=>v>=.5),'consecutive seeds cover both cun families');
+  assert.notEqual(api.landscapeBrushEngine('abcd').r(),api.landscapeBrushEngine('dcba').r());
+  // A building can move sideways along the same bank, without occupying the trunk corridor.
+  const stage=new api.Stage('clearance',420,560,{},null,.08,{});
+  stage.bankSurface={x0:0,step:10,heights:Array(43).fill(400)};
+  stage.treeRoots={pine:{x:200,y:400}};
+  stage.elements=[{motif:'pine',bounds:{x:.3,y:.3,width:.3,height:.42}}];
+  const requested=api.Rect(180,340,40,60);
+  const moved=stage.clearFigureGround(requested,true);
+  assert.ok(moved.maxX<190||moved.minX>210);
+  assert.equal(moved.maxY,400,'building remains supported by the bank');
 });

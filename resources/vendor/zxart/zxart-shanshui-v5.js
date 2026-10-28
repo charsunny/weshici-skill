@@ -1830,7 +1830,7 @@ function appendPaintingShapesV5(canv, motif, palette, into) {
 
 
 // Study-only point colour: select small existing ink marks, retaining geometry and paper cutouts.
-function tintPaintingDetailsV5(shapes, detail, palette) {
+function tintPaintingDetailsV5(shapes, detail, palette, structural = false) {
   if (!detail || !palette.accent) return;
   const { motif, bounds:b } = detail;
   const mountain = ['mainMountain', 'guestMountain'].includes(motif);
@@ -1847,6 +1847,8 @@ function tintPaintingDetailsV5(shapes, detail, palette) {
       y0 = Math.min(y0, shape.points[i + 1]); y1 = Math.max(y1, shape.points[i + 1]);
     }
     const y = ((y0 + y1) / 2 - b.minY) / b.height;
+    // A narrow wash strip can have tiny area but span a whole cliff. V3 only tints small marks.
+    if (structural && mountain && ((x1-x0) > b.width*.12 || (y1-y0) > b.height*.075)) return;
     if (y > (mountain ? 0.36 : roof ? 0.53 : 0.88)
         || (x1 - x0) * (y1 - y0) > b.width * b.height * 0.045) return;
     for (const key of ['fill', 'stroke']) {
@@ -1860,6 +1862,18 @@ function tintPaintingDetailsV5(shapes, detail, palette) {
   });
 }
 
+
+// Versioned brush streams need order-sensitive seeds; the legacy entropy sums Base64 characters.
+// Leave legacy output intact and mix the full string only for the new structural treatment.
+function landscapeBrushEngineV5(seed) {
+  let hash=2166136261;
+  for (const ch of String(seed)) hash=Math.imul(hash^ch.codePointAt(0),16777619)>>>0;
+  hash=Math.imul(hash^(hash>>>16),0x85ebca6b)>>>0;
+  hash=Math.imul(hash^(hash>>>13),0xc2b2ae35)>>>0;
+  const engine=new ShanShuiEngineV5(seed);
+  engine.e.state=(hash^(hash>>>16))>>>0;
+  return engine;
+}
 
 // shanshui@5 painting path: brush vocabulary, landforms, water, waterfall, details, masonry, dwellings, architecture.
 
@@ -2259,7 +2273,8 @@ Object.assign(ShanShuiEngineV5.prototype, {
     const profile = form instanceof PaintingMountainProfile
       ? form
       : new PaintingMountainProfile(form, aspect, () => this.r());
-    return this.paintingMassif(profile, terraced);
+    const original = this.paintingMassif(profile, terraced);
+    return this.landscapeSeed ? this.paintingLandscapeMassif(profile, terraced) : original;
   },
 
   /// Cloud at the foot of a peak (山腰云锁), painted by leaving paper: stacked paper-coloured
@@ -2650,6 +2665,33 @@ Object.assign(ShanShuiEngineV5.prototype, {
         ));
       }
     }
+    return this.landscapeSeed ? this.paintingLandscapeStone(c[0], crest, fold, floor, rank) : c;
+  },
+
+  paintingLandscapeStone(mask, crest, fold, floor, rank) {
+    const b=landscapeBrushEngineV5('stone-v3:'+this.landscapeSeed+':'+crest[0].x+':'+floor+':'+rank);
+    const c=[mask];
+    // Keep the existing bank surface (and tree/building supports), redraw its exposed rock face.
+    for(let band=0;band<20;band++) {
+      const v=band/20;
+      const edge=t=>fold.map(p=>P(p.x+(t*.12)*(p.x-fold[0].x),p.y+(floor-p.y)*t));
+      c.push(b.poly([...edge(v),...edge((band+1)/20).reverse()],{fil:C.gray(0,.18*(1-v)),str:null}));
+    }
+    for(let k=0;k<crest.length-2;k+=9) {
+      if(b.r()<.25)continue;
+      c.push(...b.paintingBrushStroke(crest.slice(k,k+8),{width:1.8,ink:.70,moisture:.46}));
+    }
+    c.push(...b.paintingBrushStroke(fold,{width:2.4,ink:.65,moisture:.48}));
+    for(let k=0;k<30;k++) {
+      const p=fold[Math.floor(b.r()*fold.length)],reach=(floor-p.y)*(.25+b.r()*.6);
+      c.push(...b.paintingBrushStroke([p,P(p.x-reach*.2,p.y+reach*.5),P(p.x-reach*.35,p.y+reach)],
+        {width:2+b.r()*4,ink:.4+b.r()*.25,moisture:.28,oblique:1,pressure:[.8,1,.4,.1]}));
+    }
+    for(let k=0;k<12;k++) {
+      const p=crest[Math.floor(b.r()*crest.length)];
+      c.push(...b.paintingBrushStroke([p,P(p.x+2+b.r()*3,p.y-.5)],
+        {width:1.6,ink:.8,moisture:.6,pressure:[.2,1,.8,.1]}));
+    }
     return c;
   },
 
@@ -2732,6 +2774,205 @@ Object.assign(ShanShuiEngineV5.prototype, {
 
   /// 矾头 and stacked shoulders, with dry folds flowing down from the ridge.
   // Study geometry keeps the original asset bounds so scene placement and anchors do not drift.
+  // Pressure, side loading and separated dry hairs are independent of the path.
+  // These are geometric approximations of Brushstrokes, PDF pp. 43–45, not fluid simulation.
+  paintingBrushStroke(path, { width=2, ink=.6, moisture=.3, oblique=0, pressure=[.15,1,.8,.4,.02] } = {}) {
+    if (path.length < 2) return [];
+    const points = this.inkCurve(path, 4), frames=[];
+    for (let i=0;i<points.length;i++) {
+      const a=points[Math.max(0,i-1)],z=points[Math.min(points.length-1,i+1)];
+      const length=Math.hypot(z.x-a.x,z.y-a.y)||1, t=i/(points.length-1);
+      const f=t*(pressure.length-1), k=Math.min(pressure.length-2,Math.floor(f));
+      const p=pressure[k]+(pressure[k+1]-pressure[k])*(f-k);
+      frames.push({p:points[i],nx:-(z.y-a.y)/length,ny:(z.x-a.x)/length,
+        radius:width*p*.5*(.88+this.r()*.24),t});
+    }
+    const ribbon=(from,to,alpha,start=0,end=frames.length) => {
+      const left=[],right=[];
+      for(let i=start;i<end;i++) {
+        const f=frames[i], shift=oblique*.35*f.radius;
+        const at=u=>P(f.p.x+f.nx*(f.radius*u+shift),f.p.y+f.ny*(f.radius*u+shift));
+        left.push(at(from));right.push(at(to));
+      }
+      return this.poly([...left,...right.reverse()],{fil:C.gray(0,alpha),str:null});
+    };
+    const c=[];
+    if(moisture>.35) {
+      // A soft low-ink edge surrounding a loaded interior.
+      c.push(ribbon(-1.28,1.28,ink*moisture*.08));
+      c.push(ribbon(-1.1,1.1,ink*moisture*.12));
+    }
+    // Sparse moisture leaves actual gaps between hairs, rather than white paint over prior ink.
+    if(moisture<.3) {
+      const hairs=Math.max(3,Math.ceil(width*1.4));
+      for(let k=0;k<hairs;k++) {
+        const from=-1+2*k/hairs,span=2/hairs*(.35+moisture);
+        const cut=Math.floor(frames.length*(.50+this.r()*.25));
+        c.push(ribbon(from,from+span,ink*(.45+this.r()*.45),0,cut));
+        if(this.r()>.28)c.push(ribbon(from,from+span,ink*.45,Math.min(cut+2,frames.length-1),frames.length));
+      }
+    } else {
+      c.push(ribbon(-1,1,ink*.48));
+      // Side-loaded ink has one dark edge; upright strokes carry ink nearer their centre.
+      for(let k=0;k<5;k++) {
+        const u=-1+k*.4;
+        const load=oblique ? (k+1)/5 : 1-Math.abs(u+.2)*.6;
+        c.push(ribbon(u,u+.4,ink*(.18+.45*load)));
+      }
+    }
+    return c;
+  },
+
+  // A linked spine of rock shoulders: contour, shaded planes and cun share one surface.
+  // Museum references and the limits of this procedural study: references/LANDSCAPE-BRUSHWORK.md.
+  paintingLandscapeMassif(profile, terraced) {
+    const b = landscapeBrushEngineV5('landscape-v3:' + this.landscapeSeed + ':' + profile.width + ':' + profile.form);
+    const w = 360, h = 360*Math.max(.95,Math.min(1.5,profile.height/profile.width));
+    const method = this.landscapeTechnique || 'hemp';
+    const flip = profile.form === 'leaning' || profile.form === 'clustered';
+    const point = (x, y) => P((flip ? 1 - x : x) * w, y * h);
+    // Successive shoulders turn across the slope; subordinate rocks buttress the main peak.
+    const peakX=.40+b.r()*.18, peakWidth=.48+b.r()*.15;
+    const rocks = [
+      [peakX, .015, peakWidth, .62+b.r()*.13], [.76, .27+b.r()*.16, .28, .44], [.25, .32+b.r()*.18, .35, .38],
+      [.44+b.r()*.15, .53+b.r()*.10, .46, .32], [.17, .73, .30, .22], [.72, .75, .38, .21],
+      [.40, .85, .43, .16]
+    ];
+    const surfaces = rocks.map(([cx, y, rw, rh], index) => {
+      cx += (b.r() - .5) * .07;
+      y += index ? (b.r()-.5)*.06 : 0;
+      rw *= .88+b.r()*.24;
+      rh *= .90+b.r()*.18;
+      let crest = [[-.50,.50],[-.41,.34],[-.29,.30],[-.23,.14],[-.08,.16],
+        [.06,0],[.17,.035],[.25,.11],[.39,.19],[.50,.38]].map(([u,v], k) =>
+        P(cx + rw * u, y + rh * (v + (k > 0 && k < 9 ? (b.r() - .5) * .045 : 0))));
+      if (terraced && index === 0) for (let k = 2; k < 7; k++) crest[k].y = y + rh * .08;
+      if (method === 'hemp' && !terraced) crest = b.inkCurve(crest,4);
+      // The front plane rolls one way, then reverses into the foot; no parallel vertical ribs.
+      const at = (u, v) => {
+        const i = Math.min(crest.length - 2, Math.floor(u * (crest.length - 1)));
+        const t = u * (crest.length - 1) - i;
+        const start = P(crest[i].x * (1-t) + crest[i+1].x*t, crest[i].y*(1-t)+crest[i+1].y*t);
+        const drift = rw * (.065 * Math.sin(v * 5.0 + index*.8) - .14 * v * v);
+        const tooth=(b.n(u*30+index*11,v*19)-.5)*.009;
+        return point(start.x + drift + (u - .5) * rw * .32 * v + rw*tooth,
+          start.y + (y + rh - start.y) * v + rh*tooth*.5);
+      };
+      return { at, crest, index, rw, rh };
+    });
+    // The first polygon supplies the actual outer ridge used by weather/scene anchors.
+    const envelope = [];
+    for (let k = 0; k <= 110; k++) {
+      const x = k / 110; let y = 1.01;
+      for (const s of surfaces) {
+        const c = s.crest;
+        for (let i = 0; i < c.length - 1; i++) if (x >= c[i].x && x <= c[i+1].x) {
+          y = Math.min(y, c[i].y + (c[i+1].y-c[i].y)*(x-c[i].x)/(c[i+1].x-c[i].x));
+        }
+      }
+      envelope.push(point(x, y));
+    }
+    if (flip) envelope.reverse();
+    const c = [b.poly([...envelope, P(w,h*1.02), P(0,h*1.02)], { fil:C.clear, str:null })];
+    const patch = (s, u0, u1, v0, v1, tone, gray=0) => {
+      // Tiny overlap prevents antialias seams between adjacent wash bands.
+      u0=Math.max(0,u0-.0008);u1=Math.min(1,u1+.0008);
+      v0=Math.max(0,v0-.0008);v1=Math.min(1,v1+.0008);
+      const pts = [], steps=Math.max(2,Math.ceil((u1-u0)*80));
+      for (let i=0; i<=steps; i++) pts.push(s.at(u0+(u1-u0)*i/steps, v0));
+      for (let i=1; i<=10; i++) pts.push(s.at(u1, v0+(v1-v0)*i/10));
+      for (let i=1; i<=steps; i++) pts.push(s.at(u1-(u1-u0)*i/steps, v1));
+      for (let i=1; i<10; i++) pts.push(s.at(u0, v1-(v1-v0)*i/10));
+      c.push(b.poly(pts, { fil:C.gray(gray,tone), str:null }));
+    };
+    const dry = (points, width, alpha) => c.push(...b.paintingBrushStroke(points,
+      {width,ink:alpha,moisture:.17,pressure:[.3,1,.65,.8,.04]}));
+    for (const s of surfaces) {
+      // Opaque paper masks the preceding rock, then thin wet layers build its body.
+      patch(s,0,1,0,1,.94,255);
+      patch(s,0,1,0,1,.045);
+      // Shaded side, a smaller returned plane and a soft base: all follow the same fold.
+      // Overlapping pale washes avoid the visible grid produced by disjoint translucent tiles.
+      for (let k=0;k<24;k++) patch(s,.18+k/30,1,0,1,.012);
+      // A recessed fold is a continuous shaded surface, not an unrelated stripe of colour.
+      const foldAt=v=>.62+.09*Math.sin(v*5+s.index*.7);
+      for(let band=0;band<16;band++) {
+        const edge=t=>Array.from({length:24},(_,j)=>{
+          const v=j/23;
+          return s.at(foldAt(v)+t*.19*Math.sin(Math.PI*v),v);
+        });
+        c.push(b.poly([...edge(0),...edge(1-band/16).reverse()],
+          {fil:C.gray(0,.016),str:null}));
+      }
+      // A broken shoulder, with darker accents at the rock's changes of direction.
+      for (let k=0;k<9;k++) if (k!==3 && k!==7) {
+        const pts=[];
+        for(let j=0;j<=5;j++) pts.push(s.at((k+j/5)/9,.006));
+        c.push(...b.paintingBrushStroke(pts, {width:.9+b.r()*1.2,ink:.55+b.r()*.15,moisture:.26}));
+      }
+      // Long structural folds only at two turns; shorter cun gather around them unevenly.
+      for (const u of [.10,.69,.92]) {
+        const length=.48+b.r()*.36, pts=[];
+        for(let j=0;j<=18;j++) pts.push(s.at(u + .018*Math.sin(j*1.2),j/18*length));
+        dry(pts,1.3+b.r()*2,.48+b.r()*.15);
+      }
+      for(let k=0;k<(method==='axe'?180:330);k++) {
+        const v=b.r()*.91;
+        const root=[.08,foldAt(v),.88][k%3];
+        const u=Math.max(.025,Math.min(.975,root+(b.r()-.35)*.24));
+        // Related clusters follow the three structural folds, leaving the lit planes open.
+        const density=.60+.24*Math.sin(v*19+u*13);
+        if(b.r()>density) continue;
+        const len=method==='axe' ? .035+b.r()*.12 : .06+b.r()*.25, pts=[];
+        for(let j=0;j<9;j++) {
+          const t=j/8;
+          const across=method==='axe' ? -.065*t : .012*Math.sin(t*5+k);
+          pts.push(s.at(Math.max(.01,Math.min(.99,u+across)),Math.min(.98,v+len*t)));
+        }
+        if(method==='axe') c.push(...b.paintingBrushStroke(pts,{width:3+b.r()*7,ink:.35+b.r()*.35,
+          moisture:.32+b.r()*.16,oblique:1,pressure:[.90,1,.6,.22,.01]}));
+        else dry(pts,1.5+b.r()*3,.42+b.r()*.3);
+        if(k%4===0) {
+          const p=pts[0];
+          c.push(...b.inkBlot(p.x,p.y,.6+b.r()*.9,.65,0,.18+b.r()*.22));
+        }
+      }
+      // Moss is grouped on ledges, never an evenly spaced dotted border.
+      for(let group=0;group<3;group++) {
+        const root=.12+b.r()*.70;
+        for(let j=0;j<5+b.r()*7;j++) {
+          const p=s.at(Math.min(.98,root+b.r()*.12),b.r()*.035);
+          c.push(...b.inkBlot(p.x,p.y,.8+b.r()*1.4,.5,-.2,.45+b.r()*.25));
+        }
+      }
+    }
+    return c;
+  },
+
+  paintingLandscapeCrown(x,y,width,height,pine) {
+    const b = landscapeBrushEngineV5('foliage-v3:'+this.landscapeSeed+':'+[x,y,width,height,pine].join(':'));
+    const c=[];
+    // Pine-leaf dots converge towards a twig; broad leaves use upright grouped dabs (PDF p. 40).
+    for (const [u,v,scale] of [[-.28,.03,.85],[.04,-.24,1],[.32,.10,.60]]) {
+      const cx=x+width*u,cy=y+height*v;
+      const count=pine?7:10;
+      for(let i=0;i<count;i++) {
+        if(pine) {
+          const angle=-Math.PI*.94+Math.PI*.90*(i+.3+b.r()*.4)/count;
+          const radius=height*(.48+b.r()*.3)*scale;
+          const tip=P(cx+Math.cos(angle)*radius*1.45,cy+Math.sin(angle)*radius);
+          c.push(...b.paintingBrushStroke([tip,P((tip.x+cx)*.5,(tip.y+cy)*.5-1),P(cx,cy)],
+            {width:1.0+b.r()*.8,ink:.65+b.r()*.25,moisture:.4,pressure:[.05,.5,.85,.55,.02]}));
+        } else {
+          const px=cx+(b.r()-.5)*width*.35*scale,py=cy+(b.r()-.5)*height*.65;
+          c.push(...b.paintingBrushStroke([P(px,py),P(px+height*.1,py+height*.20),P(px,py+height*.30)],
+            {width:width*(.035+b.r()*.04),ink:.4+b.r()*.35,moisture:.55,pressure:[.1,1,.9,.6,.1]}));
+        }
+      }
+    }
+    return c;
+  },
+
   paintingStudyBounds(source) {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const poly of source) for (const p of poly.p) {
@@ -5321,6 +5562,7 @@ Object.assign(ShanShuiEngineV5.prototype, {
       }
       c.push(...this.inkBlot(p.x, p.y, 1.0, 0.5, 0, 0.8));
     }
+    if (this.landscapeSeed) return this.paintingLandscapeCrown(x, y, width, height, true);
     return this.paintedStudySeed ? this.paintingStudyCrown(c, x, y, width, height, true) : c;
   },
 });
@@ -5605,6 +5847,7 @@ Object.assign(ShanShuiEngineV5.prototype, {
         ));
       }
     }
+    if (this.landscapeSeed && !flowering) return this.paintingLandscapeCrown(x, y, width, height, false);
     return this.paintedStudySeed && !flowering ? this.paintingStudyCrown(c, x, y, width, height, false) : c;
   },
 
@@ -7829,6 +8072,7 @@ function generatePoetrySceneV4(req, palette) {
     verse,
     nearSpans,
     sceneElements: stage.elements,
+    ...(stage.engine.landscapeSeed ? {brushwork:{version:'landscape-v3', technique:stage.engine.landscapeTechnique}} : {}),
     anchors: buildAnchorsV5(stage.engine.anchorPieces, w, h, stage.boats) || {
       boats: stage.boats,
       sky: { y: [0, 0.38] }
@@ -8123,6 +8367,12 @@ class PaintingStageV5 {
       }
     }
 
+    // Rebuilt landforms can move a hut onto a tree's stem. Keep the trunk legible behind it.
+    if (this.engine.landscapeSeed && ['house','hut','pavilion','templeGate','pagoda'].includes(motif)) {
+      const cleared = this.clearFigureGround(object.bounds, true);
+      if (!cleared.equals(object.bounds)) object = this.fitted(raw, cleared) || object;
+    }
+
     if (['moon', 'crescent', 'sunrise', 'sunset'].includes(motif) && (this.mountainRidges.length > 0 || Object.keys(this.paintedTrees).length > 0)) {
       const sky = this.openSky(object.bounds);
       if (!sky) return false;
@@ -8237,7 +8487,7 @@ class PaintingStageV5 {
       this.parts.push(Part.near(object.canv));
     }
 
-    if (['refined-v1', 'painted-v2'].includes(this.elementTreatment)) {
+    if (['refined-v1', 'painted-v2', 'landscape-v3'].includes(this.elementTreatment)) {
       this.parts[this.parts.length - 1].detail = { motif, bounds:actual };
     }
 
@@ -8607,13 +8857,21 @@ class PaintingStageV5 {
     return landed;
   }
 
-  clearFigureGround(requested) {
+  clearFigureGround(requested, treeClearance = false) {
     if (!this.bankSurface) return requested;
     const surface = this.bankSurface;
     const endX = surface.x0 + surface.step * (surface.heights.length - 1);
     const occupied = this.elements
       .filter(e => ['house', 'hut', 'pavilion', 'templeGate', 'pagoda', 'terrace', 'ruins', 'cityGate', 'traveler', 'horse'].includes(e.motif))
       .map(e => new CRect(e.bounds.x * this.w, e.bounds.y * this.h, e.bounds.width * this.w, e.bounds.height * this.h));
+
+    if (treeClearance) for (const [motif,root] of Object.entries(this.treeRoots)) {
+      const tree = this.elements.find(e=>e.motif===motif);
+      if (!tree) continue;
+      const top=(tree.bounds.y+tree.bounds.height*.3)*this.h;
+      const radius=Math.max(3,tree.bounds.width*this.w*.08);
+      occupied.push(new CRect(root.x-radius,top,radius*2,Math.max(1,root.y-top)));
+    }
 
     if (!occupied.some(b => b.intersects(requested))) return requested;
 
@@ -8800,9 +9058,9 @@ class PaintingStageV5 {
         }
         const guestInk = this.engine.paintingInk(guest.canv, 2);
         const fade = { top:r.minY + r.height * 0.55, bottom:r.maxY, seed:this.engine.inkSeed() };
-        const part = ['refined-v1', 'painted-v2'].includes(this.elementTreatment)
+        const part = ['refined-v1', 'painted-v2', 'landscape-v3'].includes(this.elementTreatment)
           ? new Part(guestInk, { near:true, fade }) : new Part(guestInk, null, fade);
-        if (['refined-v1', 'painted-v2'].includes(this.elementTreatment)) part.detail = { motif:'guestMountain', bounds:r };
+        if (['refined-v1', 'painted-v2', 'landscape-v3'].includes(this.elementTreatment)) part.detail = { motif:'guestMountain', bounds:r };
         this.parts.push(part);
       }
       peakBox = new CRect(peakBox.minX, peakBox.minY, peakBox.width * (deep ? 0.86 : 0.98), peakBox.height);
@@ -8854,9 +9112,9 @@ class PaintingStageV5 {
           }
         }
         const fade = { top:r.maxY - r.height * 0.42, bottom:r.maxY - r.height * 0.04, seed:this.engine.inkSeed() };
-        const part = ['refined-v1', 'painted-v2'].includes(this.elementTreatment)
+        const part = ['refined-v1', 'painted-v2', 'landscape-v3'].includes(this.elementTreatment)
           ? new Part(object.canv, { near:true, fade }) : new Part(object.canv, null, fade);
-        if (['refined-v1', 'painted-v2'].includes(this.elementTreatment)) part.detail = { motif:'mainMountain', bounds:r };
+        if (['refined-v1', 'painted-v2', 'landscape-v3'].includes(this.elementTreatment)) part.detail = { motif:'mainMountain', bounds:r };
         this.parts.push(part);
         this.engine.noted('ridge', object.canv);
         this.elements.push({
@@ -9515,7 +9773,7 @@ class PaintingStageV5 {
 
     if (this.preparedGround) {
       const b = this.preparedGround.bounds;
-      const canvas = this.engine.paintingInk(this.preparedGround.canv, scene === 'historic' ? 3 : 1);
+      const canvas = this.engine.paintingInk(this.preparedGround.canv, this.engine.landscapeSeed ? 'middle' : (scene === 'historic' ? 3 : 1));
       if (this.groundInBand) {
         this.parts.push(new Part(canvas, null, {
           top: b.minY + b.height * 0.60,
@@ -9586,7 +9844,7 @@ class PaintingStageV5 {
     if (farShoreScenes.has(scene) && (this.structure === 'level' || this.structure === 'deep')) {
       const shore = this.fitted(this.engine.paintingFarShore(), this.slot(0, this.composition === 'oppositeBank' ? 0.24 : 0.30, 1, 0.16));
       if (shore) {
-        this.parts.push(['refined-v1', 'painted-v2'].includes(this.elementTreatment) ? new Part(shore.canv, { fade:{
+        this.parts.push(['refined-v1', 'painted-v2', 'landscape-v3'].includes(this.elementTreatment) ? new Part(shore.canv, { fade:{
           top:shore.bounds.maxY - shore.bounds.height * 0.65, bottom:shore.bounds.maxY, seed:17
         } }) : new Part(shore.canv));
         this.elements.push({
@@ -10451,6 +10709,10 @@ function generatePoetryPaintingV5(req, palette) {
   const stage = new PaintingStageV5(seed, w, h, palette, verse, quietTop, options);
   stage.elementTreatment = req.elementTreatment;
   if (req.elementTreatment === 'painted-v2') stage.engine.paintedStudySeed = String(seed);
+  if (req.elementTreatment === 'landscape-v3') {
+    stage.engine.landscapeSeed = String(seed);
+    stage.engine.landscapeTechnique = landscapeBrushEngineV5('cun:' + seed).r() < .5 ? 'hemp' : 'axe';
+  }
   stage.compose(scene, options);
 
   const layers = [];
@@ -10460,9 +10722,9 @@ function generatePoetryPaintingV5(req, palette) {
     const part = stage.parts[index];
     const shapes = [];
     const record = stage.celestialLayers.find(r => r.layer === index);
-    appendPaintingShapesV5(part.canv, ['refined-v1', 'painted-v2'].includes(req.elementTreatment) ? record?.motif : 'scene', palette, shapes);
+    appendPaintingShapesV5(part.canv, ['refined-v1', 'painted-v2', 'landscape-v3'].includes(req.elementTreatment) ? record?.motif : 'scene', palette, shapes);
     // Night ink stays subordinate to type; preserve celestial colour and atmospheric distance.
-    if (['refined-v1', 'painted-v2'].includes(req.elementTreatment) && palette.isDark && !record && !part.mist) {
+    if (['refined-v1', 'painted-v2', 'landscape-v3'].includes(req.elementTreatment) && palette.isDark && !record && !part.mist) {
       for (const shape of shapes) {
         for (const key of ['fill', 'stroke']) {
           if (shape[key]) shape[key] = shape[key].map((v, channel) => channel < 3
@@ -10470,8 +10732,8 @@ function generatePoetryPaintingV5(req, palette) {
         }
       }
     }
-    if (['refined-v1', 'painted-v2'].includes(req.elementTreatment)) tintPaintingDetailsV5(shapes, part.detail, palette);
-    if (record && !['refined-v1', 'painted-v2'].includes(req.elementTreatment)) {
+    if (['refined-v1', 'painted-v2', 'landscape-v3'].includes(req.elementTreatment)) tintPaintingDetailsV5(shapes, part.detail, palette, req.elementTreatment === 'landscape-v3');
+    if (record && !['refined-v1', 'painted-v2', 'landscape-v3'].includes(req.elementTreatment)) {
       for (let i = 0; i < shapes.length; i++) {
         if (record.motif === 'sunset' || record.motif === 'sunrise') {
           shapes[i].fill = [171 / 255, 64 / 255, 51 / 255, palette.isDark ? 0.48 : 0.34];
@@ -10501,7 +10763,7 @@ function generatePoetryPaintingV5(req, palette) {
         shapes,
         // V5 stores floorY/depth; the Web WashNoise renderer consumes top/bottom.
         // Keep the original path stable and repair the bridge only for the versioned study treatment.
-        fade: ['refined-v1', 'painted-v2'].includes(req.elementTreatment)
+        fade: ['refined-v1', 'painted-v2', 'landscape-v3'].includes(req.elementTreatment)
           ? { top:part.fade.floorY - part.fade.depth, bottom:part.fade.floorY, seed:part.fade.seed }
           : normalizeFade(part.fade)
       });
@@ -10523,6 +10785,7 @@ function generatePoetryPaintingV5(req, palette) {
     verse,
     nearSpans,
     sceneElements: stage.elements,
+    ...(stage.engine.landscapeSeed ? {brushwork:{version:'landscape-v3', technique:stage.engine.landscapeTechnique}} : {}),
     anchors: buildAnchorsV5(stage.engine.anchorPieces, w, h, stage.boats) || {
       boats: stage.boats,
       sky: { y: [0, 0.38] }
