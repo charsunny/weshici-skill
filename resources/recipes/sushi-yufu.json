@@ -4,53 +4,36 @@
   "title": "渔父",
   "dynasty": "宋",
   "author": "苏轼",
-  "term": "时令",
-  "mood": "旷达",
-  "weather": "mist",
-  "location": "微诗 · 声画同步朗读",
+  "palette": "yaqing",
+  "paletteNote": "词中没有节气，不按制作日期随节气取色；写意水墨取鸦青（纯水墨）。",
   "duration": 22,
   "audioMode": "voice+bgm+foley",
   "voice": "/assets/wish/audio/poetryhub-voicebox-readings/2026-06-22/1007-苏轼-渔父-0c674fc3/reading_voicebox_male.mp3",
   "bgm": "/artifacts/promo-8.0/assets/audio/radio-calm.m4a",
-  "seal": "微詩",
   "lines": [
     "渔父醉，蓑衣舞。",
     "醉里却寻归路。",
     "轻舟短棹任斜横，醒后不知何处。"
   ],
   "procedural": {
-    "generator": "shanshui@2",
-    "seed": "1007-苏轼-渔父-0c674fc3",
-    "variant": "远山",
-    "params": {
-      "density": 0.88,
-      "quiet_top": 0.4,
-      "verse_side": "left",
-      "verse_columns": 3,
-      "verse_chars": 10
-    }
+    "generator": "shanshui@5",
+    "seed": "1007-苏轼-渔父-0c674fc3"
   },
   "couplets": [
     {
       "start": 2.31,
       "end": 4.05,
-      "text": "渔父醉，蓑衣舞。",
-      "inscribeTitle": "第一联 · 声画同步",
-      "inscribeNote": "渔父醉，蓑衣舞。"
+      "text": "渔父醉，蓑衣舞。"
     },
     {
       "start": 4.1,
       "end": 6.41,
-      "text": "醉里却寻归路。",
-      "inscribeTitle": "第二联 · 声画同步",
-      "inscribeNote": "醉里却寻归路。"
+      "text": "醉里却寻归路。"
     },
     {
       "start": 6.46,
       "end": 22,
-      "text": "轻舟短棹任斜横，醒后不知何处。",
-      "inscribeTitle": "第三联 · 声画同步",
-      "inscribeNote": "轻舟短棹任斜横，醒后不知何处。"
+      "text": "轻舟短棹任斜横，醒后不知何处。"
     }
   ]
 }

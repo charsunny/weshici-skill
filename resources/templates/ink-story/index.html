@@ -3,371 +3,169 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=1080,height=1920,initial-scale=1" />
-<title>微诗 · 写意水墨诗境故事 (ink-story)</title>
+<link rel="icon" href="data:,">
+<title>微诗 · 写意水墨叙事 (ink-story)</title>
+<link rel="stylesheet" href="/resources/core/huaping-video.css">
 <style>
-  @font-face {
-    font-family: "SongSemi";
-    src: url("/fonts/SourceHanSerifSC-SemiBold.otf") format("opentype");
-    font-weight: 600;
-    font-display: block;
-  }
-  @font-face {
-    font-family: "SongReg";
-    src: url("/fonts/SourceHanSerifSC-Regular.otf") format("opentype");
-    font-weight: 400;
-    font-display: block;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: #141210;
-    font-family: "SongReg", "Songti SC", serif;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  /* 宣纸底色与五墨体系 (styles/ink-story/STYLE.md) */
-  #stage {
-    position: relative;
-    width: 1080px;
-    height: 1920px;
-    overflow: hidden;
-    background: radial-gradient(ellipse at 50% 42%, #F4EFE2 0%, #ECE4D2 68%, #E2D7C0 100%);
-    color: #111314;
-    transform-origin: top left;
-    user-select: none;
-  }
-
-  #art-wrap {
-    position: absolute;
-    inset: 0;
-    transform-origin: 55% 65%;
-  }
-  #art-canvas, #weather-canvas {
-    position: absolute;
-    inset: 0;
-    width: 1080px;
-    height: 1920px;
-    display: block;
-  }
-
-  /* 顶部留白柔化纸纱，保证 65%+ 计白当黑 */
-  #paper-veil {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      180deg,
-      rgba(244, 239, 226, 0.86) 0%,
-      rgba(244, 239, 226, 0.52) 48%,
-      rgba(244, 239, 226, 0.14) 76%,
-      rgba(236, 228, 210, 0.45) 100%
-    );
-    pointer-events: none;
-  }
-
-  /* 卷首标题栏 */
-  #header {
-    position: absolute;
-    top: 104px;
-    left: 108px;
-    right: 108px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    z-index: 10;
-  }
-  .kicker {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 22px;
-    letter-spacing: 0.28em;
-    color: #454B50;
-    margin-bottom: 14px;
-  }
-  .kicker::before {
-    content: "";
-    width: 9px;
-    height: 9px;
-    background: #B02E22;
-    border-radius: 2px;
-  }
-  .title-row {
-    display: flex;
-    align-items: baseline;
-    gap: 24px;
-  }
-  .main-title {
-    font-family: "SongSemi", serif;
-    font-size: 68px;
-    letter-spacing: 0.18em;
-    color: #111314;
-  }
-  .poet-meta {
-    font-size: 28px;
-    letter-spacing: 0.24em;
-    color: #454B50;
-  }
-  .loc-meta {
-    margin-top: 10px;
-    font-size: 22px;
-    letter-spacing: 0.22em;
-    color: #7C848A;
-  }
-
-  /* 左侧竖排原诗舞台（随朗读时间戳逐联墨洇显影） */
-  #verse-stage {
-    position: absolute;
-    top: 320px;
-    left: 108px;
-    display: flex;
-    flex-direction: row-reverse;
-    justify-content: flex-end;
-    align-items: flex-start;
-    gap: 30px;
-    z-index: 10;
-  }
-  .couplet-col {
-    max-height: 720px;
-    writing-mode: vertical-rl;
-    font-family: "SongSemi", serif;
-    font-size: 46px;
-    line-height: 1.35;
-    letter-spacing: 0.2em;
-    color: #111314;
-    will-change: opacity, transform, filter;
-  }
-  .seal-wrap {
-    width: 52px;
-    margin-top: 440px;
-    display: flex;
-    justify-content: center;
-  }
-  .seal-stamp {
-    width: 50px;
-    height: 50px;
-    background: #B02E22;
-    color: #FAF6EE;
-    border-radius: 5px;
-    font-family: "SongSemi", serif;
-    font-size: 21px;
-    line-height: 1.08;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 3px;
-    box-shadow: 0 3px 10px rgba(176, 46, 34, 0.26);
-  }
-
-  /* 画中书法题跋（Inscriptions，替代现代底栏字幕） */
-  #tiba-box {
-    position: absolute;
-    top: 1120px;
-    left: 108px;
-    width: 560px;
-    padding: 26px 30px;
-    background: rgba(244, 239, 226, 0.84);
-    border-left: 4px solid #B02E22;
-    border-radius: 4px;
-    z-index: 12;
-  }
-  .tiba-head {
-    font-family: "SongSemi", serif;
-    font-size: 25px;
-    letter-spacing: 0.22em;
-    color: #B02E22;
-    margin-bottom: 12px;
-  }
-  .tiba-body {
-    font-size: 27px;
-    line-height: 1.72;
-    letter-spacing: 0.08em;
-    color: #23272A;
-  }
+  /* One inscription at a time: the title page, then each couplet, all in the same verse box. */
+  .leaf { position: absolute; inset: 0; }
 </style>
 </head>
 <body>
   <div id="stage">
     <div id="art-wrap">
-      <canvas id="art-canvas" width="1080" height="1920"></canvas>
-      <canvas id="weather-canvas" width="1080" height="1920"></canvas>
+      <canvas id="art"></canvas>
+      <canvas id="weather" width="1080" height="1920"></canvas>
     </div>
-    <div id="paper-veil"></div>
-
-    <div id="header">
-      <div>
-        <div class="kicker">写意水墨 · 诗境故事与朗读</div>
-        <div class="title-row">
-          <span class="main-title" id="h-title">晚晴</span>
-          <span class="poet-meta" id="h-poet">唐 · 杜甫</span>
-        </div>
-        <div class="loc-meta" id="h-loc">大历二年 · 夔州峡江 · 秋分</div>
-      </div>
-    </div>
-
-    <div id="verse-stage"></div>
-
-    <div id="tiba-box">
-      <div class="tiba-head" id="tiba-head">序章 · 夔州晚晴</div>
-      <div class="tiba-body" id="tiba-body">大历二年秋分，杜甫客居夔州。一场峡雨初歇，夕阳穿透薄云映照大江。</div>
-    </div>
+    <div id="type"></div>
   </div>
 
+<script src="/vendor/zxart/zxart-compose.js"></script>
+<script src="/vendor/zxart/zxart-shanshui-v5.js"></script>
 <script type="module">
+  import { huapingClauses, huapingPlan, mountHuaping } from '/resources/core/huaping-layout.js';
   import {
-    clamp,
-    lerp,
-    inv,
-    easeOut,
-    sealStampState,
-    renderZXArt,
-    drawWeather,
-  } from '/tools/video-studio/core/weishi-video-core.js';
+    TYPE_FLOOR, typeFloorIssues, inkGlyphState, sealState, pushScale, storyTimeline, leafGone, readableWindow,
+  } from '/resources/core/huaping-video.js';
+  import { loadRecipe, planPainting, applyPalette, paintFrame, afterglowScene, tintSeals, previewLoop } from '/resources/core/huaping-scene.js';
+  import { drawAfterglow } from '/resources/core/huaping-afterglow.js';
 
-  const params = new URLSearchParams(location.search);
-  const recipeSlug = params.get('recipe') || 'wanqing-dufu-story';
-  const res = await fetch(`/tools/video-studio/recipes/${recipeSlug}.json`);
-  const recipe = await res.json();
-
-  window.DUR = Number(recipe.duration) || 22;
+  // Ink-wash story: the painting is the subject; the title page and then each couplet are inscribed,
+  // one at a time, in the painting's open sky, and dissolve like ink into water before the next.
+  const W = 1080, H = 1920;
+  const { params, recipe, palettes } = await loadRecipe('wanqing-dufu-story');
   window.RECIPE = recipe;
-  window.READY = false;
+  const { title = '', author = '', dynasty = '' } = recipe;
 
-  document.getElementById('h-title').textContent = recipe.title;
-  document.getElementById('h-poet').textContent = [recipe.dynasty, recipe.author].filter(Boolean).join(' · ');
-  document.getElementById('h-loc').textContent = `${recipe.location} · 节气${recipe.term}`;
+  // Couplets carry the reading's line timestamps; a silent recipe is paced at 0.3s per character.
+  let couplets = (recipe.couplets || []).map(c => ({ start: Number(c.start), end: Number(c.end), text: c.text }));
+  if (!couplets.length) {
+    let t = 1.6;
+    couplets = (recipe.lines || []).map(text => {
+      const span = Math.max(2.4, huapingClauses(text).join('').length * 0.3 + 1.2);
+      const c = { start: t, end: t + span, text };
+      t += span;
+      return c;
+    });
+  }
+  couplets = couplets.filter(c => huapingClauses(c.text).length);
+  if (!couplets.length) throw new Error('配方缺少 couplets 或 lines');
+  const poem = couplets.map(c => c.text).join('');
+  const allClauses = couplets.flatMap(c => huapingClauses(c.text));
+  const longest = Math.max(...allClauses.map(line => Array.from(line).length));
 
-  const verseStage = document.getElementById('verse-stage');
-  const couplets = recipe.couplets || [];
-  const colEls = [];
+  const painting = planPainting({ poem, title, procedural: recipe.procedural, params, verseSide: 'right',
+    verseColumns: Math.min(4, Math.max(...couplets.map(c => huapingClauses(c.text).length))),
+    verseChars: longest });
+  const palette = applyPalette(palettes, recipe, params, painting);
+  await document.fonts.load('100px SongReg');
+  await document.fonts.ready;
+  const frame = await paintFrame(document.getElementById('art'), painting, palette, { width: W, height: H });
 
-  couplets.forEach((c) => {
-    const col = document.createElement('div');
-    col.className = 'couplet-col';
-    const clean = c.text.replace(/[。！？]/g, '').trim();
-    if (clean.length > 10 && clean.includes('，')) {
-      col.innerHTML = clean
-        .split('，')
-        .map((seg) => `<span style="display:block;margin-left:18px">${seg}</span>`)
-        .join('');
-    } else {
-      col.textContent = c.text.replace(/[，。]/g, ' ');
-    }
-    verseStage.appendChild(col);
-    colEls.push(col);
-  });
-
-  const sealWrap = document.createElement('div');
-  sealWrap.className = 'seal-wrap';
-  const sealEl = document.createElement('div');
-  sealEl.className = 'seal-stamp';
-  sealEl.textContent = recipe.seal || '少陵';
-  sealWrap.appendChild(sealEl);
-  verseStage.appendChild(sealWrap);
-
-  const stampTime = 18.2;
-  window.EV = [
-    { t: 0.25, sfx: 'qin-harmonic', gain: -8 },
-    ...couplets.map((c) => ({ t: Number(c.start.toFixed(2)), sfx: 'ink-drop', gain: -9.5 })),
-    { t: stampTime, sfx: 'seal-stamp', gain: -4 },
-  ];
-
-  const palette = {
-    scheme: 'light',
-    paper: '#F2ECDE',
-    ink: '#23272A',
-    seal: '#B02E22',
+  // Every couplet shares one size, the largest that fits the longest of them, with the colophon's room.
+  const floor = TYPE_FLOOR.small * W / 1080;
+  const common = Math.min(...couplets.map(c => huapingPlan({ poem: c.text, title, author, dynasty,
+    verse: frame.verse, width: W, height: H, minInscription: floor }).fontSize));
+  const typeLayer = document.getElementById('type');
+  const leaf = () => {
+    const el = document.createElement('div');
+    el.className = 'leaf';
+    typeLayer.appendChild(el);
+    return el;
   };
 
-  const artWrap = document.getElementById('art-wrap');
-  const artCanvas = document.getElementById('art-canvas');
-  const weatherCanvas = document.getElementById('weather-canvas');
-  const weatherCtx = weatherCanvas.getContext('2d');
-  const tibaBox = document.getElementById('tiba-box');
-  const tibaHead = document.getElementById('tiba-head');
-  const tibaBody = document.getElementById('tiba-body');
+  // Title page: the poem's title as the inscription, the byline beside it; the seal waits for the end.
+  const titleLeaf = leaf();
+  const titlePlan = await mountHuaping(titleLeaf, { poem: title, title: '', author, dynasty, verse: frame.verse,
+    width: W, height: H, accent: palette.colors.accent, minInscription: floor });
+  titleLeaf.querySelector('img.hp-seal')?.remove();
 
-  window.TEXTS = function (t) {
+  const leaves = [];
+  for (const [i, c] of couplets.entries()) {
+    const el = leaf();
+    const last = i === couplets.length - 1;
+    // Only the last couplet carries the colophon (title, byline) and the seal.
+    const plan = await mountHuaping(el, { poem: c.text, title: last ? title : '', author: last ? author : '',
+      dynasty: last ? dynasty : '', verse: frame.verse, width: W, height: H, accent: palette.colors.accent,
+      preferredSize: common, minInscription: floor });
+    if (!last) el.querySelector('.hp-colophon')?.remove();
+    leaves.push({ el, plan, glyphs: [...el.querySelectorAll('.hp-verses .hp-glyph')],
+      colophon: last ? el.querySelector('.hp-colophon') : null });
+  }
+  const seal = tintSeals(leaves.at(-1).el);
+  const issues = [...leaves.flatMap(l => typeFloorIssues(l.plan, W)), ...typeFloorIssues(titlePlan, W)]
+    .concat(leaves.flatMap(l => l.plan.omittedClauses.length ? [`未展示的诗句：${l.plan.omittedClauses.join('，')}`] : []));
+  window.WARNINGS = [...new Set(issues)];
+  window.WARNINGS.forEach(issue => console.warn(issue));
+
+  // Glyphs follow the reading's line timestamps; leaves dissolve like ink into water between lines.
+  const pt = W / 393;
+  const titleGlyphs = [...titleLeaf.querySelectorAll('.hp-verses .hp-glyph')];
+  const titleColophon = titleLeaf.querySelector('.hp-colophon');
+  const story = storyTimeline({ couplets, glyphCounts: leaves.map(l => l.glyphs.length), titleGlyphs: titleGlyphs.length });
+  window.DUR = Number(params.get('dur')) || Math.max(Math.ceil(Number(recipe.duration) || 0), Math.ceil(story.sealAt + 4));
+
+  window.EV = [
+    { t: 0.12, sfx: 'qin-harmonic', gain: -8 },
+    ...couplets.map(c => ({ t: Number(c.start.toFixed(2)), sfx: 'ink-drop', gain: -9.5 })),
+    { t: Number(story.sealAt.toFixed(2)), sfx: 'seal-stamp', gain: -4 },
+  ];
+
+  const readable = (t, leaf) => {
+    const [from, to] = readableWindow(leaf, story.dissolve);
+    return t >= from && t < to;
+  };
+  window.TEXTS = t => {
     const list = [];
-    for (let i = 0; i < couplets.length; i++) {
-      if (t >= couplets[i].start) {
-        list.push({ id: `couplet-${i + 1}`, text: couplets[i].text });
-      }
-    }
-    const active = couplets.find((c) => t >= c.start && t <= c.end);
-    if (active) {
-      list.push({ id: `tiba-${active.inscribeTitle}`, text: active.inscribeNote });
-    }
+    if (readable(t, story.title)) list.push({ id: 'title', text: [title, titlePlan.attribution].filter(Boolean).join(' ') });
+    story.lines.forEach((line, i) => { if (readable(t, line)) list.push({ id: `couplet-${i + 1}`, text: couplets[i].text }); });
     return list;
   };
 
-  window.render = function (t) {
-    const ct = clamp(t, 0, window.DUR);
+  const scene = afterglowScene(frame, palette, { poem, title, term: recipe.term, motifs: painting.motifs,
+    avoid: leaves.at(-1).plan.box, seed: painting.art.seed, duration: window.DUR });
+  window.SCENE = { scene: painting.scene, composition: painting.art.params.scene.composition, motifs: painting.motifs,
+    palette: `${palette.id}/${palette.appearance}`, artHeight: frame.artHeight, weather: scene.weather,
+    afterglow: scene.afterglow, box: leaves.at(-1).plan.box, fontSize: common };
+  const weatherCtx = document.getElementById('weather').getContext('2d');
+  const artWrap = document.getElementById('art-wrap');
 
-    // 1. 背景缓推 <= 2%
-    const scale = lerp(1.0, 1.02, ct / window.DUR);
-    artWrap.style.transform = `scale(${scale.toFixed(4)})`;
-
-    // 2. 绘制晚晴意象：朱砂夕照 (sunset) + 峡江残雨涟漪 (rain) + 高飞凫雁 (geese) + 山岚 (mist)
-    drawWeather(weatherCtx, {
-      width: 1080,
-      height: 1920,
-      t: ct,
-      seed: recipe.id,
-      kinds: ['sunset', 'geese', 'mist', 'rain'],
-      palette,
-    });
-
-    // 3. 随 Voicebox 朗读时间戳逐联墨洇入场，当前朗读联焦墨高亮，已读联转为重墨
-    couplets.forEach((c, idx) => {
-      const p = easeOut(inv(c.start, c.start + 0.65, ct));
-      const blur = (1 - p) * 6;
-      const y = (1 - p) * 10;
-      const isCurrent = ct >= c.start && ct <= c.end;
-      const colEl = colEls[idx];
-      colEl.style.opacity = p.toFixed(3);
-      colEl.style.transform = `translateY(${y.toFixed(1)}px)`;
-      colEl.style.filter = `blur(${blur.toFixed(2)}px)`;
-      colEl.style.color = isCurrent ? '#111314' : '#3E4448';
-    });
-
-    // 4. 书法题跋随章节水墨晕染切换
-    let curChapter = {
-      start: 0.2,
-      inscribeTitle: recipe.introTitle || `序章 · ${recipe.author}《${recipe.title}》`,
-      inscribeNote:
-        recipe.introNote ||
-        `${[recipe.dynasty, recipe.author].filter(Boolean).join(' · ')}《${recipe.title}》，字随音落，墨随气行。`,
-    };
-    for (const c of couplets) {
-      if (ct >= c.start) curChapter = c;
-    }
-    const tibaIn = easeOut(inv(curChapter.start, curChapter.start + 0.55, ct));
-    const tibaBlur = (1 - tibaIn) * 4;
-    tibaHead.textContent = curChapter.inscribeTitle;
-    tibaBody.textContent = curChapter.inscribeNote;
-    tibaBox.style.opacity = tibaIn.toFixed(3);
-    tibaBox.style.filter = `blur(${tibaBlur.toFixed(2)}px)`;
-    tibaBox.style.transform = `translateY(${((1 - tibaIn) * 8).toFixed(1)}px)`;
-
-    // 5. 少陵朱印落下
-    const st = sealStampState(ct, stampTime, 0.24);
-    sealEl.style.cssText = st.style;
+  const ink = (el, state, gone = 0, blurScale = 1) => {
+    const blur = state.blur * blurScale + gone * 14;
+    el.style.opacity = (state.opacity * (1 - gone)).toFixed(3);
+    el.style.filter = blur > 0.05 ? `blur(${blur.toFixed(2)}px)` : 'none';
+    el.style.transform = `scale(${(state.scale + gone * 0.04).toFixed(4)})`;
   };
+  const rest = { opacity: 1, blur: 0, scale: 1 };
 
-  await document.fonts.ready;
-  await renderZXArt(artCanvas, {
-    ...(recipe.procedural || {}),
-    palette: { paper: palette.paper, ink: palette.ink },
-    width: 1080,
-    height: 1920,
-  });
+  window.render = t => {
+    t = Math.max(0, Math.min(window.DUR, t));
+    artWrap.style.transform = `scale(${pushScale(t, window.DUR).toFixed(5)})`;
+    drawAfterglow(weatherCtx, t, scene);
+
+    const titleGone = leafGone(t, story.title, story.dissolve);
+    titleLeaf.style.visibility = titleGone >= 1 ? 'hidden' : 'visible';
+    ink(titleLeaf, rest, titleGone);
+    titleGlyphs.forEach((g, i) => ink(g, inkGlyphState(t, story.title.times[i], 0.25, pt)));
+    if (titleColophon) ink(titleColophon, inkGlyphState(t, story.titleColophonAt, 0.18, pt), 0, 0.5);
+
+    leaves.forEach((l, i) => {
+      const line = story.lines[i];
+      const gone = leafGone(t, line, story.dissolve);
+      l.el.style.visibility = t < line.times[0] || gone >= 1 ? 'hidden' : 'visible';
+      ink(l.el, rest, gone);
+      l.glyphs.forEach((g, j) => ink(g, inkGlyphState(t, line.times[j], 0.25, pt)));
+    });
+    const last = leaves.at(-1);
+    if (last.colophon) ink(last.colophon, inkGlyphState(t, story.colophonAt, 0.18, pt), 0, 0.5);
+    const s = sealState(t, story.sealAt);
+    seal.style.opacity = s.opacity.toFixed(3);
+    seal.style.transform = `scale(${s.scale.toFixed(4)})`;
+  };
 
   window.render(0);
   window.READY = true;
+  previewLoop(document.getElementById('stage'), params);
 </script>
 </body>
 </html>

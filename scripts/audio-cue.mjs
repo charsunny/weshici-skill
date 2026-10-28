@@ -81,14 +81,11 @@ const couplets = timed.map((item, idx) => {
     start: Number(item.start),
     end: Number(nextStart.toFixed(2)),
     text: item.text,
-    inscribeTitle: `第${['一', '二', '三', '四', '五', '六', '七', '八'][idx] || idx + 1}联 · 声画同步`,
-    inscribeNote: item.text,
   };
 });
 
 const slug = `auto-${matched.split('-').slice(1, 3).join('-')}`;
-const style = getArg('style', 'ink-story');
-// 节气取制作当天（北京时间），不写「时令」之类的占位；动态画屏随节气取 App 配色。
+// 节气取制作当天（北京时间），不写「时令」之类的占位；视频模板缺省随节气取 App 配色。
 const date = getArg('date', beijingDay());
 const recipe = {
   id: slug,
@@ -98,28 +95,13 @@ const recipe = {
   author,
   date,
   term: huapingCalendar(date).term,
-  mood: '旷达',
-  weather: 'mist',
-  location: '微诗 · 声画同步朗读',
   duration: dur,
   audioMode: 'voice+bgm+foley',
   voice: `/assets/wish/audio/poetryhub-voicebox-readings/2026-06-22/${matched}/reading_voicebox_male.mp3`,
   bgm: '/artifacts/promo-8.0/assets/audio/radio-calm.m4a',
-  seal: '微詩',
   lines: couplets.map((c) => c.text),
-  // 动态画屏用 ShanShui@5：只记 seed，用途、构图和母题由引擎按诗决定。
-  procedural: style === 'huaping-motion' ? { generator: 'shanshui@5', seed: matched, verseSide: 'left' } : {
-    generator: 'shanshui@2',
-    seed: matched,
-    variant: '远山',
-    params: {
-      density: 0.88,
-      quiet_top: 0.4,
-      verse_side: 'left',
-      verse_columns: Math.min(6, Math.max(2, couplets.length)),
-      verse_chars: 10,
-    },
-  },
+  // ShanShui@5：只记 seed，用途、构图和母题由引擎按诗决定。
+  procedural: { generator: 'shanshui@5', seed: matched },
   couplets,
 };
 

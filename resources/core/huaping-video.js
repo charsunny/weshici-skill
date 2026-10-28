@@ -82,6 +82,83 @@ export function clipVerseRect(rect, { width, height, right = VIDEO_SAFE.right * 
   };
 }
 
+// ---------------------------------------------------------------- painting placement
+
+/**
+ * A 9:16 frame is taller than the engine's portrait composition wants: generated at full height, the
+ * painting floats in an upper band and leaves the lower half bare. So the painting is generated on a
+ * shorter canvas (`artHeight`) and placed unscaled at `offset` from the top; paper above it continues
+ * the sky. `rect` / `anchors` map the engine's normalised coordinates into the frame, so text and
+ * afterglow stay where the painting put them.
+ */
+export function artPlacement({ width, height, artHeight = height, offset = height - artHeight }) {
+  const h = Math.max(1, Math.round(artHeight));
+  const y = v => (offset + v * h) / height;
+  const span = v => v * h / height;
+  const point = p => Object.fromEntries(Object.entries(p).map(([key, value]) =>
+    [key, ['y', 'baseY', 'topY', 'roofY'].includes(key) ? y(value) : value]));
+  return {
+    width, height: h, offset,
+    rect: r => ({ x: r.x, y: y(r.y), width: r.width, height: span(r.height) }),
+    anchors: a => a && {
+      ...a,
+      water: a.water ? { x: a.water.x, y: a.water.y.map(y) } : null,
+      boats: (a.boats || []).map(point),
+      trees: (a.trees || []).map(point),
+      buildings: (a.buildings || []).map(point),
+      // The paper above the painting is sky as well.
+      sky: { ...(a.sky || {}), y: [0, y(a.sky?.y?.[1] ?? 0.38)] },
+    },
+  };
+}
+
+const inked = (data, i, paper, threshold) =>
+  Math.hypot(data[i] - paper[0], data[i + 1] - paper[1], data[i + 2] - paper[2]) > threshold;
+
+/**
+ * Ink in an RGBA buffer: `mass` is the inked share of the painting outside `avoid` (a pixel rect,
+ * the verse box), `top` / `bottom` the first and last rows (px) carrying a real stroke.
+ */
+export function paintingStats(data, width, height, paper, { avoid = null, threshold = 28, step = 4 } = {}) {
+  let ink = 0, total = 0, top = null, bottom = null;
+  for (let y = 0; y < height; y += step) {
+    let row = 0, count = 0;
+    for (let x = 0; x < width; x += step) {
+      if (avoid && x >= avoid.x && x < avoid.x + avoid.width && y >= avoid.y && y < avoid.y + avoid.height) continue;
+      count++;
+      if (inked(data, (y * width + x) * 4, paper, threshold)) row++;
+    }
+    ink += row;
+    total += count;
+    // A row counts once a few samples are inked, so lone specks of paper grain do not.
+    if (row >= 3) { top ??= y; bottom = y; }
+  }
+  return { mass: total ? ink / total : 0, top, bottom };
+}
+
+/**
+ * Where the painting goes: bottom-aligned, and lower only when its last stroke would otherwise end
+ * above `target` — then the bare paper under it is cropped so that stroke lands at `target` (by
+ * default the top of the platform's bottom bar, 1 − 380/1920). Only blank paper is ever lost.
+ */
+export function placeOffset({ frameHeight, artHeight, contentBottom, target = 1 - VIDEO_SAFE.bottom / 1920 }) {
+  const aligned = frameHeight - artHeight;
+  if (contentBottom == null) return aligned;
+  return Math.max(aligned, Math.round(target * frameHeight - contentBottom));
+}
+
+/**
+ * Lifts a normalised verse rect towards `top` through the paper above the painting, stopping at the
+ * highest position where `clear(rect)` holds (no ink under the text). Never moves it down.
+ */
+export function liftRect(rect, { top = 0.12, clear = () => true, step = 0.005 }) {
+  for (let y = Math.min(top, rect.y); y < rect.y; y += step) {
+    const candidate = { ...rect, y };
+    if (clear(candidate)) return candidate;
+  }
+  return rect;
+}
+
 // ---------------------------------------------------------------- entrance
 
 /**
@@ -124,6 +201,38 @@ export function videoDuration(charCount, entryEnd) {
 /** Background push, linear 1→1.02 over the whole clip; text never scales. */
 export function pushScale(t, duration) {
   return 1 + 0.02 * clamp(t / duration);
+}
+
+// ---------------------------------------------------------------- ink-story timeline
+
+/**
+ * Title page, then one couplet at a time, following the reading's line timestamps. Glyphs spread over
+ * the line's spoken time at about `pace` seconds each (each glyph the App's 0.25s reveal); a leaf
+ * dissolves over `dissolve` seconds, ending `linger` after the next line starts. The last couplet
+ * stays; its colophon follows its last glyph and the seal lands 0.3s after that.
+ */
+export function storyTimeline({ couplets, glyphCounts, titleGlyphs, start = 0.3, pace = 0.27, dissolve = 0.6, linger = 0.15 }) {
+  const times = (count, from, to) => {
+    const span = Math.min(count * pace, Math.max(0.3, (to - from) * 0.85));
+    return Array.from({ length: count }, (_, i) => from + i * span / count);
+  };
+  const title = { times: times(titleGlyphs, start, couplets[0].start), out: couplets[0].start + linger };
+  const lines = couplets.map((c, i) => {
+    const next = couplets[i + 1];
+    return { times: times(glyphCounts[i], c.start, next ? next.start : c.end), out: next ? next.start + linger : Infinity };
+  });
+  const colophonAt = lines.at(-1).times.at(-1) + 0.25;
+  return { title, lines, dissolve, titleColophonAt: title.times.at(-1) + 0.25, colophonAt, sealAt: colophonAt + 0.18 + 0.3 };
+}
+
+/** 0 while a leaf is whole, rising to 1 as it dissolves. */
+export function leafGone(t, leaf, dissolve = 0.6) {
+  return clamp((t - (leaf.out - dissolve)) / dissolve);
+}
+
+/** When a leaf reads (opacity ≥ 0.5): from its first glyph half-inked until it is half dissolved. */
+export function readableWindow(leaf, dissolve = 0.6) {
+  return [leaf.times[0] + 0.125, leaf.out - dissolve / 2];
 }
 
 // ---------------------------------------------------------------- weather and afterglow

@@ -4,8 +4,9 @@ import fs from 'node:fs';
 import {
   resolveVideoPalette, byline, typeFloorIssues, clipVerseRect, VIDEO_SAFE, inkRevealPlan, inkGlyphState,
   sealState, videoDuration, pushScale, pickWeather, geeseCount, afterglowPlan,
+  artPlacement, paintingStats, placeOffset, liftRect, storyTimeline, leafGone, readableWindow,
 } from '../resources/core/huaping-video.js';
-import { huapingPlan } from '../resources/core/huaping-layout.js';
+import { huapingClauses, huapingPlan } from '../resources/core/huaping-layout.js';
 import { sealStampState } from '../resources/core/weishi-video-core.js';
 
 const near = (actual, expected, message) => assert.ok(Math.abs(actual - expected) < 1e-9, `${message || ''} ${actual} ≠ ${expected}`);
@@ -142,4 +143,77 @@ test('a video type floor grows the colophon and seal, moving a long title to its
   assert.equal(huapingPlan({ ...input, title: '江雪', minInscription: 28 }).separateTitle, false);
   assert.deepEqual(typeFloorIssues(floored), []);
   assert.equal(typeFloorIssues(base).length, 1);
+});
+
+test('a shorter painting placed low in the frame maps its verse box and anchors with it', () => {
+  const place = artPlacement({ width: 1080, height: 1920, artHeight: 1440 });
+  assert.equal(place.offset, 480);
+  const rect = place.rect({ x: 0.05, y: 0, width: 0.4, height: 0.5 });
+  near(rect.y, 0.25);
+  near(rect.height, 0.375);
+  const anchors = place.anchors({ water: { x: [0, 1], y: [0.5, 1] }, boats: [{ x: 0.7, y: 1, length: 0.1 }],
+    trees: [{ x: 0.3, baseY: 0.5, topY: 0, width: 0.1 }], buildings: [], sky: { x: [0, 1], y: [0, 0.4] } });
+  near(anchors.water.y[0], 0.625);
+  near(anchors.boats[0].y, 1);
+  near(anchors.trees[0].topY, 0.25);
+  assert.equal(anchors.boats[0].x, 0.7);
+  near(anchors.sky.y[1], 0.55);
+  assert.equal(anchors.sky.y[0], 0, 'the paper above the painting is sky');
+});
+
+test('painting stats find the inked rows and ignore the verse box and lone specks', () => {
+  const w = 40, h = 40, paper = [240, 240, 240];
+  const data = new Uint8ClampedArray(w * h * 4).fill(240);
+  const ink = (x, y) => data.set([20, 20, 20, 255], (y * w + x) * 4);
+  for (let x = 0; x < w; x++) { ink(x, 20); ink(x, 28); }
+  ink(4, 4); // a speck
+  for (let x = 0; x < 12; x++) ink(x, 8); // inside the avoided box
+  const stats = paintingStats(data, w, h, paper, { step: 4, avoid: { x: 0, y: 6, width: 14, height: 4 } });
+  assert.equal(stats.top, 20);
+  assert.equal(stats.bottom, 28);
+  assert.ok(stats.mass > 0 && stats.mass < 0.3);
+  assert.deepEqual(paintingStats(new Uint8ClampedArray(w * h * 4).fill(240), w, h, paper), { mass: 0, top: null, bottom: null });
+});
+
+test('the painting is bottom-aligned, and lowered only to crop bare paper under its last stroke', () => {
+  assert.equal(placeOffset({ frameHeight: 1920, artHeight: 1440, contentBottom: 1400 }), 480);
+  assert.equal(placeOffset({ frameHeight: 1920, artHeight: 1440, contentBottom: null }), 480);
+  // Last stroke at 900px of 1440: lowered until it sits on the platform's bottom bar (1540px).
+  assert.equal(placeOffset({ frameHeight: 1920, artHeight: 1440, contentBottom: 900 }), 640);
+});
+
+test('the verse box lifts through bare paper but never into ink and never down', () => {
+  const rect = { x: 0.05, y: 0.3, width: 0.4, height: 0.2 };
+  assert.deepEqual(liftRect(rect, { top: 0.11 }), { ...rect, y: 0.11 });
+  const lifted = liftRect(rect, { top: 0.11, clear: r => r.y >= 0.2 });
+  assert.ok(lifted.y >= 0.2 && lifted.y < 0.21);
+  assert.deepEqual(liftRect(rect, { top: 0.11, clear: () => false }), rect);
+  assert.deepEqual(liftRect({ ...rect, y: 0.05 }, { top: 0.11 }), { ...rect, y: 0.05 });
+});
+
+const recipe = slug => JSON.parse(fs.readFileSync(new URL(`../resources/recipes/${slug}.json`, import.meta.url), 'utf8'));
+
+test('ink-story leaves follow the reading and stay long enough for readcheck', () => {
+  for (const slug of ['wanqing-dufu-story', 'sushi-yufu']) {
+    const r = recipe(slug);
+    const glyphCounts = r.couplets.map(c => huapingClauses(c.text).join('').length);
+    const story = storyTimeline({ couplets: r.couplets, glyphCounts, titleGlyphs: Array.from(r.title).length });
+    // Same rule as scripts/readcheck.mjs: at least 1.5s and 0.22s per character.
+    const check = (leaf, chars, label) => {
+      const [from, to] = readableWindow(leaf, story.dissolve);
+      assert.ok(to - from + 0.1 >= Math.max(1.5, chars * 0.22), `${slug} ${label}: ${(to - from).toFixed(2)}s`);
+    };
+    check(story.title, Array.from(r.title + r.author).length, 'title');
+    story.lines.slice(0, -1).forEach((line, i) => check(line, glyphCounts[i], `couplet ${i + 1}`));
+    story.lines.forEach((line, i) => {
+      assert.equal(line.times[0], r.couplets[i].start, 'each couplet starts with its spoken line');
+      assert.ok(line.times.every((t, j) => j === 0 || t > line.times[j - 1]));
+    });
+    assert.equal(story.lines.at(-1).out, Infinity, 'the last couplet stays');
+    assert.ok(story.sealAt > story.colophonAt && story.sealAt < r.duration, `${slug} seal lands inside the reading`);
+    // A leaf is whole until its dissolve begins and gone once it ends.
+    const first = story.lines[0];
+    assert.equal(leafGone(first.out - 0.61, first, story.dissolve), 0);
+    near(leafGone(first.out, first, story.dissolve), 1);
+  }
 });
