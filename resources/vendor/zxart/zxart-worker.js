@@ -19,7 +19,7 @@
 /* global importScripts, OffscreenCanvas, ZXArtCompose, Filter */
 'use strict';
 
-importScripts('zxart-compose.js');
+importScripts('zxart-compose.js', 'zxart-ink.js');
 ZXArtCompose.installShims(self);
 
 function css(c) {
@@ -485,6 +485,10 @@ function render(drawing, pw, ph) {
   var oy = ph / 2 - (drawing.height * s) / 2;
   fillGround(ctx, drawing, pw, ph, s, ox, oy);
   drawing.layers.forEach(function (layer) {
+    if (layer.ink) {
+      ZXArtInk.draw(ctx,layer,drawing,pw,ph,s,ox,oy,drawShapes);
+      return;
+    }
     if (layer.wash || layer.tooth != null || layer.rim || layer.fade) {
       drawWashed(ctx, layer, drawing, pw, ph, s, ox, oy);
       return;
