@@ -196,7 +196,9 @@ function clonePoly(poly) {
     tooth: poly.tooth,
     rim: poly.rim,
     fade: poly.fade,
-    ...(poly.overprint ? {overprint:true} : {})
+    ...(poly.overprint ? {overprint:true} : {}),
+    ...(poly.brush ? {brush:poly.brush} : {}),
+    ...(poly.wetInk ? {wetInk:poly.wetInk} : {})
   };
 }
 
@@ -305,7 +307,9 @@ function clonePoly(poly) {
     tooth: poly.tooth,
     rim: poly.rim,
     fade: poly.fade,
-    ...(poly.overprint ? {overprint:true} : {})
+    ...(poly.overprint ? {overprint:true} : {}),
+    ...(poly.brush ? {brush:poly.brush} : {}),
+    ...(poly.wetInk ? {wetInk:poly.wetInk} : {})
   };
 }
 
@@ -1822,6 +1826,9 @@ function appendPaintingShapesV5(canv, motif, palette, into) {
     appendShapesV4([polygon], palette, into, 0.4);
     for (var j = start; j < into.length; j++) {
       if (polygon.overprint) into[j].overprint = true;
+      if (polygon.brush) into[j].brush = polygon.brush;
+      if (C.isWhite(polygon.fil)) into[j].paperMask = true;
+      if (polygon.wetInk) into[j].wetInk = polygon.wetInk;
       if (polygon.fil && polygon.fil.r > polygon.fil.g + 50 && (motif === 'sunset' || motif === 'sunrise')) {
         into[j].fill = opacity(sunColor, palette.isDark ? 0.48 : 0.38);
       } else if ((motif === 'moon' || motif === 'crescent') && palette.isDark && C.isWhite(polygon.fil)) {
@@ -2466,7 +2473,7 @@ Object.assign(ShanShuiEngineV5.prototype, {
         return p;
       });
     }
-    return this.landscapeSeed ? this.paintingLandscapeBank(style) : c;
+    return this.landscapeSeed ? this.paintingLandscapeBank(style,flip?1:-1) : c;
   },
 
   paintingStone(x0, x1, top, floor, style, rank) {
@@ -2672,130 +2679,56 @@ Object.assign(ShanShuiEngineV5.prototype, {
     return this.landscapeSeed ? this.paintingLandscapeStone(crest, floor, rank) : c;
   },
 
-  paintingLandscapeBank(style) {
-    const b=landscapeBrushEngineV5('bank-structure:'+this.landscapeSeed+':'+style+':'+this.e.state);
-    b.landscapeSeed=this.landscapeSeed;
-    const height=style==='shoal'?40:90;
-    const stones=[
-      [30,145,.02,.78,0],[125,235,.22,.93,1],
-      [0,100,.37,1,1],[75,180,.56,1.08,2],[175,310,.65,1.05,2],
-      [10,50,.89,1.09,2],[285,335,.90,1.08,2]
-    ].map(([x0,x1,top,floor,rank])=>[x0+(b.r()-.5)*15,x1+(b.r()-.5)*15,
-      height*(top+(b.r()-.5)*.09),height*floor,rank]);
-    const c=[];
-    for(const [x0,x1,top,floor,rank] of stones) {
-      const rock=b.paintingStone(x0,x1,top,floor,style,rank);
-      // The long bank descends into the water; subsidiary stones interrupt its foot.
-      for(const poly of rock) {
-        poly.p=poly.p.map(p=>{
-          const u=(p.x-x0)/(x1-x0),v=(p.y-top)/(floor-top);
-          return P(p.x,p.y+(floor-top)*.50*u*Math.max(0,1-v));
-        });
-        poly.pts=poly.p;
-      }
-      c.push(...rock);
-    }
-    if(b.r()<.5) for(const poly of c) {
-      poly.p=poly.p.map(p=>P(335-p.x,p.y));poly.pts=poly.p;
-    }
-    return c;
-  },
-
-  paintingLandscapeWash(at,u,v,rx,ry,ink) {
-    rx=Math.min(rx,u*.85,(1-u)*.85);
-    ry=Math.min(ry,v*.85,(1-v)*.85);
-    const edge=Array.from({length:24},(_,j)=>{
-      const angle=j/24*Math.PI*2;
-      return {x:Math.cos(angle)*rx*(.84+this.r()*.32),y:Math.sin(angle)*ry*(.84+this.r()*.32)};
-    });
-    const c=[];
-    for(let pass=0;pass<24;pass++) {
-      const scale=1.15-pass*.038;
-      const points=edge.map(p=>at(Math.max(.01,Math.min(.99,u+p.x*scale)),Math.max(.01,Math.min(.98,v+p.y*scale))));
-      c.push({...this.poly(points,{fil:C.gray(0,ink*(.4+pass/23)*1.18/21.6),str:null}),overprint:true});
-    }
+  paintingLandscapeBank(style, side=-1) {
+    const b=landscapeBrushEngineV5('bank-structure:'+this.landscapeSeed+':'+style+':'+this.inkSeed());
+    b.landscapeSeed=this.landscapeSeed;b.landscapeBankSide=side;
+    const c=b.paintingLandscapeMassif({form:'bank:'+style,width:360,height:360},true);
     return c;
   },
 
   paintingLandscapeStone(crest, floor, rank) {
-    const b=landscapeBrushEngineV5('stone-v3:'+this.landscapeSeed+':'+crest[0].x+':'+floor+':'+rank);
-    const c=[];
-    const x0=crest[0].x,x1=crest[crest.length-1].x;
-    const top=Math.min(...crest.map(p=>p.y)),height=floor-top,width=x1-x0;
-    // Replace the old slab mask as well as its texture: unequal ledges meet a sloping toe.
-    const shoulders=[[0,.62],[.12,.27],[.29,.31],[.41,.07],[.61,.13],[.73,.36],[.89,.40],[1,.72]];
-    crest=b._densify(shoulders.map(([u,v],i)=>P(x0+width*u,
-      top+height*(v+(i>0&&i<7?(b.r()-.5)*.16:0)))),2.5);
-    c.push(b.poly([...crest,P(x1-width*.07,floor-height*.05),P(x0+width*.48,floor),
-      P(x0+width*.04,floor-height*.13)],{fil:C.white,str:null}));
-    const ridge=x=>{
-      for(let i=0;i<crest.length-1;i++) if(x>=crest[i].x && x<=crest[i+1].x) {
-        const a=crest[i],z=crest[i+1];
-        return a.y+(z.y-a.y)*(x-a.x)/Math.max(.001,z.x-a.x);
-      }
-      return floor;
-    };
-    const face=(u,v)=>{
-      const x=x0+(x1-x0)*u,top=ridge(x),height=floor-top;
-      return P(x,top+height*(.16+.84*v));
-    };
-    const inside=p=>{
-      const x=Math.max(x0+.2,Math.min(x1-.2,p.x));
-      return P(x,Math.max(ridge(x)+.3,Math.min(floor-.3,p.y)));
-    };
-    const washes=[];
-    // A faint connected front plane binds the folds; the top ledge remains unpainted.
-    for(let pass=0;pass<12;pass++) {
-      const upper=[],lower=[];
-      for(let j=0;j<=32;j++) {
-        const u=.025+j/32*.95,taper=Math.pow(Math.sin(Math.PI*j/32),.45);
-        const top=.16+.045*Math.sin(u*17)+pass*.012;
-        upper.push(face(u,top));
-        lower.push(face(u,top+(.78-pass*.025)*taper));
-      }
-      washes.push({...b.poly([...upper,...lower.reverse()],{fil:C.gray(0,.006),str:null}),overprint:true});
+    const b=landscapeBrushEngineV5('flat-stone:'+this.landscapeSeed+':'+this.inkSeed()),c=[];
+    const x0=crest[0].x,x1=crest.at(-1).x,w=x1-x0,top=Math.min(...crest.map(p=>p.y)),h=floor-top;
+    const side=landscapeBrushEngineV5('light:'+this.landscapeSeed).r()<.5?-1:1;
+    const roof=[],edge=[],foot=[];
+    let ledge=.28+b.r()*.13;
+    const stepHeights=Array.from({length:9},(_,j)=>{
+      if(j&&b.r()<.4)ledge=Math.max(.23,Math.min(.52,ledge+(b.r()-.5)*.34));
+      return ledge;
+    });
+    for(let j=0;j<=8;j++) {
+      const u=j===0?0:j===8?1:(j+(b.r()-.5)*.6)/8,x=x0+w*u;
+      roof.push(P(x,top+h*(.07+.12*b.n(u*9,3)+.13*Math.pow(Math.abs(u-.5)*2,3))));
+      edge.push(P(x+h*(.04+.07*b.n(u*11,7))*side,top+h*(stepHeights[j]+.05*(b.n(u*13,5)-.5))));
+      foot.push(P(x+w*.10*(1-u*2)+h*(.06+.08*b.n(u*11,2))*side,
+        top+h*(.80+.17*b.n(u*14,9)-.38*Math.pow(Math.abs(u*2-1),2.5))));
     }
-    // Folded bands: a light horizontal tip turns into a loaded side stroke at the same corner.
-    for(let k=0;k<crest.length-2;k+=12) {
-      if(b.r()<.25)continue;
-      c.push(...b.paintingBrushStroke(crest.slice(k,k+10),
-        {width:1.2+b.r()*.8,ink:.55,moisture:.42,pressure:[.1,.7,.4,.7,.05]}));
-    }
-    const bands=x1-x0>150?3:x1-x0>75?2:1;
-    for(let band=0;band<bands;band++) {
-      const u=.06+band*.62/bands+b.r()*.10,v=.04+b.r()*.22;
-      const start=face(u,v),corner=inside(P(start.x+(x1-x0)*(.14+b.r()*.05),start.y+1));
-      const drop=(floor-corner.y)*(.55+b.r()*.25);
-      const route=[start,P(corner.x-(x1-x0)*.04,corner.y-1),corner,
-        inside(P(corner.x-2,corner.y+drop*.55)),inside(P(corner.x+drop*.20,corner.y+drop))];
-      c.push(...b.paintingBrushStroke(route,{width:4+b.r()*3,ink:.65+b.r()*.15,moisture:.25,
-        oblique:1,pressure:[.13,.18,.25,1,.65,.02]}));
-      for(let j=0;j<5;j++) {
-        const dx=2+j*(1+b.r()),dy=b.r()*drop*.25;
-        const points=[inside(P(corner.x+dx,corner.y+dy)),
-          inside(P(corner.x+dx-1,corner.y+drop*.40)),inside(P(corner.x+dx+drop*.20,corner.y+drop*(.60+b.r()*.30)))];
-        c.push(...b.paintingBrushStroke(points,{width:4+b.r()*5,ink:.20+b.r()*.25,
-          moisture:.20,pressure:[.15,.9,.55,.25,.02]}));
+    c.push(b.poly([...roof,...foot.slice().reverse()],{fil:C.white,str:null}));
+    const stroke=(path,width,ink,wet=.3,pressure=[.25,.8,1,.5,.1])=>c.push(...b.paintingBrushStroke(path,{width,ink,moisture:wet,pressure,angular:true}));
+    const wash=(path,alpha)=>c.push({...b.poly(path,{fil:C.gray(0,alpha),str:null}),overprint:true,wetInk:true});
+    wash([...edge,...foot.slice().reverse()],.055);
+    const corner=side>0?8:0;
+    stroke([roof[corner],edge[corner],foot[corner]],1.3,.42,.2,[.1,.6,1,.2]);
+    for(let j=0;j<8;j++) {
+      if(j===1||j===5)stroke(roof.slice(j,j+2),.7+b.r()*.6,.3+b.r()*.25,.28);
+      const a=edge[j],z=edge[j+1];
+      if(b.r()<.55) {
+        const turn=P(a.x+(z.x-a.x)*(.5+b.r()*.35),a.y+(z.y-a.y)*.65);
+        const end=P(turn.x+side*h*(.04+b.r()*.14),turn.y+h*(.23+b.r()*.18));
+        stroke([a,turn,P(turn.x+side*h*.02,turn.y+h*.10),end],h*(.10+b.r()*.08),.60+b.r()*.25,.32,[.15,.2,.3,1,.8,.25]);
       }
-      // Dilute ink spreads out from the turning seam, never as isolated oval patches.
-      const washWidth=12+b.r()*12;
-      for(let pass=0;pass<24;pass++) {
-        const spread=washWidth*(1-pass/25);
-        const left=b.inkCurve(route.slice(2),5);
-        const right=left.map((p,j)=>inside(P(p.x+spread*Math.sin(Math.PI*j/(left.length-1)),p.y)));
-        washes.push({...b.poly([...left,...right.reverse()],{fil:C.gray(0,.012),str:null}),overprint:true});
+      const upper=[edge[j],edge[j+1]],lower=[foot[j],foot[j+1]];
+      if(b.r()<.65)wash([...upper,...lower.reverse()],.06+b.r()*.11);
+      for(let k=0;k<(j%3===0?3:1);k++) {
+        const t=b.r(),p=P(a.x+(z.x-a.x)*t,a.y+(z.y-a.y)*t),length=h*(.10+b.r()*.25);
+        stroke([P(p.x,p.y+1),P(p.x+side*length*.22,p.y+length*.5),P(p.x+side*length*.6,p.y+length)],
+          h*(.04+b.r()*.08),.13+b.r()*.20,.13+b.r()*.22,[.5,.8,1,.4]);
+      }
+      if(b.r()<.45)for(let k=0;k<2+Math.floor(b.r()*3);k++) {
+        const t=b.r();c.push(...b.inkBlot(a.x+(z.x-a.x)*t,a.y+(z.y-a.y)*t,.8+b.r()*2.2,.25+b.r()*.2,0,.4+b.r()*.5));
       }
     }
-    c.push(...washes);
-    // Two ink values, clustered at ledges and the foot rather than distributed over the face.
-    for(let group=0;group<3;group++) {
-      const u=.12+group*.31+b.r()*.07;
-      for(let j=0;j<4+Math.floor(b.r()*4);j++) {
-        const x=x0+(x1-x0)*u+j*(1.5+b.r()*2),y=group===1?floor-1:ridge(x)+b.r()*2;
-        c.push(...b.paintingBrushStroke([P(x,y),P(x+2+b.r()*3,y-.3)],
-          {width:1.8+b.r(),ink:group===0?.45:.85,moisture:.55,pressure:[.2,1,.7,.1]}));
-      }
-    }
+    for(let j=0;j<7;j+=2)if(b.r()<.7)stroke(foot.slice(j,j+2),.7+b.r()*.8,.23+b.r()*.22,.3);
     return c;
   },
 
@@ -2878,243 +2811,302 @@ Object.assign(ShanShuiEngineV5.prototype, {
 
   // Pressure, side loading and broken ink deposits are independent of the path.
   // These are geometric approximations of Brushstrokes, PDF pp. 43–45, not fluid simulation.
-  paintingBrushStroke(path, { width=2, ink=.6, moisture=.3, oblique=0, pressure=[.15,1,.8,.4,.02] } = {}) {
+  paintingBrushStroke(path, { width=2, ink=.6, moisture=.3, oblique=0, pressure=[.15,1,.8,.4,.02], angular=false } = {}) {
     if (path.length < 2) return [];
-    const points = this._densify(this.inkCurve(path, 4), 1.2), frames=[];
+    const points = this._densify(angular?path:this.inkCurve(path,4),.85), frames=[];
+    this.n(0,width+moisture); // Initialise paper noise before consuming this stroke's seed.
+    const seed=this.inkSeed(),phase=seed%997;
     for (let i=0;i<points.length;i++) {
       const a=points[Math.max(0,i-1)],z=points[Math.min(points.length-1,i+1)];
       const length=Math.hypot(z.x-a.x,z.y-a.y)||1, t=i/(points.length-1);
       const f=t*(pressure.length-1), k=Math.min(pressure.length-2,Math.floor(f));
       const p=pressure[k]+(pressure[k+1]-pressure[k])*(f-k);
-      frames.push({p:points[i],nx:-(z.y-a.y)/length,ny:(z.x-a.x)/length,
-        radius:width*p*.5*(.88+this.n(i*.23,width+moisture)*.24),t});
+      const nx=-(z.y-a.y)/length,ny=(z.x-a.x)/length;
+      const wander=width*.32*(this.n(i*.08,phase+19)-.5)*Math.sin(t*Math.PI);
+      frames.push({p:P(points[i].x+nx*wander,points[i].y+ny*wander),nx,ny,
+        radius:width*p*.5*(.62+this.n(i*.13,phase)*.76),
+        left:.78+this.n(i*.10,phase+3)*.44,right:.78+this.n(i*.10,phase+7)*.44,t});
     }
     const ribbon=(from,to,alpha,start=0,end=frames.length) => {
       const left=[],right=[];
       for(let i=start;i<end;i++) {
         const f=frames[i], shift=oblique*.35*f.radius;
         const edgeTaper=moisture<.3 ? Math.min(1,(i-start+1)/2,(end-i)/2) : 1;
-        const at=u=>P(f.p.x+f.nx*(f.radius*u*edgeTaper+shift),f.p.y+f.ny*(f.radius*u*edgeTaper+shift));
+        const at=u=>{const side=u<0?f.left:f.right,offset=f.radius*u*side*edgeTaper+shift;return P(f.p.x+f.nx*offset,f.p.y+f.ny*offset);};
         left.push(at(from));right.push(at(to));
       }
       return this.poly([...left,...right.reverse()],{fil:C.gray(0,alpha),str:null});
     };
     const c=[];
-    if(moisture>.35) {
-      // A soft low-ink edge surrounding a loaded interior.
-      c.push(ribbon(-1.28,1.28,ink*moisture*.08));
-      c.push(ribbon(-1.1,1.1,ink*moisture*.12));
-    }
-    // Dry ink breaks into unequal connected deposits, not evenly spaced parallel hairs.
-    // Transparent omissions expose earlier ink and paper without painting either over.
-    if(moisture<.3) {
-      c.push(ribbon(-.8,.8,ink*.08));
-      const strands=width<3?1:6;
-      for(let strand=0;strand<strands;strand++) {
-        let start=Math.floor(this.r()*3);
-        while(start<frames.length-2) {
-          const end=Math.min(frames.length,start+6+Math.floor(this.r()*20));
-          const centre=strands===1?(this.r()-.5)*.25:-.8+strand*.30+(this.r()-.5)*.40;
-          const span=strands===1?.55+this.r()*.35:.08+this.r()*.18;
-          c.push(ribbon(Math.max(-1,centre-span),Math.min(1,centre+span),
-            ink*(.30+this.r()*.60)*(1-start/frames.length*.35),start,end));
-          start=end-1+Math.floor(this.r()*4);
-        }
-      }
-    } else {
-      c.push(ribbon(-1,1,ink*.48));
-      // Side-loaded ink has one dark edge; upright strokes carry ink nearer their centre.
-      for(let k=0;k<5;k++) {
-        const u=-1+k*.4;
-        const load=oblique ? (oblique>0?k+1:5-k)/5 : 1-Math.abs(u+.2)*.6;
-        let start=0;
-        while(start<frames.length-1) {
-          const end=Math.min(frames.length,start+5+Math.floor(this.r()*9));
-          const offset=(this.r()-.5)*.08;
-          c.push(ribbon(Math.max(-1,u+offset),Math.min(1,u+.43+offset),
-            ink*(.18+.45*load)*(.65+this.r()*.35),start,end));
-          start=end-1;
-        }
-      }
-    }
+    if(moisture>.5)c.push({...ribbon(-1.18,1.18,ink*.055),overprint:true,wetInk:{bleed:.35,rim:.12}});
+    const body=ribbon(-1,1,ink);
+    body.brush={seed,ink,dry:Math.max(.1,Math.min(.95,1-moisture)),oblique};
+    c.push(body);
     return c;
   },
 
-  // A linked spine of rock shoulders: contour, shaded planes and cun share one surface.
-  // Museum references and the limits of this procedural study: references/LANDSCAPE-BRUSHWORK.md.
+  // Nested terrain sections share a winding spine; marks follow the same slopes as the silhouette.
   paintingLandscapeMassif(profile, terraced) {
-    const b = landscapeBrushEngineV5('landscape-v3:' + this.landscapeSeed + ':' + profile.width + ':' + profile.form);
-    const w = 360, h = 360*Math.max(.95,Math.min(1.5,profile.height/profile.width));
-    const method = this.landscapeTechnique || 'hemp';
-    const flip = profile.form === 'leaning' || profile.form === 'clustered';
-    const point = (x, y) => P((flip ? 1 - x : x) * w, y * h);
-    // Successive shoulders turn across the slope; subordinate rocks buttress the main peak.
-    const peakX=.43+b.r()*.10;
-    // Overlapping ledges descend around a turning spine. No face spans the full mountain.
-    const rocks = [
-      [peakX,.02,.60,.48], [.22,.24,.38,.40], [.76,.34,.30,.35],
-      [.49,.43,.60,.43], [.17,.65,.34,.29], [.77,.66,.38,.29],
-      [.43,.75,.50,.27], [.14,.88,.27,.15], [.76,.88,.39,.15]
-    ];
-    const surfaces = rocks.map(([cx, y, rw, rh], index) => {
-      cx += (b.r() - .5) * .07;
-      y += index ? (b.r()-.5)*.035 : 0;
-      rw *= .88+b.r()*.24;
-      rh *= .90+b.r()*.18;
-      const ridgeForms=[
-        [[-.50,.60],[-.41,.38],[-.29,.34],[-.23,.17],[-.08,.19],[.06,0],[.17,.025],[.25,.13],[.39,.23],[.50,.48]],
-        [[-.50,.48],[-.41,.28],[-.29,.27],[-.23,.08],[-.08,.04],[.06,.09],[.17,0],[.25,.03],[.39,.34],[.50,.52]],
-        [[-.50,.58],[-.41,.42],[-.29,.13],[-.23,.10],[-.08,0],[.06,.04],[.17,.22],[.25,.19],[.39,.39],[.50,.45]]
-      ];
-      // Subordinate shoulders have broad ledges or off-centre summits, not miniature main peaks.
-      if(index>0) ridgeForms.push(
-        [[-.50,.64],[-.41,.28],[-.29,.22],[-.23,.12],[-.08,.13],[.06,.10],[.17,.15],[.25,.28],[.39,.32],[.50,.62]],
-        [[-.50,.72],[-.41,.45],[-.29,.43],[-.23,.37],[-.08,.30],[.06,.24],[.17,0],[.25,.03],[.39,.38],[.50,.56]]
-      );
-      let crest = ridgeForms[Math.floor(b.r()*ridgeForms.length)].map(([u,v], k) =>
-        P(cx + rw * u, y + rh * (v + (k > 0 && k < 9 ? (b.r() - .5) * .11 : 0))));
-      if (terraced && index === 0) for (let k = 2; k < 7; k++) crest[k].y = y + rh * .08;
-      if (method === 'hemp' && !terraced) crest = b.inkCurve(crest,2);
-      const lean=(index%2 ? -.19 : .14) + (b.r()-.5)*.12;
-      // Each shoulder has its own leaning plane, turning back towards the shared foot.
-      const at = (u, v) => {
-        const i = Math.min(crest.length - 2, Math.floor(u * (crest.length - 1)));
-        const t = u * (crest.length - 1) - i;
-        const start = P(crest[i].x * (1-t) + crest[i+1].x*t, crest[i].y*(1-t)+crest[i+1].y*t);
-        const drift = rw * (lean*Math.sin(v*Math.PI*.85) - .12*v*v);
-        const tooth=(b.n(u*30+index*11,v*19)-.5)*.009;
-        // A shoulder tapers into an uneven toe. A flat v=1 floor produced the old cut-off edge.
-        const foot=Math.max(start.y+rh*.025,y+rh*(.66+.34*Math.pow(Math.sin(Math.PI*u),.7)+.025*Math.sin(u*13+index)));
-        return point(start.x + drift + (u - .5) * rw * .24 * v + rw*tooth,
-          start.y + (foot - start.y) * v + rh*tooth*.5);
-      };
-      return { at, crest, index, rw, rh };
-    });
-    // The first polygon supplies the actual outer ridge used by weather/scene anchors.
-    const envelope = [];
-    for (let k = 0; k <= 110; k++) {
-      const x = k / 110; let y = 1.01;
-      for (const s of surfaces) {
-        const c = s.crest;
-        for (let i = 0; i < c.length - 1; i++) if (x >= c[i].x && x <= c[i+1].x) {
-          y = Math.min(y, c[i].y + (c[i+1].y-c[i].y)*(x-c[i].x)/(c[i+1].x-c[i].x));
-        }
-      }
-      envelope.push(point(x, y));
-    }
-    if (flip) envelope.reverse();
-    const c = [b.poly([...envelope, P(w,h*1.02), P(0,h*1.02)], { fil:C.clear, str:null })];
-    const patch = (s, u0, u1, v0, v1, tone, gray=0) => {
-      // Tiny overlap prevents antialias seams between adjacent wash bands.
-      u0=Math.max(0,u0-.0008);u1=Math.min(1,u1+.0008);
-      v0=Math.max(0,v0-.0008);v1=Math.min(1,v1+.0008);
-      const pts = [], steps=Math.max(2,Math.ceil((u1-u0)*80));
-      for (let i=0; i<=steps; i++) pts.push(s.at(u0+(u1-u0)*i/steps, v0));
-      for (let i=1; i<=10; i++) pts.push(s.at(u1, v0+(v1-v0)*i/10));
-      for (let i=1; i<=steps; i++) pts.push(s.at(u1-(u1-u0)*i/steps, v1));
-      for (let i=1; i<10; i++) pts.push(s.at(u0, v1-(v1-v0)*i/10));
-      c.push({...b.poly(pts, { fil:C.gray(gray,tone), str:null }),overprint:true});
-    };
-    const dry = (points, width, alpha) => c.push(...b.paintingBrushStroke(points,
-      {width,ink:alpha,moisture:.22,pressure:[.2+b.r()*.3,.6+b.r()*.4,.25+b.r()*.5,.45+b.r()*.5,.02]}));
-    for (const s of surfaces) {
-      // Opaque paper masks the preceding rock, then thin wet layers build its body.
-      patch(s,0,1,0,1,.94,255);
-      const washes=[];
-      // The lit plane remains paper; deposits gather beyond the main fold on the shaded flank.
-      for(let k=0;k<5;k++) {
-        washes.push(...b.paintingLandscapeWash(s.at,.64+b.r()*.23,.25+b.r()*.50,
-          .08+b.r()*.12,.12+b.r()*.18,.025+b.r()*.020));
-      }
-      for (let k=0;k<9;k++) if (k!==3 && k!==7) {
-        const pts=[];
-        for(let j=0;j<=5;j++) pts.push(s.at((k+j/5)/9,.006));
-        c.push(...b.paintingBrushStroke(pts, {width:1.2+b.r()*1.2,ink:.35+b.r()*.2,moisture:.43}));
-      }
-      // Ribs wrap over the shoulder before descending along its flanks. The same route
-      // carries contour, wash and nested cun, so texture cannot float independently of form.
-      const routes=[{root:.50+b.r()*.16,weight:1},{root:.19+b.r()*.09,weight:.22}].map(({root,weight})=>{
-        const side=1,offset=(b.r()-.5)*.06,length=.72+b.r()*.20;
-        const path=b.inkCurve([P(root-side*.12,.10),P(root-side*.04,.025),
-          P(root+side*.04,.28),P(root+side*.07,.60),P(root+side*.12,length)],5);
-        return {side,weight,path:path.map(p=>P(p.x+offset,p.y))};
+    const b=landscapeBrushEngineV5('terrain:'+this.landscapeSeed+':'+profile.form+':'+profile.height+':'+this.inkSeed());
+    b.landscapeSeed=this.landscapeSeed;
+    const bank=profile.form.startsWith('bank:');
+    const w=360,h=360*Math.max(bank?.25:.85,Math.min(2.2,profile.height/profile.width));
+    const method=this.landscapeTechnique||'hemp';
+    const light=landscapeBrushEngineV5('light:'+this.landscapeSeed).r()<.5?-1:1;
+    const summit=bank?(this.landscapeBankSide>0?.72+b.r()*.12:.16+b.r()*.12):.38+b.r()*.24,phase=b.r()*20;
+    const peaks=[{x:summit,width:bank?.30+b.r()*.08:.30+b.r()*.07,height:bank?.70:.82,lean:.75+b.r()*.6,level:0}];
+    if(bank) {
+      for(const side of [-1,1])for(let j=0;j<2;j++)peaks.push({
+        x:summit+side*(.18+j*.18+b.r()*.05),width:.12+b.r()*.06,height:.45*(.90+b.r()*.15),lean:.7+b.r()*.65
       });
-      const along=(r,t)=>{
-        const f=Math.max(0,Math.min(1,t))*(r.path.length-1),i=Math.min(r.path.length-2,Math.floor(f));
-        return P(r.path[i].x+(r.path[i+1].x-r.path[i].x)*(f-i),
-          r.path[i].y+(r.path[i+1].y-r.path[i].y)*(f-i));
-      };
-      const onFace=(u,v)=>s.at(Math.max(.015,Math.min(.985,u)),Math.max(.005,Math.min(.985,v)));
-      for(const r of routes) {
-        for(let wash=0;wash<24;wash++) {
-          const edge=side=>Array.from({length:28},(_,j)=>{
-            const t=j/27,p=along(r,t);
-            const spread=side*r.side*(.30-wash*.011)*Math.pow(Math.sin(Math.PI*t),.65);
-            return onFace(p.x+spread,p.y);
-          });
-          washes.push({...b.poly([...edge(0),...edge(1).reverse()],{fil:C.gray(0,.0083*r.weight),str:null}),overprint:true});
-        }
-        for(let segment=0;segment<3;segment++) {
-          const begin=segment*.32,finish=Math.min(1,begin+.24+b.r()*.06);
-          dry(Array.from({length:9},(_,j)=>{const p=along(r,begin+(finish-begin)*j/8);return onFace(p.x,p.y);}),
-            1.8+b.r()*1.5,(.64+b.r()*.18)*r.weight);
-        }
-        for(let group=0;group<(r.weight===1?5:1);group++) {
-          const uOffset=.015+group*(.035+b.r()*.012),vOffset=.02+group*.025+b.r()*.035;
-          const count=3+Math.floor(b.r()*3);
-          for(let k=0;k<count;k++) {
-            const start=b.r()*.70,end=Math.min(1,start+.14+b.r()*.26);
-            const du=uOffset+(k-count*.5)*.016+(b.r()-.5)*.02,dv=vOffset+b.r()*.035;
-            const pts=[],phase=b.r()*6.28;
-            for(let j=0;j<10;j++) {
-              const t=start+(end-start)*j/9,p=along(r,t);
-              pts.push(onFace(p.x+du+.018*Math.sin(j*.9+phase),p.y+dv));
-            }
-            if(method==='axe') {
-              const p=along(r,start),reach=.15+b.r()*.30;
-              const cut=[onFace(p.x+du,p.y+dv),onFace(p.x+du+r.side*.05,p.y+dv+reach*.3),
-                onFace(p.x+du+r.side*.16,p.y+dv+reach)];
-              c.push(...b.paintingBrushStroke(cut,{width:4+b.r()*8,ink:(.35+b.r()*.30)*r.weight,
-                moisture:.35+b.r()*.13,oblique:r.side,pressure:[.95,.80,.55,.22,.01]}));
-            } else {
-              if(k===0)c.push(...b.paintingBrushStroke(pts,{width:7+b.r()*8,ink:(.10+b.r()*.12)*r.weight,
-                moisture:.65,oblique:r.side*.5,pressure:[.1,1,.7,.4,.01]}));
-              dry(pts,2.8+b.r()*2.7,(.35+b.r()*.25)*r.weight);
-            }
-          }
+    } else {
+      // Derive smaller shoulders from the main ridge. Their count and attenuation
+      // are seeded, so successive formations do not repeat a fixed rock table.
+      for(const side of [-1,1]) {
+        let parent=peaks[0];
+        const count=1+Math.floor(b.r()*3);
+        for(let j=0;j<count;j++) {
+          const child={x:parent.x+side*parent.width*(1.05+b.r()*.45),width:parent.width*(.5+b.r()*.2),
+            height:parent.height*(.6+b.r()*.25),lean:.6+b.r()*.8,level:j+1};
+          if(child.x<.04||child.x>.96)break;
+          peaks.push(child);parent=child;
         }
       }
-      // Dilute ink unites the cun after drawing; moss is the final, darkest accent.
-      c.push(...washes);
-      // Moss is grouped on ledges, never an evenly spaced dotted border.
-      for(let group=0;group<3;group++) {
-        const root=.12+b.r()*.70;
-        for(let j=0;j<5+b.r()*7;j++) {
-          const p=s.at(Math.min(.98,root+b.r()*.12),b.r()*.035);
-          c.push(...b.inkBlot(p.x,p.y,.8+b.r()*1.4,.5,-.2,group===0?.35:.70));
+    }
+    for(const peak of peaks)peak.drift=bank?[0,0,0,0]:[0,(b.r()-.5)*.13,(b.r()-.5)*.20,(b.r()-.5)*.14];
+    if(!bank) {
+      const main=peaks[0],count=2+Math.floor(b.r()*2);
+      for(let j=0;j<count;j++)peaks.push({
+        x:main.x+main.width*((j/(count-1)-.5)*.85+(b.r()-.5)*.12),
+        width:main.width*(.40+b.r()*.15),height:main.height*(1.02+b.r()*.05),
+        lean:.75+b.r()*.5,level:2,cap:true,phaseX:main.x,drift:main.drift
+      });
+    }
+    const slopeLean=bank?0:(b.r()<.5?-1:1)*(.18+b.r()*.12);
+    const ridgeX=(peak,v)=>{
+      const f=Math.min(.9999,v)*3,j=Math.floor(f);
+      return peak.x+slopeLean*v+peak.drift[j]+(peak.drift[j+1]-peak.drift[j])*(f-j);
+    };
+    const at=(u,v)=>{
+      u=Math.max(0,Math.min(1,u));v=Math.max(0,Math.min(1,v));
+      const peak=Math.max(...peaks.map(p=>{
+        const center=ridgeX(p,v)+(bank?.035*Math.sin(v*7+p.x*9):0);
+        const width=p.width*(u<center?p.lean:2-p.lean)*(.78+.44*b.n(v*6+phase,p.x*13))*(bank?1:1+v*.65);
+        return p.height*(p.cap?1-v*.28:1)*(1+.08*Math.sin(v*11+(p.phaseX??p.x)*17))*Math.exp(-Math.pow(Math.abs((u-center)/width),bank?2:method==='hemp'?2.2:4)*.65);
+      }));
+      const rough=(b.n(u*19,v*6+phase)-.5)*.085+(b.n(u*53,v*5+phase)-.5)*.016;
+      let elevation=Math.max(0,peak+rough*Math.sin(Math.PI*u))*(bank?1:Math.pow(Math.sin(Math.PI*u),.35));
+      if(terraced)elevation=Math.min(.76,elevation);
+      if(bank) {
+        const taper=Math.pow(Math.sin(Math.PI*u),.35);
+        const foot=.87+.07*b.n(u*9,6)+.045*Math.sin(u*9+phase);
+        const edge=foot-(.10+.06*b.n(u*13,4))*taper;
+        const crown=foot-(foot-(.65-.55*elevation))*taper;
+        const y=v<.68?crown+(edge-crown)*v/.68:edge+(foot-edge)*(v-.68)/.32;
+        return P(w*(u+.025*Math.sin(v*4+phase)*Math.sin(u*Math.PI)),h*y);
+      }
+      return P(w*u,h*(1-elevation*(1-v*.88)));
+    };
+    const ridge=Array.from({length:121},(_,i)=>at(i/120,0));
+    const toe=Array.from({length:21},(_,i)=>{const p=bank?at(1-i/20,1):P(at(1-i/20,1).x,h*1.01);return P(p.x,p.y+h*.012*Math.sin(i*.7));});
+    const c=[b.poly([...ridge,...toe],{fil:C.white,str:null})],washes=[];
+    const stroke=(pts,width,ink,moisture=.2,pressure=[.1,.8,.6,.15,.01],oblique=0)=>c.push(...b.paintingBrushStroke(pts,{width,ink,moisture,pressure,oblique}));
+    const cunStroke=(path,width,ink,moisture,pressure)=>{
+      // A route that exits the terrain stops there; clamping it to the boundary
+      // would turn several unrelated marks into a single vertical cut edge.
+      const runs=[[]];
+      for(const p of path) {
+        if(p.x>1&&p.x<w-1)runs.at(-1).push(p);
+        else if(runs.at(-1).length)runs.push([]);
+      }
+      for(const run of runs) {
+        if(run.length<2)continue;
+        const points=b._densify(run,1);
+        for(let start=0;start<points.length-2;) {
+          const count=20+Math.floor(b.r()*30);
+          stroke(points.slice(start,start+count),width*(.8+b.r()*.4),ink,moisture,pressure);
+          start+=count+2+Math.floor(b.r()*8);
         }
       }
-      if(s.index===1 || s.index===5 || s.index===8) {
-        for(let tree=0;tree<5;tree++) {
-          const base=s.at(.25+tree*.065,.025),height=9+b.r()*17,lean=(b.r()-.5)*5;
-          c.push(...b.paintingBrushStroke([base,P(base.x+lean*.3,base.y-height*.55),P(base.x+lean,base.y-height)],
-            {width:.8+b.r()*.5,ink:.65,moisture:.4,pressure:[1,.7,.4,.01]}));
-          for(let tier=0;tier<7;tier++) {
-            const t=.20+tier*.10,p=P(base.x+lean*t,base.y-height*t),span=(1-t)*(2+b.r()*3);
-            c.push(...b.paintingBrushStroke([P(p.x-span,p.y-1),P(p.x+span,p.y)],
-              {width:1.2+b.r(),ink:.55+b.r()*.25,moisture:.55,pressure:[.2,1,.7,.05]}));
-          }
+    };
+    const curve=(u0,u1,v,shift=0)=>Array.from({length:16},(_,i)=>at(u0+(u1-u0)*i/15,v+shift*Math.sin(i/15*Math.PI)));
+    for(let i=2;i<118;) {
+      const length=5+Math.floor(b.r()*10);
+      if(b.r()>.18)stroke(ridge.slice(i,i+length),bank?.9+b.r()*1.2:1.5+b.r()*1.8,.42+b.r()*.24,.24);
+      i+=length+2+Math.floor(b.r()*7);
+    }
+    if(bank) {
+      for(let pass=0;pass<3;pass++) {
+        const inner=[],outer=[];
+        for(let j=0;j<=24;j++) {
+          const t=j/24,v=.16+pass*.025+t*.75;
+          const fold=summit+light*(.19*v+.018*pass)+.025*Math.sin(v*8+phase);
+          inner.push(at(fold,v));
+          const spread=Math.pow(Math.sin(t*Math.PI),.4);
+          outer.push(at(fold+((light>0?.95:.05)-fold)*spread,v));
         }
+        washes.push({...b.poly([...inner,...outer.reverse()],{fil:C.gray(0,.035),str:null}),
+          wetInk:{bleed:3.3+pass*.7,rim:.025}});
+      }
+    } else for(const peak of peaks.filter(p=>!p.cap))for(let pass=0;pass<2;pass++) {
+      const inner=[],outer=[];
+      for(let j=0;j<=24;j++) {
+        const v=.025+j/24*.88,center=ridgeX(peak,v);
+        const bend=.025*Math.sin(v*11+phase+peak.x*7);
+        inner.push(at(center+light*peak.width*(.12+pass*.14)+bend,v));
+        outer.push(at(center+light*peak.width*(1.05-pass*.08)+bend,v));
+      }
+      washes.push({...b.poly([...inner,...outer.reverse()],{fil:C.gray(0,.13),str:null}),wetInk:{bleed:3.2,rim:.025}});
+    }
+    // Each darker face belongs to a sloping section. Pale washes never cover the illuminated peak.
+    for(let j=0;j<9;j++) {
+      const v=(bank?.20:.03)+j*(bank?.07:.09),side=light>0?1:-1;
+      const root=ridgeX(peaks[0],v)+side*(.055+b.r()*.09),end=Math.max(.03,Math.min(.97,root+side*(.14+b.r()*.18)));
+      const a=curve(root,end,v,.012),z=curve(root,end,v+.055+b.r()*.035,.02);
+      washes.push({...b.poly([...a,...z.reverse()],{fil:C.gray(0,.045+b.r()*.025),str:null}),wetInk:{bleed:2.8,rim:.04}});
+    }
+    const roots=[];
+    for(let trial=0;trial<1300&&roots.length<(bank?80:method==='hemp'?220:230);trial++) {
+      const u=.035+b.r()*.93,v=(bank?.18:0)+Math.pow(b.r(),bank?.5:1)*(bank?.73:.91);
+      const a=at(u-.008,v),z=at(u+.008,v),slope=(z.y-a.y)/(z.x-a.x);
+      const facing=slope*light;
+      const density=facing>0?.80:(bank?.06:.04);
+      if(b.r()>density||Math.abs(u-summit)<.045||roots.some(p=>Math.hypot((p.u-u)*.8,(p.v-v)*1.2)<.028))continue;
+      roots.push({u,v});
+      const direction=slope>0?1:-1,len=(.025+b.r()*.13)*(1-v*.35),end=Math.max(.01,Math.min(.99,u+direction*len));
+      const descent=.025+b.r()*.085,twist=(b.r()-.5)*.015;
+      const points=Array.from({length:16},(_,j)=>{const t=j/15;return at(u+(end-u)*t,v+descent*t+twist*Math.sin(t*Math.PI));});
+      const tone=(.26+b.r()*.40)*(facing>0?1:.42);
+      if(bank) {
+        if(v<.58) {
+          const pressure=b.r()<.5?[.55,1,.8,.6,.3]:[.15,.5,1,.9,.45];
+          stroke(points,2+b.r()*3,tone*.55,.25,pressure);
+          if(b.r()<.50)stroke(curve(u,end,v+.008,.015),12+b.r()*12,.12+b.r()*.16,.22,[.15,.8,1,.35,.08]);
+        } else {
+          const turn=u+direction*len*.7;
+          const path=[at(u,v),at(turn,v+.015),at(end,Math.min(.98,v+.06+b.r()*.10))];
+          c.push(...b.paintingBrushStroke(path,{width:3+b.r()*5,ink:tone*1.1,moisture:.32,pressure:[.2,.4,.9,.7,.3],oblique:light,angular:true}));
+          if(b.r()<.65)stroke([path[1],path[2]],5+b.r()*7,.18+b.r()*.20,.20,[.7,1,.8,.4]);
+        }
+      } else if(method==='axe') {
+        const p=points[0],q=points[5],r=points[11];
+        stroke([p,q,P(r.x+(b.r()-.5)*5,r.y+4+b.r()*7)],2+b.r()*5,tone*.75,.30,[.9,1,.55,.01],light);
+      } else {
+        // Follow a shared downhill field. Adjacent roots diverge around shoulders and
+        // converge into the same folds, rather than repeating shifted contour curves.
+        const trace=[at(u,v)],steps=4+Math.floor(b.r()*12*(1-v*.7));
+        let tu=u,tv=v;
+        for(let k=0;k<steps;k++) {
+          const a=at(tu-.006,tv),z=at(tu+.006,tv),slope=(z.y-a.y)/(z.x-a.x||.01);
+          const drift=.006*Math.tanh(slope*.55)+.004*(b.n(tu*9,tv*7+phase)-.5);
+          tu+=drift;tv+=.012;
+          if(tu<.015||tu>.985||tv>.97)break;
+          trace.push(at(tu,tv));
+        }
+        cunStroke(trace,2.5+b.r()*3.5,tone,.22+b.r()*.15,[.2,.8,1,.6,.1]);
+        if(b.r()<.40) {
+          const dry=b.r()<.55;
+          const tint=b.paintingBrushStroke(trace,{width:10+b.r()*14,ink:.12+b.r()*.12,moisture:dry?.20:.6,pressure:[.1,.7,.9,.3,.05]});
+          for(const poly of tint){if(dry)c.push(poly);else{delete poly.brush;poly.wetInk=true;washes.push(poly);}}
+        }
+      }
+    }
+    if(!bank && method==='hemp') {
+      // A bundle turns over a shoulder, then runs down its shaded face. Its length,
+      // curvature and contact vary independently; it is not a translated contour ring.
+      for(const peak of peaks.filter(p=>p.level<=1)) for(let group=0;group<11;group++) {
+        const v0=.015+group*.072+b.r()*.04,count=3+Math.floor(b.r()*3);
+        const shoulder=peak.x+light*peak.width*(.18+b.r()*.20);
+        for(let k=0;k<count;k++) {
+          const v=v0+k*(.009+b.r()*.016),root=shoulder+light*k*.013;
+          const length=(k===0?.14:.045)+b.r()*(k===0?.15:.12)*(1-v),reach=peak.width*(.08+b.r()*.25);
+          const path=[],outer=[];
+          for(let j=0;j<=24;j++) {
+            const t=j/24,down=v+length*t;
+            const u=root+ridgeX(peak,down)-peak.x+light*(reach*Math.sin(t*Math.PI*.5)+.007*Math.sin(t*8+k));
+            path.push(at(u,down));outer.push(at(u+light*(.012+.025*Math.sin(t*Math.PI)),down));
+          }
+          cunStroke(path,2.2+b.r()*3.8,.40+b.r()*.35,.19+b.r()*.19,[.1,.7,1,.72,.4,.05]);
+          if(k===count-1)washes.push({...b.poly([...path,...outer.reverse()],{fil:C.gray(0,.12),str:null}),wetInk:{bleed:2.2,rim:.04}});
+        }
+      }
+    }
+    if(!bank)for(const peak of peaks.filter(p=>p.level<=1))for(let level=0;level<2;level++) {
+      const v=.12+level*.30+b.r()*.08;
+      const path=[at(ridgeX(peak,v)-light*peak.width*.15,v),at(ridgeX(peak,v+.015)+light*peak.width*.25,v+.015),
+        at(ridgeX(peak,v+.045)+light*peak.width*.55,v+.045),at(ridgeX(peak,v+.12)+light*peak.width*.67,v+.12)];
+      cunStroke(path,3.0+b.r()*1.7,.60,.35,[.1,.4,1,.55,.08]);
+    }
+    // Sparse firm turns break the long slopes into overlapping shoulders, not vertical columns.
+    for(let j=0;j<12;j++) {
+      const v=(bank?.20:.03)+j*(bank?.053:.070),u=.08+b.r()*.78,end=Math.min(.97,u+.04+b.r()*.10);
+      stroke(curve(u,end,v,.012),1+b.r()*1.7,.33+b.r()*.22,.18);
+    }
+    if(bank) {
+      const u0=light>0?.04:summit,u1=light>0?summit:.96;
+      washes.push({...b.poly([...curve(u0,u1,.23,.03),...curve(u0,u1,.63,.02).reverse()],{fil:C.gray(0,.025),str:null}),overprint:true,wetInk:true});
+      const edge=curve(.02,.98,.70),foot=curve(.02,.98,.99);
+      washes.push({...b.poly([...edge,...foot.reverse()],{fil:C.gray(0,.08),str:null}),overprint:true,wetInk:true});
+      for(let j=0;j<9;j++)if(b.r()<.7) {
+        const u=.02+j*.105+b.r()*.025,end=Math.min(.97,u+.045+b.r()*.055);
+        const path=[at(u,.68),at(end,.68),at(Math.min(.98,end+.015),.77+b.r()*.07)];
+        c.push(...b.paintingBrushStroke(path,{width:2+b.r()*3,ink:.4+b.r()*.3,moisture:.32,pressure:[.2,.5,1,.5,.1],oblique:light,angular:true}));
+      }
+    }
+    c.push(...washes);
+    for(let group=0;group<(bank?35:24);group++) {
+      const u=.05+b.r()*.90,v=bank?(group<7?.015:group<20?.655+b.r()*.05:.94+b.r()*.04):(group<12?.015:b.r()*.82),origin=at(u,v);
+      for(let j=0;j<2+Math.floor(b.r()*5);j++) {
+        const x=origin.x+(b.r()-.5)*14,y=origin.y+(b.r()-.5)*5,radius=1+b.r()*(bank?3.7:2.2);
+        c.push(...b.paintingBrushStroke([P(x-radius,y),P(x+radius*.25,y-.4),P(x+radius,y+(b.r()-.5)*1.5)],
+          {width:radius*(.65+b.r()*.35),ink:.35+b.r()*.50,moisture:.38+b.r()*.25,
+            pressure:[.3+b.r()*.3,1,.7,.15+b.r()*.35],angular:true}));
+      }
+    }
+    if(bank) for(let j=0;j<8;j++) {
+      const u=.02+j*.12+b.r()*.04;
+      const p=at(u,.98),q=at(Math.min(.98,u+.04+b.r()*.05),.98);
+      stroke([p,P((p.x+q.x)*.5,(p.y+q.y)*.5-.5),q],1+b.r()*1.3,.30+b.r()*.22,.27,[.15,.9,.6,.05]);
+    }
+    if(bank) {
+      // Foot stones emerge from the same sloping edge; neither a separate horizontal row
+      // nor closed blocks sitting below the bank.
+      for(let j=0;j<3;j++) {
+        const u=.12+j*.29+b.r()*.09,p=at(u,.87),width=28+b.r()*32;
+        c.push(...b.paintingLandscapeStone([P(p.x-width*.5,p.y),P(p.x+width*.5,p.y-2)],p.y+width*(.18+b.r()*.15),1));
       }
     }
     return c;
   },
 
-  paintingLandscapePine() {
-    const b=landscapeBrushEngineV5('pine-structure:'+this.landscapeSeed+':'+this.e.state),c=[];
+  paintingLandscapePine(bare=false,young=null) {
+    const b=landscapeBrushEngineV5('pine-structure:'+this.landscapeSeed+':'+this.inkSeed()),c=[];
+    if(!bare && (young===null?b.r()<.72:young)) {
+      const lean=(b.r()-.5)*20,root=P(66,178);
+      const axis=t=>P(root.x+lean*t+(b.n(t*4,3)-.5)*3*t,root.y-164*t);
+      c.push(...b.paintingBrushStroke([axis(0),axis(.35),axis(.7),axis(1)],{width:2,ink:.82,moisture:.45,pressure:[1,.75,.5,.02]}));
+      const tiers=Array.from({length:90},()=>.16+b.r()*.81).sort((a,z)=>a-z);
+      for(const t of tiers) {
+        const side=b.r()<.5?-1:1;
+        if(b.r()<.10)continue;
+        const p=axis(Math.min(.98,t+(b.r()-.5)*.045)),reach=(4+b.r()*19)*(.25+Math.pow(1-t,.7)*1.1),tip=P(p.x+side*reach,p.y-1-b.r()*3);
+        c.push(...b.paintingBrushStroke([p,P(p.x+side*reach*.6,p.y-1),tip],{width:.6+b.r()*.7,ink:.60,moisture:.38,pressure:[.7,1,.2,.01]}));
+        for(let j=0;j<2+Math.floor(b.r()*3);j++) {
+          const u=.20+b.r()*.75,x=p.x+(tip.x-p.x)*u,y=p.y+(tip.y-p.y)*u;
+          const length=(6+b.r()*5)*(.6+(1-t)*.6);
+          c.push(...b.paintingBrushStroke([P(x-side*2,y),P(x+side*length*.4,y-.6),P(x+side*length,y-.2)],
+            {width:(1.8+b.r()*1.8)*(.65+(1-t)*.5),ink:.80+b.r()*.18,moisture:.50+b.r()*.25,pressure:[.2+b.r()*.5,1,.95,.7,.05+b.r()*.5],angular:true}));
+          if(j===0)c.push(...b.inkBlot(x+side*length*.4,y-.3,.7+b.r(),.3,0,.75));
+        }
+      }
+      for(const side of [-1,1])c.push(...b.paintingBrushStroke([P(66,174),P(66+side*3,178),P(66+side*7,179)],{width:1.2,ink:.65,moisture:.24,pressure:[.6,1,.1]}));
+      for(let i=0;i<4;i++)c.push(...b.inkBlot(66+(b.r()-.5)*12,179+b.r()*2,1+b.r(),.25,0,.45));
+      for(const poly of c){poly.p=poly.p.map(p=>P(66+(p.x-66)*.36,p.y));poly.pts=poly.p;}
+      return c;
+    }
     const direction=b.r()<.5?-1:1,root=P(66,178);
-    const joints=[root,P(66-direction*5,149),P(66+direction*12,117),
-      P(66+direction*4,87),P(66+direction*(23+b.r()*13),57),P(66+direction*17,21)];
+    const lean=direction*(10+b.r()*30);
+    const joints=[root,...[.2,.4,.6,.8,1].map(t=>P(66+lean*t+(b.r()-.5)*14,178-157*t))];
     const spine=b.inkCurve(joints,6),at=t=>spine[Math.min(spine.length-1,Math.floor(t*(spine.length-1)))];
     const crowns=[];
     const branch=(points,width,tone)=>{
@@ -3124,10 +3116,10 @@ Object.assign(ShanShuiEngineV5.prototype, {
         {width:width*.25,ink:.4,moisture:.22,pressure:[.7,1,.6,.5,.02]}));
     };
     // Main limbs rise, bend and fork. Crowns sit at twig ends, not on horizontal shelves.
-    for(let k=0;k<7;k++) {
-      const t=.26+k*.09+b.r()*.035,origin=at(t),side=k%3===0?-direction:direction;
+    for(let k=0;k<(bare?4:7);k++) {
+      const t=.26+k*(bare?.15:.09)+b.r()*.035,origin=at(t),side=k%3===0?-direction:direction;
       const reach=(22+b.r()*24)*(1.2-t*.45),rise=8+b.r()*20;
-      const elbow=P(origin.x+side*reach*.45,origin.y+4-b.r()*10);
+      const elbow=P(origin.x+side*reach*.45,origin.y-6-b.r()*12);
       const tip=P(origin.x+side*reach,origin.y-rise);
       branch([origin,elbow,P(tip.x-side*6,tip.y+5),tip],4.5*(1-t*.65),.8);
       for(let j=0;j<2+(k%2);j++) {
@@ -3138,37 +3130,94 @@ Object.assign(ShanShuiEngineV5.prototype, {
       }
       crowns.push([tip,13+b.r()*12,7+b.r()*5,.85]);
     }
+    if(bare) for(let fork=0;fork<2;fork++) {
+      const origin=at(.28+fork*.22),side=fork===0?-direction:direction;
+      const end=P(origin.x+side*(22+b.r()*26),root.y-150-b.r()*30);
+      const elbow=P(origin.x+side*(7+b.r()*10),origin.y-(origin.y-end.y)*.48);
+      branch([origin,elbow,P(end.x-side*6,end.y+20),end],3.5-fork,.65);
+      for(let twig=0;twig<4;twig++) {
+        const t=.32+twig*.17,p=P(elbow.x+(end.x-elbow.x)*t,elbow.y+(end.y-elbow.y)*t);
+        const tip=P(p.x+side*(8+b.r()*14),p.y-10-b.r()*16);
+        branch([p,P(p.x+side*3,p.y-5),tip],1.1,.58);
+        branch([P((p.x+tip.x)*.5,(p.y+tip.y)*.5),P(tip.x-side*3,tip.y-8)],.55,.43);
+      }
+    }
+    if(bare) for(const [tip] of crowns) {
+      for(const side of [-1,1]) {
+        const end=P(tip.x+side*(5+b.r()*8),tip.y-9-b.r()*15);
+        branch([tip,P(tip.x+side*3,tip.y-6),end],.8,.55);
+        branch([P((tip.x+end.x)*.5,(tip.y+end.y)*.5),P(end.x+side*5,end.y+1)],.55,.48);
+      }
+    }
     // Roots and bark remain attached to the same known planting point.
     const left=[],right=[];
     for(let i=0;i<spine.length;i++) {
-      const t=i/(spine.length-1),p=spine[i],radius=4.5*Math.pow(1-t,.8);
+      const t=i/(spine.length-1),p=spine[i],radius=(bare?7:4.5)*Math.pow(1-t,.8);
       left.push(P(p.x-radius,p.y));right.push(P(p.x+radius,p.y));
     }
     c.push(b.poly([...left,...right.slice().reverse()],{fil:C.white,str:null}));
-    c.push(...b.paintingBrushStroke(left,{width:1.5,ink:.78,moisture:.24}));
-    c.push(...b.paintingBrushStroke(right,{width:2.7,ink:.86,moisture:.26}));
-    c.push(...b.paintingBrushStroke(spine,{width:5,ink:.38,moisture:.5,pressure:[1,.8,.6,.3,0]}));
-    for(let k=0;k<34;k++) {
-      const t=.04+b.r()*.78,p=at(t),radius=3.5*(1-t);
-      c.push(...b.paintingBrushStroke([P(p.x-radius,p.y-2),P(p.x+radius*.5,p.y),P(p.x-radius*.3,p.y+3)],
-        {width:1.0+b.r(),ink:.8,moisture:.26}));
+    const shadow=landscapeBrushEngineV5('light:'+this.landscapeSeed).r()<.5?-1:1;
+    for(const [edge,side] of [[left,-1],[right,1]]) {
+      for(let i=0;i<edge.length-2;) {
+        const count=side===shadow?7+Math.floor(b.r()*7):4+Math.floor(b.r()*6);
+        c.push(...b.paintingBrushStroke(edge.slice(i,i+count),{width:side===shadow?(bare?4.5:3.2):(bare?2.6:1.8),ink:side===shadow?.60:.40,moisture:.28,pressure:[.25,.8,1,.5,.1]}));
+        i+=count+1+Math.floor(b.r()*3);
+      }
     }
-    for(const dx of [-13,-5,12]) branch([P(root.x,root.y-10),P(root.x+dx*.5,root.y),P(root.x+dx,root.y+3)],2.6,.8);
+    c.push(...b.paintingBrushStroke(spine.map((p,i)=>P(p.x+shadow*(1-i/spine.length),p.y)),
+      {width:bare?11:7,ink:.40,moisture:.20,pressure:[1,.8,.6,.3,0],oblique:shadow}));
+    for(let k=0;k<25;k++) {
+      const t=.03+b.r()*.82,side=b.r()<.75?shadow:-shadow,length=.035+b.r()*.12;
+      const points=[];
+      for(let j=0;j<5;j++) {
+        const u=Math.min(.98,t+j/4*length),p=at(u),radius=(bare?5.8:3.5)*(1-u);
+        points.push(P(p.x+side*radius*(.45+b.n(u*12,k)*.35),p.y));
+      }
+      c.push(...b.paintingBrushStroke(points,{width:.7+b.r()*1.1,ink:.35+b.r()*.4,moisture:.20+b.r()*.18,pressure:[.2,.8,1,.7,.1],oblique:side}));
+    }
+    for(const dx of [-13,-5,12]) branch([P(root.x,root.y-10),P(root.x+dx*.5,root.y),P(root.x+dx,root.y+3)],bare?3.5:2.6,.8);
     crowns.push([at(1),24,10,.9]);
-    for(const [p,w,h,tone] of crowns) {
+    for(const [p,w,h,tone] of (bare?[]:crowns)) {
       // Small overlapping needle groups form a broken, dark canopy with open gaps.
-      const groups=5+Math.floor(b.r()*4);
+      const groups=2+Math.floor(b.r()*2);
       for(let g=0;g<groups;g++) {
         const cx=p.x+(b.r()-.5)*w,cy=p.y+(b.r()-.6)*h,tilt=(b.r()-.5)*.8;
-        for(let needle=0;needle<4;needle++) {
-          const angle=-Math.PI+needle/3*Math.PI+tilt,reach=3+b.r()*4;
+        for(let needle=0;needle<2;needle++) {
+          const angle=-Math.PI+needle*Math.PI*.6+tilt,reach=3+b.r()*4;
           const tip=P(cx+Math.cos(angle)*reach,cy+Math.sin(angle)*reach);
           c.push(...b.paintingBrushStroke([P(cx,cy),tip],
             {width:.75+b.r()*.65,ink:tone,moisture:.45,pressure:[.7,1,.2,.01]}));
         }
-        c.push(...b.inkBlot(cx,cy,2.8+b.r()*1.7,.45,tilt,tone*.85));
+        c.push(...b.inkBlot(cx,cy,3+b.r()*2,.12+b.r()*.12,tilt*.2,tone*.9));
         c.push(...b.paintingBrushStroke([P(cx-3,cy-2),P(cx+2,cy-3),P(cx+5,cy-2)],
           {width:2+b.r()*1.5,ink:tone*.7,moisture:.4,pressure:[.1,1,.7,.01]}));
+      }
+    }
+    for(const poly of c){poly.p=poly.p.map(p=>P(root.x+(p.x-root.x)*(bare?.48:.46),root.y+(p.y-root.y)*1.16));poly.pts=poly.p;if(bare&&poly.fil&&!C.isWhite(poly.fil))poly.fil=C.gray(0,poly.fil.a*.70);}
+    return c;
+  },
+
+  paintingLandscapeBamboo() {
+    const c=[],count=5+Math.floor(this.r()*3);
+    const stroke=(path,width,ink,pressure=[.2,.8,1,.3,.02])=>c.push(...this.paintingBrushStroke(path,{width,ink,moisture:.42,pressure}));
+    for(let stem=0;stem<count;stem++) {
+      const x=8+stem*11+(this.r()-.5)*9,height=125+this.r()*60,lean=(this.r()-.5)*30;
+      const tone=stem%3===0?.22:.32+this.r()*.18;
+      const point=t=>P(x+lean*t,190-height*t),joints=6;
+      for(let j=0;j<joints;j++) {
+        stroke([point((j+.02)/joints),point((j+.98)/joints)],.7+this.r()*.5,tone,[.75,1,.8]);
+        const p=point(j/joints);stroke([P(p.x-1.2,p.y),P(p.x+1.4,p.y-.3)],.8,tone+.1);
+      }
+      for(let branch=0;branch<5;branch++) {
+        const t=.35+branch*.13+(this.r()-.5)*.06,root=point(t),side=this.r()<.5?-1:1;
+        const tip=P(root.x+side*(8+this.r()*12),root.y-3-this.r()*7);
+        stroke([root,P((root.x+tip.x)*.5,root.y-3),tip],.45,tone);
+        for(let leaf=0;leaf<3+Math.floor(this.r()*3);leaf++) {
+          const angle=.15+leaf*.36+(this.r()-.5)*.25,length=8+this.r()*7;
+          const start=P(tip.x+(this.r()-.5)*5,tip.y+(this.r()-.5)*3);
+          const end=P(start.x+side*Math.cos(angle)*length,start.y+Math.sin(angle)*length);
+          stroke([start,P((start.x+end.x)*.5,(start.y+end.y)*.5-1),end],1.8+this.r()*1.7,.60+this.r()*.25,[.1,.85,1,.4,.01]);
+        }
       }
     }
     return c;
@@ -4390,6 +4439,45 @@ Object.assign(ShanShuiEngineV5.prototype, {
   },
 
   /// 茅舍: a single low earthen room, an open grass shelter, or a lean-to porch.
+  paintingLandscapeHouse() {
+    const b=landscapeBrushEngineV5('house:'+this.landscapeSeed+':'+this.inkSeed()),c=[];
+    const stroke=(path,width,ink,pressure=[.5,1,.7,.15])=>c.push(...b.paintingBrushStroke(path,{width,ink,moisture:.34,pressure,angular:true}));
+    const jitter=p=>P(p.x+(b.r()-.5)*.6,p.y+(b.r()-.5)*.6);
+    const roof=[P(10,49),P(42,12),P(131,0),P(158,32),P(64,53)];
+    const wall=[P(20,48),P(63,53),P(149,34),P(149,81),P(63,103),P(20,90)];
+    c.push(b.poly(wall,{fil:C.white,str:null}));
+    for(const x of [23,63,95,144]) {
+      const top=x<63?49+(x-23)*.1:53-(x-63)*.23;
+      stroke([P(x,top),P(x+.5,top+46)],1.8,.80);
+    }
+    stroke([P(23,89),P(63,101),P(145,80)],1.4,.65);
+    stroke([P(63,82),P(84,77),P(84,94)],1,.59);
+    stroke([P(99,62),P(128,55),P(128,71),P(99,78),P(99,62)],.8,.52);
+    stroke([P(105,62),P(105,75)],.8,.45);
+    stroke([P(117,59),P(117,73)],.7,.42);
+    stroke([P(25,64),P(43,67),P(59,65)],.85,.52);
+    stroke([P(26,78),P(43,80),P(59,78)],.9,.53);
+    stroke([P(42,57),P(43,79)],1.1,.61);
+    stroke([P(82,61),P(83,94)],2.1,.47);
+    c.push(b.poly(roof,{fil:C.white,str:null}));
+    c.push({...b.poly(roof,{fil:C.gray(0,.06),str:null}),overprint:true,wetInk:true});
+    for(const path of [[roof[0],roof[1],roof[2],roof[3]],[roof[0],roof[4],roof[3]],[roof[1],roof[4]]])stroke(path.map(jitter),1.6,.67);
+    for(let i=0;i<12;i++) {
+      const t=b.r();
+      const top=P(42+89*t,12-12*t),end=P(64+94*t,53-21*t);
+      const u=.08+b.r()*.2;
+      stroke([P(top.x+(end.x-top.x)*u,top.y+(end.y-top.y)*u),P(end.x+(b.r()-.5)*2,end.y-1)],.7+b.r(), .10+b.r()*.12,[.1,.8,.5,.01]);
+    }
+    for(let i=0;i<3;i++) {
+      const t=b.r();stroke([P(42-30*t,12+37*t),P(64-54*t,53-4*t)],.7,.25);
+    }
+    for(const poly of c) {
+      poly.p=poly.p.map(p=>P(p.x+(b.n(p.x*.07,p.y*.04)-.5)*1.8,(p.y>53?53+(p.y-53)*.68:p.y)+(b.n(p.x*.03,p.y*.08+7)-.5)*1.5));
+      poly.pts=poly.p;
+    }
+    return c;
+  },
+
   paintingHut() {
     const form = Math.trunc(this.r() * 65536) % 3;
     const w = form === 2 ? 104.0 : 78.0;
@@ -6228,7 +6316,35 @@ Object.assign(ShanShuiEngineV5.prototype, {
 // ═══════════════════════════════════════════════════════════════════════════
 
 Object.assign(ShanShuiEngineV5.prototype, {
+  paintingLandscapeStream() {
+    const b=landscapeBrushEngineV5('stream-flow:'+this.landscapeSeed);
+    b.landscapeSeed=this.landscapeSeed;
+    const sign=b.r()<.5?-1:1,H=260;
+    const bends=[P(50,0),P(50+sign*(12+b.r()*8),H*.22),P(50-sign*(10+b.r()*7),H*.48),P(50+sign*12,H*.74),P(48,H)];
+    const center=b.inkCurve(bends,12),edge=side=>center.map(p=>P(p.x+side*(2.4+Math.pow(p.y/H,1.3)*8),p.y));
+    const c=[b.poly([...edge(-1),...edge(1).reverse()],{fil:C.white,str:null})];
+    for(const side of [-1,1]) {
+      const bank=edge(side);
+      for(let i=1;i<bank.length-4;i+=5+Math.floor(b.r()*6)) {
+        c.push(...b.paintingBrushStroke(bank.slice(i,i+4),{width:.5+b.r()*.7,ink:.25+b.r()*.2,moisture:.38,pressure:[.1,.8,.6,.01]}));
+      }
+      const ledges=Array.from({length:3},(_,i)=>.13+i*.29+(b.r()-.5)*.16);
+      for(const [row,t] of ledges.entries()) {
+        const p=center[Math.min(center.length-1,Math.floor(t*(center.length-1)))],gap=2.4+Math.pow(t,1.3)*8;
+        const breadth=(12+b.r()*20)*(.45+t*.8),depth=(4+b.r()*6)*(.55+t*.75);
+        const inner=p.x+side*gap,x0=side<0?inner-breadth:inner;
+        const rock=b.paintingLandscapeStone([P(x0,p.y),P(x0+breadth,p.y)],p.y+depth,row%3);
+        for(const poly of rock)if(poly.fil&&!C.isWhite(poly.fil))poly.fil=C(poly.fil.r,poly.fil.g,poly.fil.b,poly.fil.a*(.40+t*.6));
+        c.push(...rock);
+        if(row%3===1)c.push(...b.paintingBrushStroke([P(p.x-gap*.5,p.y+depth),P(p.x+gap*.35,p.y+depth+.5)],
+          {width:.45,ink:.20+t*.15,moisture:.4,pressure:[.1,1,.1]}));
+      }
+    }
+    return c;
+  },
+
   paintingRockyStream() {
+    if(this.landscapeSeed)return this.paintingLandscapeStream();
     const lean = this.r() < 0.5 ? -1.0 : 1.0;
     const bends = [
       P(60, 0),
@@ -8387,7 +8503,7 @@ class PaintingStageV5 {
 
     let left, available;
     const verseSide = verse ? verse.side : 'right';
-    if (this.purpose === 'reading') {
+    if (this.purpose === 'reading' || !verse) {
       left = pad;
       available = width - 2 * pad;
     } else if (verseSide === 'right') {
@@ -9761,7 +9877,9 @@ class PaintingStageV5 {
     const nearElem = this.elements.find(e => e.motif === 'nearBank') || bankElem;
     const bottom = Math.max(bankElem.bounds.y + bankElem.bounds.height, nearElem.bounds.y + nearElem.bounds.height) * this.h;
     const mid = ((gap[0] + gap[1]) * this.w) / 2;
-    const sourceY = this.currentScene === 'retreat'
+    const sourceY = this.engine.landscapeSeed && this.currentScene === 'retreat'
+      ? Math.max(this.art.minY+this.art.height*.50,bankElem.bounds.y*this.h-this.art.height*.20)
+      : this.currentScene === 'retreat'
       ? Math.max(bankElem.bounds.y * this.h, (this.bankFoot(mid - 2, mid + 2) ?? (bankElem.bounds.y * this.h)) - (bottom - bankElem.bounds.y * this.h) * 0.18)
       : bankElem.bounds.y * this.h;
 
@@ -10029,7 +10147,151 @@ class PaintingStageV5 {
     }
   }
 
+  landscapeComposition(scene, options) {
+    this.currentScene=scene;
+    const b=this.engine,a=this.art,W=a.width,H=a.height;
+    const r=landscapeBrushEngineV5('dragon-vein:'+this.seed),phase=(r.r()-.5)*1.2,flowSign=r.r()<.5?1:-1;
+    const water=t=>P(a.minX+W*(.5+flowSign*(.18+.12*Math.sin(t*Math.PI*2+phase))),a.minY+H*(.55+.41*t));
+    const breadth=t=>W*(.004+.11*Math.pow(t,1.6))*Math.min(1,t/.08);
+    const chosen=new Set(options.motifs||defaultMotifsForScene(scene));
+    const bounds=raw=>{
+      let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+      for(const poly of raw)for(const p of poly.p){x0=Math.min(x0,p.x);y0=Math.min(y0,p.y);x1=Math.max(x1,p.x);y1=Math.max(y1,p.y);}
+      return new CRect(x0,y0,x1-x0,y1-y0);
+    };
+    const add=(raw,box,motif,tone=1,fade=false)=>{
+      let object;
+      if(motif==='groundBank'||['guestMountain','mainMountain','middleMountain'].includes(motif)) {
+        const rb=bounds(raw),sx=box.width/rb.width,sy=box.height/rb.height;
+        object={bounds:box,canv:raw.map(poly=>{const q=clonePoly(poly);q.p=q.pts=q.p.map(p=>P(box.minX+(p.x-rb.minX)*sx,box.minY+(p.y-rb.minY)*sy));q.wid*=Math.sqrt(sx*sy);return q;})};
+      } else object=this.fitted(raw,box);
+      if(!object)return null;
+      const canv=object.canv.map(poly=>{const p=clonePoly(poly);if(p.fil&&!C.isWhite(p.fil))p.fil=C(p.fil.r,p.fil.g,p.fil.b,Math.min(.96,p.fil.a*tone));return p;});
+      const part=motif==='farMountain'
+        ? new Part(canv,{depth:object.bounds.height,blur:.6,peak:.7,floorY:object.bounds.maxY,floorDepth:object.bounds.height*.9})
+        : new Part(canv,{near:true,...(fade?{fade:{top:object.bounds.maxY-object.bounds.height*.22,bottom:object.bounds.maxY,seed:b.inkSeed()}}:{})});
+      part.detail={motif,bounds:object.bounds};this.parts.push(part);
+      const z=object.bounds;this.elements.push({motif,bounds:{x:z.minX/this.w,y:z.minY/this.h,width:z.width/this.w,height:z.height/this.h}});
+      if(motif.includes('Mountain'))b.noted('ridge',canv);
+      if(['hut','templeGate'].includes(motif))b.noted({type:'building',role:motif},canv);
+      if(motif==='bamboo')b.noted({type:'tree',role:'bamboo'},canv);
+      return {...object,canv};
+    };
+    add(b.paintingDistant(1),new CRect(a.minX+W*.05,a.minY+H*.02,W*.9,H*.25),'farMountain',.40,true);
+    const guestBox=new CRect(a.minX+W*.43,a.minY+H*(.06+r.r()*.04),W*.56,H*.40);
+    add(b.paintingMountain('folded',false,guestBox.height/guestBox.width),guestBox,'guestMountain',.45,true);
+    const mainBox=new CRect(a.minX,a.minY+H*.025,W*(.90+r.r()*.05),H*.48);
+    add(b.paintingMountain('leaning',false,mainBox.height/mainBox.width),mainBox,'mainMountain',.68,true);
+    const middleBox=new CRect(a.minX+W*(flowSign>0?.06:.42),a.minY+H*.26,W*.58,H*.42);
+    add(b.paintingMountain('folded',false,middleBox.height/middleBox.width),middleBox,'middleMountain',.72,true);
+    // The same winding watercourse determines the open valley and the ends of both banks.
+    const left=[],right=[];
+    for(let i=0;i<=60;i++){const t=i/60,p=water(t),width=breadth(t);left.push(P(p.x-width,p.y));right.push(P(p.x+width,p.y));}
+    const channel=[b.poly([...left,...right.reverse()],{fil:C.white,str:null})];
+    this.parts.push(Part.near(channel));b.noted('water',channel);
+    const channelBounds=bounds(channel);
+    this.elements.push({motif:'stream',bounds:{x:channelBounds.minX/this.w,y:channelBounds.minY/this.h,width:channelBounds.width/this.w,height:channelBounds.height/this.h}});
+    this.streamInlet=water(0);
+    const banks=[];
+    for(const [t,side,grove] of [[.60+r.r()*.08,flowSign,true],[.94+r.r()*.04,-flowSign,true]]) {
+      const p=water(t),edge=p.x+side*breadth(t);
+      const x0=side<0?a.minX-(a.minX<this.w*.1?W*.12:0):edge;
+      const x1=side<0?edge:a.maxX+(a.maxX>this.w*.9?W*.12:0);
+      const depth=Math.min(H*(.035+.22*Math.pow(t,1.6)),(x1-x0)*.65);
+      const bank=add(b.paintingLandscapeBank('cliff',side),new CRect(x0,p.y-depth,x1-x0,depth),'groundBank',.45+t*.95);
+      if(bank)banks.push({...bank,t,side,grove});
+    }
+    const landY=(bank,x)=>{
+      let top=Infinity;
+      for(const poly of bank.canv)if(C.isWhite(poly.fil))for(let i=0;i<poly.p.length;i++) {
+        const a=poly.p[i],z=poly.p[(i+1)%poly.p.length];
+        if((a.x<=x&&z.x>=x)||(z.x<=x&&a.x>=x)) {
+          const t=(x-a.x)/(z.x-a.x||.00001);top=Math.min(top,a.y+(z.y-a.y)*t);
+        }
+      }
+      return Number.isFinite(top)?top:bank.bounds.minY+bank.bounds.height*.6;
+    };
+    for(const side of [-1,1]) {
+      const lead=side===-flowSign,end=lead?1:.78;
+      for(let t=.025;t<end;) {
+        const length=.018+r.r()*.035,path=[];
+        for(let i=0;i<8;i++) {
+          const u=Math.min(end,t+i/7*length),p=water(u);
+          path.push(P(p.x+side*breadth(u)+(r.r()-.5)*1.1,p.y));
+        }
+        if(r.r()<.68)this.parts.push(Part.near(b.paintingBrushStroke(path,{width:.8+r.r()*1.2,ink:(t<.3?.14:.26)+r.r()*(t<.3?.12:.27),moisture:.25,pressure:[.1,.5,.9,.65,.05]})));
+        if(lead && r.r()<.45) {
+          const land=path.slice().reverse().map(p=>P(p.x+side*(2+r.r()*4),p.y));
+          const wash={...b.poly([...path,...land],{fil:C.gray(0,.045),str:null}),overprint:true,wetInk:true};
+          this.parts.push(Part.near([wash]));
+        }
+        t+=length+.008+r.r()*.025;
+      }
+    }
+    this.terrainLayerEnd=this.parts.length;
+    for(let index=0;index<banks.length;index++) {
+      const bank=banks[index];if(!bank.grove)continue;
+      const x0=Math.max(a.minX,bank.bounds.minX),x1=Math.min(a.maxX,bank.bounds.maxX);
+      const z=new CRect(x0,bank.bounds.minY,x1-x0,bank.bounds.height),scale=.18+.82*Math.pow(bank.t,1.5);
+      const layout=landscapeBrushEngineV5('grove-layout:'+this.seed+':'+index);
+      const houseEngine=landscapeBrushEngineV5('houses:'+this.seed+':'+index);houseEngine.landscapeSeed=this.seed;
+      const treeCount=chosen.has('pine')?6:0;
+      if(bank.t>.5 && chosen.has('bamboo')) {
+        for(let clump=0;clump<5;clump++) {
+          const width=z.width*.25,x=z.minX+z.width*(.22+clump*.12),y=landY(bank,x+width*.5)-H*.13*scale;
+          const bamboo=landscapeBrushEngineV5('bamboo:'+this.seed+':'+index+':'+clump).paintingLandscapeBamboo();
+          for(const poly of bamboo){poly.p=poly.p.map(p=>P(p.x*.65,p.y));poly.pts=poly.p;}
+          const height=H*(.06+bank.t*.09);
+          add(bamboo,new CRect(x,y-height,width,height),'bamboo',.55+bank.t*.35);
+        }
+      }
+      let rearTreeLayer=this.parts.length;
+      if(bank.t>.85) {
+        const width=z.width*.42,height=width*.9,x=z.minX+z.width*.36,y=landY(bank,x+width*.35)+1;
+        const motif=chosen.has('templeGate')?'templeGate':'hut';
+        if(chosen.has(motif)) {
+          let architecture;
+          if(motif==='hut') {
+            const rear=houseEngine.paintingLandscapeHouse().map(poly=>{const q=clonePoly(poly);q.p=q.pts=q.p.map(p=>P(p.x*.68+57,p.y*.68-32));q.wid*=.68;return q;});
+            architecture=[...rear,...houseEngine.paintingLandscapeHouse()];
+          } else architecture=houseEngine.paintingAsset(motif);
+          add(architecture,new CRect(x,y-height,width,height),motif,1.15);
+        }
+      }
+      for(let tree=0;tree<treeCount;tree++) {
+        const fraction=[.15,.29,.82,.70,.92,.20][tree]+(layout.r()-.5)*.05,x=z.minX+z.width*fraction;
+        const behindHouse=bank.t>.5&&tree>=2;
+        const y=landY(bank,x)+1+(bank.t>.5?H*scale*(behindHouse?-.14:.08):0);
+        const treeEngine=landscapeBrushEngineV5('tree:'+this.seed+':'+index+':'+tree);treeEngine.landscapeSeed=this.seed;
+        const raw=treeEngine.paintingLandscapePine(tree===1 && bank.t>.5,tree>=2),rawBounds=bounds(raw),height=H*(tree===1?.67:tree===0?.53:tree===2?.34+layout.r()*.03:tree===3?.25+layout.r()*.05:tree===4?.20+layout.r()*.04:.23+layout.r()*.07)*scale;
+        const s=Math.min(height/rawBounds.height,z.width*(tree===1?.38:.27)/rawBounds.width);
+        const placed=raw.map(poly=>{const q=clonePoly(poly);q.p=q.pts=q.p.map(p=>P(x+(p.x-66)*s,y+(p.y-178)*s));q.wid*=s;if(q.fil&&!C.isWhite(q.fil))q.fil=C(q.fil.r,q.fil.g,q.fil.b,q.fil.a*(.32+.68*bank.t));return q;});
+        const box=bounds(placed);
+        if(box.maxX<a.minX||box.minX>a.maxX||box.intersects(this.verse))continue;
+        const part=Part.near(placed);part.detail={motif:'pine',bounds:box};
+        if(behindHouse)this.parts.splice(rearTreeLayer++,0,part);else this.parts.push(part);
+        b.noted({type:'tree',role:tree===1?'bareTree':'pine'},placed);
+        this.elements.push({motif:'pine',bounds:{x:box.minX/this.w,y:box.minY/this.h,width:box.width/this.w,height:box.height/this.h}});
+      }
+
+    }
+    for(let i=0;i<8;i++) {
+      const t=.49+i*.065,p=water(t),width=breadth(t);
+      const marks=b.paintingBrushStroke([P(p.x-width*.55,p.y),P(p.x+width*.35,p.y+.35)],
+        {width:.35+t*.3,ink:.12+t*.12,moisture:.38,pressure:[.1,.6,.3,.01]});
+      this.parts.push(Part.near(marks));
+    }
+    const moon=chosen.has('moon')?'moon':chosen.has('sunset')?'sunset':null;
+    if(moon){const size=W*.10,object=add(b.paintingAsset(moon),new CRect(a.minX+W*.76,a.minY+H*.04,size,size),moon,.65);if(object)this.celestialLayers.push({layer:this.parts.length-1,motif:moon});}
+  }
+
   compose(scene, options = {}) {
+    const landscapeMotifs=new Set(['pine','bamboo','hut','stream','moon','sunset','templeGate']);
+    if(this.engine.landscapeSeed && this.purpose!=='reading' && ['retreat','temple'].includes(scene)
+      && !(options.motifs?.includes('hut')&&options.motifs.includes('templeGate'))
+      && (options.motifs||defaultMotifsForScene(scene)).every(motif=>landscapeMotifs.has(motif))) {
+      this.landscapeComposition(scene,options);return;
+    }
     this.currentScene = scene;
     const chosen = new Set(options.motifs || defaultMotifsForScene(scene));
     this.historicGroundNeeded = chosen.has('ruins') || chosen.has('cityGate');
@@ -10090,7 +10352,12 @@ class PaintingStageV5 {
 
     switch (scene) {
       case 'retreat':
-        include('pine', this.leadTreeSlot());
+        if(this.engine.landscapeSeed && chosen.has('pine')) {
+          this.add('pine',this.slot(.14,.38,.20,.43),true);
+          this.add('pine',this.slot(.48,.44,.16,.34),true);
+        }
+        if(this.engine.landscapeSeed && chosen.has('pine')) this.add('pine',this.leadTreeSlot(),true);
+        else include('pine', this.leadTreeSlot());
         include('bamboo', this.slot(0.70, 0.55, 0.28, 0.29));
         if (chosen.has('hut')) this.placeAtFoot('hut', 0.72, 0.10, 1.7);
         if (chosen.has('pavilion')) {
@@ -11004,15 +11271,8 @@ function generatePoetryPaintingV5(req, palette) {
     }
   }
 
-  // Apply the existing paper-edge raster treatment only to the new layered rock washes.
-  if(stage.engine.landscapeSeed) for(const layer of layers) {
-    if(layer.shapes.some(shape=>shape.overprint)) {
-      layer.wash={bleed:.12,rim:.08,grain:.45,fullResolution:true};
-      layer.tooth=.20;
-    }
-  }
-
   const paper = stage.engine.backgroundPaper();
+  if(req.elementTreatment==='landscape-v3')paper.seed=landscapeBrushEngineV5('paper:'+String(seed)).inkSeed();
   paper.tint = palette.ink;
   paper.strength *= 0.45;
 

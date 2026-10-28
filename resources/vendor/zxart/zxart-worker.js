@@ -44,8 +44,11 @@ function sameColor(a, b) {
 
 /** Prepared.sameStyle: 填色、线宽相同, 有线宽时描色也相同。 */
 // Separate wash passes accumulate ink; merging their paths would erase that accumulation.
+var paperPatternTile=null,paperPatternTexel=1,inkPaperSeed=0;
+
 function sameStyle(a, b) {
-  if (a.overprint || b.overprint) return false;
+  if(Boolean(a.paperMask)!==Boolean(b.paperMask))return false;
+  if (a.overprint || b.overprint || a.brush || b.brush || a.wetInk || b.wetInk) return false;
   return sameColor(a.fill, b.fill) && a.lineWidth === b.lineWidth && (a.lineWidth > 0 ? sameColor(a.stroke, b.stroke) : true);
 }
 
@@ -63,6 +66,16 @@ function drawShapes(ctx, shapes) {
 
 function drawRun(ctx, shapes, from, to) {
   var first = shapes[from];
+  if(first.brush) { ZXArtInk.texturedShape(ctx,first,inkPaperSeed); return; }
+  if(first.wetInk && first.fill) {
+    const profile=typeof first.wetInk==='object'?first.wetInk:{bleed:1.7,rim:.06};
+    const t=ctx.getTransform(),shape={...first,overprint:false,wetInk:false};
+    ZXArtInk.draw(ctx,{shapes:[shape],opacity:ctx.globalAlpha,blend:ctx.globalCompositeOperation,ink:{
+      seed:ZXArtCompose.Brush.hash(Math.round(first.points[0]*97),Math.round(first.points[1]*131)),
+      color:first.fill.slice(0,3),bleed:profile.bleed,rim:profile.rim
+    }},{paper:{seed:inkPaperSeed}},ctx.canvas.width,ctx.canvas.height,Math.hypot(t.a,t.b),t.e,t.f,drawShapes);
+    return;
+  }
   var stroke = first.lineWidth > 0 ? first.stroke : null;
   if (!first.fill && !stroke) return;
   var any = false;
@@ -77,8 +90,12 @@ function drawRun(ctx, shapes, from, to) {
   }
   if (!any) return;
   if (first.fill) {
-    ctx.fillStyle = css(first.fill);
-    ctx.fill();
+    if(first.paperMask && paperPatternTile) {
+      ctx.save();
+      const pattern=ctx.createPattern(paperPatternTile,'repeat');
+      pattern.setTransform(new DOMMatrix([paperPatternTexel,0,0,paperPatternTexel,0,0]));
+      ctx.fillStyle=pattern;ctx.globalAlpha*=first.fill[3];ctx.imageSmoothingEnabled=false;ctx.fill();ctx.restore();
+    } else {ctx.fillStyle = css(first.fill);ctx.fill();}
   }
   if (stroke) {
     ctx.strokeStyle = css(stroke);
@@ -118,6 +135,7 @@ function bounds(shapes) {
 
 /** PaperGround: 底色 + 纸纹逐像素 (纹素 = floor((x + 0.5 − ox) / texelPx) mod 512)。 */
 function fillGround(ctx, drawing, pw, ph, s, ox, oy) {
+  inkPaperSeed=(drawing.paper?.seed||0)>>>0;
   var bg = drawing.background;
   var img = ctx.createImageData(pw, ph);
   var px = img.data;
@@ -138,6 +156,13 @@ function fillGround(ctx, drawing, pw, ph, s, ox, oy) {
       tile[i * 3 + 1] = Math.round(pg + (tg - pg) * t);
       tile[i * 3 + 2] = Math.round(pb + (tb - pb) * t);
     }
+  }
+  paperPatternTile=null;paperPatternTexel=paper?paper.texel:1;
+  if(tile) {
+    paperPatternTile=new OffscreenCanvas(side,side);
+    const pc=paperPatternTile.getContext('2d'),pi=pc.createImageData(side,side);
+    for(let i=0;i<side*side;i++){pi.data[i*4]=tile[i*3];pi.data[i*4+1]=tile[i*3+1];pi.data[i*4+2]=tile[i*3+2];pi.data[i*4+3]=255;}
+    pc.putImageData(pi,0,0);
   }
   var b0 = Math.round(bg[0] * 255),
     b1 = Math.round(bg[1] * 255),

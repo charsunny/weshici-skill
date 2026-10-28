@@ -1,11 +1,15 @@
 /* Deterministic raster ink study: bristle contact for dry marks, paper-guided diffusion for washes.
  * Optical density is accumulated before converting to alpha. This is a visual approximation,
- * not a fluid solver. Only layers with an explicit `ink` descriptor use this path.
+ * not a fluid solver. Production brush and wet-ink primitives share the same paper relief.
  */
 (function (global) {
   'use strict';
   function random(seed, index) {
     return ZXArtCompose.Brush.random(seed >>> 0, index >>> 0);
+  }
+  function paperHeight(x,y,seed) {
+    const noise=ZXArtCompose.WashNoise;
+    return .65*noise.value(x*2.1+y*.37,y*2.1-x*.37,seed^0xA511E9B3)+.35*noise.value(x*.31,y*2.8,seed^0x63D83595);
   }
   function draw(ctx, layer, drawing, pw, ph, scale, ox, oy, drawShapes) {
     var spec=layer.ink, strokes=layer.brushStrokes||[], shapes=layer.shapes||[];
@@ -23,7 +27,7 @@
     for(var y=0;y<h;y++)for(var x=0;x<w;x++) {
       var lx=(x+x0-ox)/scale,ly=(y+y0-oy)/scale;
       // Fine fibre relief plus broader paper undulations; used only where ink actually lands.
-      paper[y*w+x]=.65*noise.value(lx*2.1+ly*.37,ly*2.1-lx*.37,paperSeed^0xA511E9B3)+.35*noise.value(lx*.31,ly*2.8,paperSeed^0x63D83595);
+      paper[y*w+x]=paperHeight(lx,ly,paperSeed);
     }
     function stamp(cx,cy,r,amount,contact) {
       var left=Math.max(0,Math.floor(cx-r)),right=Math.min(w-1,Math.ceil(cx+r));
@@ -94,10 +98,20 @@
       var source=new OffscreenCanvas(w,h),sc=source.getContext('2d',{willReadFrequently:true});
       sc.setTransform(scale,0,0,scale,ox-x0,oy-y0);drawShapes(sc,shapes);
       var pixels=sc.getImageData(0,0,w,h).data;
+      function sample(x,y){return x<0||y<0||x>=w||y>=h?0:pixels[(y*w+x)*4+3]/255;}
       for(var i=0;i<n;i++) {
         var lx=(i%w+x0-ox)/scale,ly=(Math.floor(i/w)+y0-oy)/scale;
-        var loading=.65+.6*noise.value(lx*.08,ly*.08,seed^0xB5297A4D);
-        density[i]+=-Math.log(Math.max(.002,1-pixels[i*4+3]/255))*loading;
+        var loading=.65+.6*noise.value(lx*.055,ly*.065,seed^0xB5297A4D);
+        var alpha=pixels[i*4+3]/255;
+        if(spec.bleed>0) {
+          // A sub-texel displacement breaks a wet polygon's mechanically clean boundary.
+          // It belongs to the paper, so overlapping washes encounter the same relief.
+          var px=i%w+(noise.value(lx*.65,ly*.65,paperSeed^0x171A)-.5)*1.3*scale;
+          var py=Math.floor(i/w)+(noise.value(lx*.65,ly*.65,paperSeed^0x1A71)-.5)*1.3*scale;
+          var ix=Math.floor(px),iy=Math.floor(py),fx=px-ix,fy=py-iy;
+          alpha=(sample(ix,iy)*(1-fx)+sample(ix+1,iy)*fx)*(1-fy)+(sample(ix,iy+1)*(1-fx)+sample(ix+1,iy+1)*fx)*fy;
+        }
+        density[i]+=-Math.log(Math.max(.002,1-alpha))*loading;
       }
       source.width=source.height=1;
     }
@@ -122,11 +136,76 @@
     var color=spec.color||[.10,.12,.10];
     for(var i=0;i<n;i++) {
       image.data[i*4]=Math.round(color[0]*255);image.data[i*4+1]=Math.round(color[1]*255);image.data[i*4+2]=Math.round(color[2]*255);
-      image.data[i*4+3]=Math.round((1-Math.exp(-density[i]))*255);
+      const contact=shapes.length?.75+paper[i]*.5:1;
+      image.data[i*4+3]=Math.round((1-Math.exp(-density[i]*contact))*255);
     }
     outctx.putImageData(image,0,0);ctx.save();ctx.setTransform(1,0,0,1,0,0);
     ctx.globalCompositeOperation=layer.blend==='multiply'?'multiply':'source-over';ctx.globalAlpha=layer.opacity==null?1:layer.opacity;
     ctx.drawImage(output,x0,y0);ctx.restore();output.width=output.height=1;
   }
-  global.ZXArtInk={version:'bristle-study-1',draw:draw};
+  // Ink contact in local brush coordinates. The outline carries pressure; the raster carries dry gaps.
+  function texturedShape(ctx,shape,paperSeed=0) {
+    const transform=ctx.getTransform(),p=shape.points,n=p.length/4;
+    if(n<2||!shape.fill)return;
+    const scale=Math.hypot(transform.a,transform.b),seed=shape.brush.seed>>>0;
+    const points=[];let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+    for(let i=0;i<p.length;i+=2) {
+      const x=transform.a*p[i]+transform.c*p[i+1]+transform.e,y=transform.b*p[i]+transform.d*p[i+1]+transform.f;
+      points.push([x,y]);x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);
+    }
+    x0=Math.floor(x0)-1;y0=Math.floor(y0)-1;x1=Math.ceil(x1)+1;y1=Math.ceil(y1)+1;
+    const width=x1-x0,height=y1-y0;if(width<1||height<1)return;
+    const canvas=new OffscreenCanvas(width,height),cc=canvas.getContext('2d',{willReadFrequently:true});
+    cc.beginPath();points.forEach(([x,y],i)=>i?cc.lineTo(x-x0,y-y0):cc.moveTo(x-x0,y-y0));cc.closePath();cc.fillStyle='white';cc.fill();
+    const image=cc.getImageData(0,0,width,height),line=[];
+    const stride=Math.max(1,Math.floor(n/10));
+    const sample=i=>{const a=points[i],b=points[points.length-1-i];return [(a[0]+b[0])*.5,(a[1]+b[1])*.5,Math.hypot(a[0]-b[0],a[1]-b[1])*.5];};
+    for(let i=0;i<n;i+=stride)line.push(sample(i));
+    if((n-1)%stride)line.push(sample(n-1));
+    const segments=[];let distance=0;
+    for(let i=1;i<line.length;i++) {
+      const a=line[i-1],b=line[i],dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy);
+      if(len>0)segments.push({x:a[0],y:a[1],dx:dx/len,dy:dy/len,len,start:distance,r0:a[2],r1:b[2]});distance+=len;
+    }
+    for(let y=0;y<height;y++)for(let x=0;x<width;x++) {
+      const i=(y*width+x)*4;if(!image.data[i+3])continue;
+      let best=Infinity,along=0,across=0,radius=1;
+      for(const s of segments) {
+        const dx=x+x0+.5-s.x,dy=y+y0+.5-s.y,t=Math.max(0,Math.min(s.len,dx*s.dx+dy*s.dy));
+        const d=(dx-t*s.dx)**2+(dy-t*s.dy)**2;
+        if(d<best){best=d;along=(s.start+t)/scale;across=(dy*s.dx-dx*s.dy)/scale;radius=(s.r0+(s.r1-s.r0)*t/s.len)/scale;}
+      }
+      const fibre=ZXArtCompose.WashNoise.value(along*.23,across*2.4+.35*Math.sin(along*.7),seed);
+      const load=ZXArtCompose.WashNoise.value(along*.045,across*.35,seed^0x91E10DA5);
+      const progress=distance>0?Math.min(1,along*scale/distance):0;
+      const dry=Math.max(.05,Math.min(.95,shape.brush.dry-.10+progress*.25));
+      const tooth=paperHeight((x+x0-transform.e)/scale,(y+y0-transform.f)/scale,paperSeed);
+      const keep=Math.min(1.25,Math.max(0,(fibre*.42+load*.32+tooth*.26-(.12+dry*.24))*(3.2+dry*1.5)));
+      for(let k=0;k<3;k++)image.data[i+k]=Math.round(shape.fill[k]*255);
+      const side=Math.max(-1,Math.min(1,across/Math.max(.05,radius)));
+      const loading=1+(shape.brush.oblique||0)*side*.5;
+      const reserve=ZXArtCompose.WashNoise.value(along*.075,across*.16,seed^0xC13FA9A9);
+      const depletion=Math.max(0,Math.min(1,(shape.brush.dry-.65)*6));
+      const contact=1-depletion+depletion*Math.max(0,Math.min(1,(reserve-(.12+.32*dry))*5));
+      const rough=Math.max(0,Math.min(1,(radius-.5)*.9))*Math.max(0,Math.min(1,(dry-.45)*3));
+      const tuft=ZXArtCompose.WashNoise.value(along*.12,across*.65,seed^0x9E3779B9);
+      const fragment=Math.max(0,Math.min(1,(tuft-(.28+dry*.18))*7));
+      const ink=shape.brush.ink??shape.fill[3],opacity=ink>0?shape.fill[3]/ink:0;
+      const pigment=(ink*(1-rough)+Math.pow(ink,.55)*rough)*opacity;
+      const clump=ZXArtCompose.WashNoise.value(along*.60,across*1.15,seed^0xB5297A4D);
+      const broken=Math.max(0,Math.min(1,(clump*.45+fibre*.20+tooth*.35-.42)*12));
+      const surface=(1-rough)*keep*contact+rough*fragment*broken;
+      image.data[i+3]*=pigment*loading*surface*(1-progress*.35*dry);
+    }
+    const alpha=new Uint8Array(width*height);
+    for(let i=0;i<alpha.length;i++)alpha[i]=image.data[i*4+3];
+    const rate=.06+.08*(1-shape.brush.dry);
+    for(let y=1;y<height-1;y++)for(let x=1;x<width-1;x++) {
+      const i=y*width+x;
+      image.data[i*4+3]=alpha[i]+rate*(alpha[i-1]+alpha[i+1]+alpha[i-width]+alpha[i+width]-4*alpha[i]);
+      for(let k=0;k<3;k++)image.data[i*4+k]=Math.round(shape.fill[k]*255);
+    }
+    cc.putImageData(image,0,0);ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(canvas,x0,y0);ctx.restore();canvas.width=canvas.height=1;
+  }
+  global.ZXArtInk={version:'terrain-ink-7',draw:draw,texturedShape:texturedShape};
 })(typeof self!=='undefined'?self:globalThis);

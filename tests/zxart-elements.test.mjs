@@ -105,6 +105,7 @@ test('structural landscape is seeded, preserves the verse and required subjects,
   assert.ok(next.layers.some(layer=>layer.shapes.some(shape=>shape.overprint)), 'wash compositing survives fitting and export');
   assert.ok(legacy.layers.every(layer=>layer.shapes.every(shape=>!shape.overprint)), 'legacy batching is unchanged');
   assert.ok(['hemp','axe'].includes(next.brushwork.technique));
+  assert.ok(next.anchors.trees.length>0 && next.anchors.buildings.length>0,'anchors follow the placed trees and houses');
   for (const motif of ['mainMountain','pine','hut']) assert.ok(next.sceneElements.some(e=>e.motif===motif),motif);
   for (const layer of next.layers) for (const shape of layer.shapes) {
     assert.ok([...shape.points].every(Number.isFinite));
@@ -115,13 +116,11 @@ test('structural landscape is seeded, preserves the verse and required subjects,
   assert.equal(json(legacy),json(api.generate(request)),'new brush state cannot leak into older treatments');
 });
 
-test('brush vocabulary leaves dry gaps and supports distinct pressure, side loading and cun families', () => {
+test('brush vocabulary supports distinct pressure, side loading and cun families', () => {
   const api=engine(), path=[{x:0,y:0},{x:25,y:2},{x:50,y:0}];
   const dry=new api.Engine('brush-proof').paintingBrushStroke(path,{width:12,moisture:.1});
   const wet=new api.Engine('brush-proof').paintingBrushStroke(path,{width:12,moisture:.7});
-  const area=p=>Math.abs(p.p.reduce((sum,q,i)=>{const r=p.p[(i+1)%p.p.length];return sum+q.x*r.y-r.x*q.y;},0)/2);
-  assert.ok(dry.reduce((sum,p)=>sum+area(p),0)<wet.reduce((sum,p)=>sum+area(p),0)*.6,
-    'dry hair ribbons cover less paper than wet ink, without painting white over existing strokes');
+  // Dry contact is verified on actual Worker pixels in zxart-terrain-ink.browser.mjs.
   assert.ok(dry.every(p=>p.fil.r===0),'exposed paper is transparent');
   const mountains=[];
   for(const technique of ['hemp','axe']) {
@@ -203,4 +202,24 @@ test('negative side loading moves the dark edge to the opposite side of the brus
     },0);
   assert.ok(weight(1)>0);
   assert.ok(weight(-1)<0);
+});
+
+test('new landscape composition preserves temple subjects through the established scene layout',()=>{
+  const api=engine();
+  const drawing=api.generate({generator:'shanshui@5',seed:'landscape-temple-20261028',variant:'temple',
+    width:720,height:1080,palette,params:{...params,element_treatment:'landscape-v3',
+      scene:{motifs:['templeGate','pagoda','bamboo','path'],purpose:'inscription-v1',composition:'corner'}}});
+  for(const motif of ['templeGate','pagoda','bamboo','path'])
+    assert.ok(drawing.sceneElements.some(e=>e.motif===motif),motif+' must not disappear in the new composition');
+});
+
+test('a requested temple gate is not replaced by a hut on either bank',()=>{
+  const api=engine();
+  for(const seed of ['study-山居秋暝','ridge-01']) {
+    const drawing=api.generate({generator:'shanshui@5',seed,variant:'temple',
+      width:720,height:1080,palette,params:{...params,element_treatment:'landscape-v3',
+        scene:{motifs:['templeGate','pine','stream'],purpose:'inscription-v1',composition:'corner'}}});
+    assert.ok(drawing.sceneElements.some(e=>e.motif==='templeGate'));
+    assert.ok(!drawing.sceneElements.some(e=>e.motif==='hut'));
+  }
 });

@@ -54,7 +54,7 @@ metadata:
 - 阅读模式必须传原诗全文；题诗可显式摘句。超出阅读区时报错，不用删句凑版。
 - 保存作品用导出的 `recipes.json` 重放，不重新按当前主题、日期或默认值解析。资源版本不一致时明确失败。
 - `artPalette` 只控制绘画墨色，不等于原生青绿、金碧或没骨笔法。App 迁移仍等待用户统一视觉验收。
-- 山势、山石转折与皴染验证采用显式 `landscape-v3`；先读 [山水笔法规则](references/LANDSCAPE-BRUSHWORK.md)，先看单笔与双皴法证明页，再看多种子整幅。遵循技法约束内的种子变化，不把随机线条、换色或测试通过当作传统笔墨已经成立。
+- 山势、山石转折与皴染验证采用显式 `landscape-v3`；先读 [山水笔法规则](references/LANDSCAPE-BRUSHWORK.md)，运行 `scripts/landscape-painting-study.mjs` 看实际 Worker 的单石、坡岸、多种子整幅及原画局部对照，再检查浅深主题与全文排版。遵循技法约束内的种子变化，不把随机线条、换色或测试通过当作传统笔墨已经成立。
 
 ## Wish iOS 画屏对齐入口
 
