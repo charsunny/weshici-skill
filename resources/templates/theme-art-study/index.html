@@ -31,6 +31,15 @@
     const saved = window.STUDY_SNAPSHOT ? restoreStudy(window.STUDY_SNAPSHOT) : null;
     const config = saved?.config || window.STUDY;
     const { width, height, colors, poem, title, author, seed, artwork, generator } = config;
+    // The runner supplies verified font bytes; no system-installed font or network download is required.
+    let fontFamily = 'SongReg';
+    if (window.STUDY_FONT) {
+      const face = new FontFace('StudyFont', `url(${JSON.stringify(window.STUDY_FONT)})`);
+      await face.load(); document.fonts.add(face);
+      fontFamily = 'StudyFont, SongReg';
+    }
+    await document.fonts.load('100px SongReg');
+    document.getElementById('type').style.fontFamily = fontFamily;
     const reading = config.purpose === 'reading';
     const artHeight = reading ? 440 : height;
     const artTop = height - artHeight;
@@ -87,11 +96,11 @@
       if (r.bottom > artTop - 48) throw new Error('全文超出阅读区，请分篇排版；不会静默删句');
       plan = { box:{x:r.x, y:r.y, width:r.width, height:r.height}, clauses, omittedClauses:[], fontSize:56, artTop };
     } else {
-      plan = await mountHuaping(type, { poem, title, author, verse, width, height, accent:colors.accent });
+      plan = await mountHuaping(type, { poem, title, author, verse, width, height, accent:colors.accent, fontFamily });
       tintSeals(type);
     }
     await document.fonts.ready;
-    window.STUDY_RESULT = { config, request, verse, plan, sceneElements:result?.sceneElements || [],
+    window.STUDY_RESULT = { config, request, verse, plan, fontFamily, sceneElements:result?.sceneElements || [],
       snapshot:{ format:STUDY_FORMAT, config, request, verse } };
     window.READY = true;
   </script>

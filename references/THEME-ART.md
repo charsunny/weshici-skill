@@ -11,6 +11,14 @@ node scripts/theme-art-study.mjs examples/theme-art-study.json out/theme-art-val
 # 四首诗 × 题诗/全文 × 浅深，含显式覆盖、素纸与随节气样本
 node scripts/theme-art-study.mjs examples/theme-art-reading.json out/theme-art-validation/round-c
 
+# 深色纸面修订：三主题 × 山水/花卉/素纸
+node scripts/theme-art-study.mjs examples/theme-art-dark.json out/theme-art-validation/dark-theme-v2
+
+# 首次导入 App 的画屏字体（原文件与许可说明，写入本地缓存）
+node scripts/theme-art-fonts.mjs /path/to/wish/fonts
+# 七主题浅色、六款书法的浅深对照、全文及自定义字体
+node scripts/theme-art-study.mjs examples/theme-art-fonts.json out/theme-art-validation/light-font-v3
+
 # 重放已保存的作品；直接使用保存的颜色、请求及诗句框
 node scripts/theme-art-study.mjs out/theme-art-validation/round-c/recipes.json out/theme-art-validation/replay-all
 
@@ -56,20 +64,49 @@ node scripts/theme-art-motion-check.mjs out/theme-art-validation/motion
 | flower | 显式自然、梅、荷、菊、兰优先；未指定时使用识别到的花卉，否则自然。用户要独立荷花时同时设 artwork=flowers、flower=荷 |
 | artPalette | 默认 follow-theme，只取主题的 ink；显式七套 id 可锁定墨色。绘画 paper 始终与界面纸色相同，花卉原色不取 accent |
 | purpose | inscription 题诗画屏：用显式 excerpt，否则用 poem；reading 全文：使用完整 poem（或 fullPoem），不采用 excerpt |
+| font | 独立于主题和题材，默认 source_han_serif；可选下表中的 App 字体 id 或自定义本地文件对象 |
 
 摘句每一行必须在原诗中存在；全文超出固定阅读区直接报错，交由调用方明确分篇。此入口不自动分页，也没有动态字体/任意画幅适配。
+
+## 字体选择与自定义
+
+| id | 字体 |
+| --- | --- |
+| source_han_serif | 思源宋体（已随 skill 提供） |
+| shufa_liyu | 漓雨手书 |
+| shufa_dongfang | 东方大楷 |
+| shufa_xuanzong | 玄宗行楷 |
+| shufa_chongxi | 崇羲篆体（建议输入繁体） |
+| shufa_yufan | 余繁新语 |
+| shufa_liujiang | 流江毛草 |
+
+六款画屏字体核对自本机 `qa-8.0.1/wish/ios/Shared/PHFonts.swift` 的最新未提交工作；主 wish 工作区仍是旧目录。本实验使用对应 `fonts/PaintingFonts/` 与 `fonts/painting-download/` 的原文件，未修改或子集化。导入器复制六个字体及各自许可文件到 `resources/assets/fonts/painting/`（gitignored），无需运行时联网，不把约 92 MB 字库加入代码仓库。
+
+预设例：`"font": "shufa_liyu"`。自定义例：
+
+```json
+"font": { "name": "我的楷体", "path": "/本机路径/my-font.ttf" }
+```
+
+支持 TTF、OTF、WOFF、WOFF2；相对路径以 skill 仓库根目录为基准。字体影响诗句、标题和署名，不替换印章。文件缺失或加载失败直接报错，不伪装成成功选择；个别缺字按浏览器规则回退思源宋体，`checks.json` 的 `usedFonts` 记录实际字体与字形数。本入口不自动做简繁转换，也不承诺任意字体覆盖全部汉字；崇羲样张显式输入繁体。
+
+竖排按所选字体测量字高、字宽和笔画外伸，保持原诗句框并重新适配字号；不同字体不要求排版数值相同，同字体切换主题不改变排字。全文阅读也可指定书法，默认仍为宋体。字体目前通过 JSON 配方选择，尚无交互式字体上传面板。
 
 ## 用途与绘画边界
 
 - 题诗：保留完整绘画构图，复用引擎诗句框与竖排模块。
 - 阅读：横排全文，正文在上，独立生成的 1080×440 画幅放在底部，顶部 70px 淡入纸色。检测正文底部与景物之间至少留 48px；正文区域逐像素检查无景物。不会把完整立轴缩小贴到全文背后。
 - 实验纸感：禁用引擎背景纸纹，统一加极淡、固定种子的纸层。Worker 的 `paperStrength` 为可选参数，旧调用不传时完全沿用旧纸纹。
+- 浅色纸面：鸦青 `#E8EEEB`、月白 `#E5EFF5`、缃叶 `#F3EBD7`、苍筤 `#E6EFE2`、藕丝 `#F1E6EE`、青黛 `#E5EAF3`、胭脂 `#F5E6E2`。与深色一样，仅实验入口采用；保留可见但低饱和的主题底色，不给花朵整体染色。
+- 深色纸面：实验入口使用低饱和、可辨识色相的主题深色，不把七套主题都压到近黑。鸦青 `#202E30`、月白 `#263642`、缃叶 `#383022`、苍筤 `#243B30`、藕丝 `#392B36`、青黛 `#23334E`、胭脂 `#402B2B`。纸色同时供页面和绘画使用；原 App 色板文件和花卉原色不变。已保存作品仍使用快照内的颜色。
 - 深色山水：在独立实验模板中沿用现有 deepenInk 算法，以 1.65 倍增益加强离纸色足够远的笔迹；不改变花卉原色，也不作用于原视频模板。
 - shanshui@5 是此仓库的 Web 快照；nonflowers@2 是现有程序花卉。主题名不是笔法名，`artPalette=canglang` 不能描述为完成青绿设色移植。
 
 ## 保存与复现
 
 每个快照采用 `weshici-theme-art@1`，保存实际主题和日期、颜色、绘画墨色、题材、完整绘画请求、诗句框、种子、尺寸和用途。集合保存浏览器版本、渲染代码/字体/印章的 SHA-256 与输出 PNG 校验值。
+
+有字体配置的作品另保存字体名称、id、SHA-256 与相对路径；原字体文件复制到输出目录的 `fonts/`，已有许可旁文件一并复制。自定义字体可在原文件旁放置 `<文件名>.LICENSE.txt`。重放时从配方旁的 `fonts/` 加载并校验实际字节，不依赖原机器上的文件路径或字体安装状态。保留作品时应保存整个输出目录，不能只取 `recipes.json`。
 
 重放不依赖当前 palette 色值或当日节气，使用快照内的实际值。引擎、模板、字体或浏览器版本不一致时报错；不能用相同 seed 宣称跨版本像素一致。此机制用于复现与审计，不是任意旧版本的兼容渲染器。若要永久保留作品，应同时存 PNG 和匹配版本的源码/资源。
 

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 const root = process.argv[2] || 'out/theme-art-validation';
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const names = {yaqing:'鸦青','moon-white':'月白',canglang:'苍筤'};
+const names = {yaqing:'鸦青','moon-white':'月白','xiang-leaf':'缃叶',canglang:'苍筤',ousi:'藕丝',qingdai:'青黛',rouge:'胭脂'};
 const kinds = {shanshui:'山水',flowers:'花卉',none:'素纸'};
 function grid(directory, filter) {
  const data=JSON.parse(fs.readFileSync(path.join(root,directory,'checks.json'),'utf8'));
@@ -16,6 +16,43 @@ const motion=JSON.parse(fs.readFileSync(path.join(root,'motion/checks.json'),'ut
 const parts=[`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>微诗 · 主题与诗画验收</title>
 <style>body{margin:0;background:#f4f5f3;color:#1d2926;font:16px/1.75 system-ui,sans-serif}main{max-width:1180px;margin:0 auto;padding:56px 24px}h1{font:36px/1.4 serif;margin:12px 0}h2{font-size:25px;margin:44px 0 12px}h3{font-size:18px;margin:26px 0 10px}p{max-width:850px;color:#4d5c57}nav{display:flex;gap:22px;flex-wrap:wrap;margin:28px 0}a{color:#2e6a4e}small{color:#60736b}section{border-top:1px solid #d9dfdb;padding-bottom:28px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.sample{text-decoration:none;display:block}.sample img{width:100%;display:block;border:1px solid #d5dbd7;box-sizing:border-box}.sample span{display:block;padding:9px 0;font-size:13px}.sheet{display:block;max-width:100%;margin:18px 0}summary{cursor:pointer;padding:14px 0;font-weight:600}.note{padding:16px 20px;background:#e9eee9;border-left:3px solid #758f7d}code{font-size:14px}@media(max-width:700px){main{padding:28px 16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}h1{font-size:28px}}</style>
 <main><small>WESHICI SKILL · 2026-10-28 · A–D 统一验收</small><h1>主题相随，诗画各有其意</h1><p>本轮验证主题、绘画与阅读用途的关系。App 尚未修改。点击任意小样查看原图；这页保留全部结果和已知限制，等待统一审美验收。</p><nav><a href="#reading">全文阅读</a><a href="#inscription">题诗画屏</a><a href="#themes">三主题对照</a><a href="#motion">动态抽查</a><a href="#checks">验证与限制</a></nav>`];
+// Later rounds remain separate from the original A–D evidence.
+const fontChecks = path.join(root, 'light-font-v3/checks.json');
+if (fs.existsSync(fontChecks)) {
+ const records = JSON.parse(fs.readFileSync(fontChecks, 'utf8')).records;
+ const sample = (r, directory = 'light-font-v3', label = '') => `<a class="sample" href="${directory}/${r.name}.png"><img loading="lazy" src="${directory}/${r.name}.png" alt="${esc(r.config.font?.name || '思源宋体')}"><span>${esc(label || `${names[r.config.theme]} · ${r.config.font.name}`)} · ${esc(r.config.colors.paper)}</span></a>`;
+ const gallery = items => '<div class="grid">' + items.map(r => sample(r)).join('') + '</div>';
+ const original = JSON.parse(fs.readFileSync(path.join(root, 'round-b-final/checks.json'), 'utf8')).records;
+ parts.push('<section id="light-font"><h2>浅色主题纸面与 App 书法字体</h2><p>浅色保留各主题的淡色纸面；字体独立选择。使用 App 最近本地 QA 版本的六款画屏字体原文件。点击图片看原图。</p><h3>先看纸色 · 同为思源宋体</h3><div class="grid">');
+ parts.push(sample(original.find(r => r.config.theme === 'moon-white' && r.config.appearance === 'light' && r.config.artwork === 'flowers'), 'round-b-final', '原版 · 月白'));
+ parts.push(sample(records.find(r => r.config.theme === 'moon-white' && r.config.appearance === 'light' && r.config.font.id === 'source_han_serif'), 'light-font-v3', '新版 · 月白'));
+ parts.push('</div><h3>七主题浅色 · 固定漓雨手书</h3>' + gallery(Object.keys(names).map(theme => records.find(r => r.config.theme === theme && r.config.font.id === 'shufa_liyu' && r.config.purpose === 'inscription' && r.config.appearance === 'light'))));
+ for (const appearance of ['light','dark']) {
+  const seen = new Set();
+  const fonts = records.filter(r => r.config.theme === 'moon-white' && r.config.purpose === 'inscription' && r.config.appearance === appearance && r.config.font.id !== 'custom').filter(r => !seen.has(r.config.font.id) && seen.add(r.config.font.id));
+  parts.push(`<h3>${appearance === 'light' ? '浅色' : '深色'} · 固定月白，比较七款字体</h3>` + gallery(fonts));
+ }
+ parts.push('<p>崇羲篆体样张输入繁体诗句；本入口不自动转换简繁。其余样张为简体。缺字使用思源宋体补齐，实际使用的字形字体记录在检查文件中。</p><h3>全文阅读 · 宋体与书法</h3>' + gallery(records.filter(r => r.config.purpose === 'reading')));
+ parts.push('<h3>自定义字体</h3><p>配方可填写 <code>"font": {"name": "我的字体", "path": "/本机路径/my-font.ttf"}</code>，支持 TTF、OTF、WOFF、WOFF2。以下通过本地文件路径加载东方大楷；效果与字体列表中选择的版本一致。字体文件与校验值会随作品快照保存。</p>' + gallery(records.filter(r => r.config.font.id === 'custom')));
+ parts.push(`<p>${records.length} 张样图通过字体加载、排字与正文对比度检查，最低对比度 ${Math.min(...records.map(r => r.contrast)).toFixed(2)}:1。<a href="light-font-v3/checks.json">检查记录</a> · <a href="light-font-v3/recipes.json">保存配方</a></p></section>`);
+}
+// Preserve the first acceptance round and show the later dark-paper refinement alongside it.
+const darkChecks = path.join(root, 'dark-theme-v2/checks.json');
+if (fs.existsSync(darkChecks)) {
+ const updated = JSON.parse(fs.readFileSync(darkChecks, 'utf8')).records;
+ const original = JSON.parse(fs.readFileSync(path.join(root, 'round-b-final/checks.json'), 'utf8')).records;
+ parts.push('<style>.pairs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pair h3{grid-column:1/-1;margin-bottom:0}@media(max-width:700px){.pairs{grid-template-columns:1fr}}</style><section id="dark-paper"><h2>深色纸面修订 · 保留主题色相</h2><p>每组左为原版，右为新版。同诗、同种子、同排字；只调整实验入口的纸色。鸦青偏墨青，月白偏深蓝灰，苍筤偏深绿。下方 A–D 样张保留原版，便于回看。</p><div class="pairs">');
+ for (const next of updated) {
+  const before = original.find(r => r.config.appearance === 'dark' && r.config.theme === next.config.theme && r.config.artwork === next.config.artwork);
+  if (!before) throw new Error(`缺少原版对照：${next.name}`);
+  parts.push(`<div class="pair"><h3>${esc(names[next.config.theme])} · ${esc(kinds[next.config.artwork])}</h3>`);
+  for (const [directory, r, label] of [['round-b-final', before, '原版'], ['dark-theme-v2', next, '新版']]) {
+   parts.push(`<a class="sample" href="${directory}/${r.name}.png"><img src="${directory}/${r.name}.png" alt="${esc(names[r.config.theme])} ${label}"><span>${label} · ${esc(r.config.colors.paper)}</span></a>`);
+  }
+  parts.push('</div>');
+ }
+ parts.push(`</div><p>新版 9 张排字、字体与资源检查通过；纸/墨最低对比度 ${Math.min(...updated.map(r=>r.contrast)).toFixed(2)}:1。<a href="dark-theme-v2/checks.json">检查记录</a></p></section>`);
+}
 parts.push('<section id="reading"><h2>01 · 全文阅读</h2><p>正文完整保留，景物置于正文之外；素纸用于比较阅读时是否需要配画。</p>');
 for(const appearance of ['light','dark'])parts.push(`<h3>${appearance==='light'?'浅色':'深色'}</h3>`+grid('round-c',r=>r.config.purpose==='reading'&&r.config.appearance===appearance));
 parts.push('</section><section id="inscription"><h2>02 · 题诗画屏</h2><p>山居、寒江、梅花、荷塘。末尾另有随节气梅花与用户显式选择的独立荷花。</p>');

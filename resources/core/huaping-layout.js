@@ -11,7 +11,7 @@ export function huapingClauses(text) {
 }
 
 export function huapingPlan({ poem, title = '', author = '', dynasty = '', verse, width, height,
-  wallpaper = false, shareFooter = false, cell = 1.44, inkBottom = () => 0, preferredSize = Infinity, minInscription = 0 }) {
+  wallpaper = false, shareFooter = false, cell = 1.44, columnWidth = 1, inkBottom = () => 0, preferredSize = Infinity, minInscription = 0 }) {
   if (!verse?.rect || !huapingClauses(poem).length) throw new Error('画屏缺少诗句或留白框');
   const raw = verse.rect;
   const top = Math.max((raw.y + raw.height * 0.03) * height, height * (wallpaper ? 0.32 : 0.10));
@@ -28,10 +28,10 @@ export function huapingPlan({ poem, title = '', author = '', dynasty = '', verse
   const unit = width / 393;
   function fit() {
     const longest = Math.max(...clauses.map(line => glyphs(line).length));
-    if (!vertical) return Math.min(30 * unit, box.width / (longest * 1.14),
+    if (!vertical) return Math.min(30 * unit, box.width / (longest * (columnWidth + .14)),
       box.height / (clauses.length * (cell + 0.38) + 1.43));
     return Math.min(34 * unit, preferredSize,
-      box.width / (clauses.length + (clauses.length - 1) * GAP + 1.34),
+      box.width / ((clauses.length + (clauses.length - 1) * GAP + 1.34) * columnWidth),
       box.height / ((longest - 1) * PITCH + cell),
       box.height / ((units(attribution, cell) + 0.45 + 0.9 * 354 / 173) * 0.44));
   }
@@ -57,7 +57,7 @@ export function huapingPlan({ poem, title = '', author = '', dynasty = '', verse
       + (title && attribution ? 0.9 : 0) + (attribution ? 0.45 : 0)));
   // Keep a multi-column title inside the colophon's reserved width; never shrink the poem for its title.
   if (separateTitle) inscriptionSize = Math.min(inscriptionSize,
-    (box.width - (clauses.length + (clauses.length - 1) * GAP) * fontSize - sealWidth - fontSize * 0.45) / (titleColumns.length + 0.6 + (titleColumns.length - 1) * 0.45));
+    (box.width - (clauses.length * columnWidth + (clauses.length - 1) * GAP) * fontSize - sealWidth - fontSize * 0.45) / (titleColumns.length * columnWidth + 0.6 + (titleColumns.length - 1) * 0.45));
   // Video frames have a type floor (VIDEO_V2_PLAN §2.3). The colophon and seal grow to it, and the
   // title moves to its own column when one column can no longer hold title, attribution and seal.
   if (minInscription && inscriptionSize < minInscription) {
@@ -69,24 +69,29 @@ export function huapingPlan({ poem, title = '', author = '', dynasty = '', verse
       titleColumns = [title];
     }
   }
-  return { box, vertical, clauses, omittedClauses: all.slice(clauses.length), fontSize, cell,
+  return { box, vertical, clauses, omittedClauses: all.slice(clauses.length), fontSize, cell, columnWidth,
     verseHeight, bottomInset, title, attribution, titleColumns, separateTitle,
     inscriptionSize, sealWidth, sealHeight, inscriptionHeight };
 }
 
 export async function mountHuaping(container, input) {
-  await document.fonts.load('100px SongReg');
+  const fontFamily = input.fontFamily || 'SongReg';
+  await document.fonts.load(`100px ${fontFamily}`);
   const ctx = document.createElement('canvas').getContext('2d');
-  ctx.font = '100px SongReg';
+  ctx.font = `100px ${fontFamily}`;
   const metrics = ctx.measureText('国');
   const cell = (metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent) / 100;
+  const columnWidth = input.fontFamily ? Math.max(1, ...glyphs(input.poem + (input.title || '') + (input.author || '')).map(char => {
+    const m = ctx.measureText(char);
+    return Math.max(m.width, m.width + 2 * m.actualBoundingBoxLeft, 2 * m.actualBoundingBoxRight - m.width) / 100;
+  })) : 1;
   const inkBottom = clauses => {
     const longest = Math.max(...clauses.map(line => glyphs(line).length));
     const bottom = Math.max(...clauses.map(line => (glyphs(line).length - 1) * PITCH
       + (metrics.fontBoundingBoxAscent + ctx.measureText(glyphs(line).at(-1)).actualBoundingBoxDescent) / 100));
     return Math.max(0, (longest - 1) * PITCH + cell - bottom);
   };
-  const plan = huapingPlan({ ...input, cell, inkBottom });
+  const plan = huapingPlan({ ...input, cell, columnWidth, inkBottom });
   const node = (className, parent) => {
     const element = document.createElement('div');
     element.className = className;
@@ -98,7 +103,7 @@ export async function mountHuaping(container, input) {
     group.style.gap = `${size * gap}px`;
     for (const line of lines) {
       const column = node('hp-column', group);
-      Object.assign(column.style, { width: `${size}px`, height: `${units(line, cell) * size}px`, fontSize: `${size}px` });
+      Object.assign(column.style, { width: `${size * columnWidth}px`, height: `${units(line, cell) * size}px`, fontSize: `${size}px` });
       glyphs(line).forEach((char, i) => {
         const glyph = node('hp-glyph', column);
         glyph.textContent = char;
@@ -108,6 +113,7 @@ export async function mountHuaping(container, input) {
     return group;
   };
   const box = node('hp-box', container);
+  if (input.fontFamily) box.style.fontFamily = fontFamily;
   box.setAttribute('aria-label', `${plan.clauses.join('，')}。${plan.title} ${plan.attribution}`);
   Object.assign(box.style, { left: `${plan.box.x}px`, top: `${plan.box.y}px`, width: `${plan.box.width}px`, height: `${plan.box.height}px` });
   const block = node(`hp-block ${plan.vertical ? '' : 'hp-horizontal'}`, box);

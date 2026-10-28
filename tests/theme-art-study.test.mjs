@@ -1,9 +1,43 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { resolveStudy, restoreStudy, STUDY_FORMAT, flowerForPoem } from '../resources/core/theme-art-study.js';
+import { resolveStudy, restoreStudy, STUDY_FORMAT, flowerForPoem, STUDY_FONTS } from '../resources/core/theme-art-study.js';
 const palettes = JSON.parse(fs.readFileSync(new URL('../resources/core/app-palettes.json', import.meta.url)));
 const base = { title:'春日', author:'朱熹', poem:'胜日寻芳泗水滨，无边光景一时新。', seed:'fixed' };
+
+test('study papers retain theme differences in both appearances without modifying source palettes or ink', () => {
+  const original = JSON.stringify(palettes), papers = new Set();
+  for (const theme of Object.keys(palettes.palettes)) {
+    for (const appearance of ['light', 'dark']) {
+      const config = resolveStudy({ ...base, theme, appearance }, palettes);
+      assert.notEqual(config.colors.paper, palettes.palettes[theme][appearance].paper);
+      assert.equal(config.artColors.paper, config.colors.paper);
+      assert.equal(config.colors.ink, palettes.palettes[theme][appearance].ink);
+      papers.add(config.colors.paper);
+    }
+  }
+  assert.equal(papers.size, Object.keys(palettes.palettes).length * 2);
+  assert.equal(JSON.stringify(palettes), original);
+});
+
+test('App and custom fonts are independent from theme and artwork, invalid choices fail explicitly', () => {
+  const baseline = resolveStudy(base, palettes);
+  for (const font of Object.keys(STUDY_FONTS)) {
+    const config = resolveStudy({ ...base, font }, palettes);
+    assert.equal(config.font.id, font);
+    assert.deepEqual(config.colors, baseline.colors);
+    assert.deepEqual(config.artColors, baseline.artColors);
+    assert.equal(config.artwork, baseline.artwork);
+    assert.equal(config.poem, baseline.poem);
+  }
+  const font = { name:'自定义楷体', path:'/tmp/my font.ttf' };
+  const config = resolveStudy({ ...base, font }, palettes);
+  font.name = 'changed';
+  assert.equal(config.font.name, '自定义楷体');
+  for (const invalid of ['unknown', {name:'test'}, {name:'test',path:'font.js'}, {name:'',path:'font.otf'}]) {
+    assert.throws(() => resolveStudy({ ...base, font:invalid }, palettes));
+  }
+});
 
 test('switching the theme retains artwork ink, seed and flower choice', () => {
   for (const appearance of ['light', 'dark']) {
@@ -45,8 +79,8 @@ test('seasonal and night defaults are concrete, and a saved work ignores later p
   assert.equal(resolveStudy({ ...base, title:'月夜', appearance:'light' }, palettes).appearance, 'light');
   const snapshot = { format:STUDY_FORMAT, config, request:null, verse:{rect:{x:0,y:0,width:1,height:1}} };
   const original = JSON.stringify(snapshot);
-  const changed = structuredClone(palettes); changed.palettes['moon-white'].light.paper = '#FFFFFF';
-  assert.notEqual(resolveStudy({ ...base, theme:'seasonal', date:'2026-10-28' }, changed).colors.paper, config.colors.paper);
+  const changed = structuredClone(palettes); changed.palettes['moon-white'].light.ink = '#000000';
+  assert.notEqual(resolveStudy({ ...base, theme:'seasonal', date:'2026-10-28' }, changed).colors.ink, config.colors.ink);
   assert.equal(JSON.stringify(restoreStudy(JSON.parse(original))), original);
   const copy = restoreStudy(snapshot); copy.config.colors.paper = '#000000';
   assert.equal(JSON.stringify(snapshot), original);
