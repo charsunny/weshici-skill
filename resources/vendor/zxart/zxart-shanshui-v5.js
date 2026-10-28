@@ -1829,6 +1829,38 @@ function appendPaintingShapesV5(canv, motif, palette, into) {
 }
 
 
+// Study-only point colour: select small existing ink marks, retaining geometry and paper cutouts.
+function tintPaintingDetailsV5(shapes, detail, palette) {
+  if (!detail || !palette.accent) return;
+  const { motif, bounds:b } = detail;
+  const mountain = ['mainMountain', 'guestMountain'].includes(motif);
+  const roof = ['house', 'hut', 'pavilion', 'templeGate', 'pagoda'].includes(motif);
+  const tree = ['pine', 'oldTree', 'bareTree', 'layeredTree', 'willow', 'bamboo', 'blossom', 'maple'].includes(motif);
+  if (!mountain && !roof && !tree) return;
+  const accent = roof ? (palette.secondary || palette.accent) : palette.accent;
+  shapes.forEach((shape, index) => {
+    // Sparse colour on alternate fine marks leaves the main ink structure legible.
+    if (index % 3 !== 0) return;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < shape.points.length; i += 2) {
+      x0 = Math.min(x0, shape.points[i]); x1 = Math.max(x1, shape.points[i]);
+      y0 = Math.min(y0, shape.points[i + 1]); y1 = Math.max(y1, shape.points[i + 1]);
+    }
+    const y = ((y0 + y1) / 2 - b.minY) / b.height;
+    if (y > (mountain ? 0.36 : roof ? 0.53 : 0.88)
+        || (x1 - x0) * (y1 - y0) > b.width * b.height * 0.045) return;
+    for (const key of ['fill', 'stroke']) {
+      const color = shape[key];
+      if (!color || color[3] < 0.04) continue;
+      const distance = color.slice(0, 3).reduce((sum, v, i) => sum + Math.abs(v - palette.paper[i]), 0);
+      if (distance < 0.12) continue;
+      const amount = mountain ? 0.85 : roof ? 0.8 : 0.7;
+      shape[key] = color.map((v, i) => i < 3 ? v * (1 - amount) + accent[i] * amount : Math.max(v, roof ? 0.3 : 0.26));
+    }
+  });
+}
+
+
 // shanshui@5 painting path: brush vocabulary, landforms, water, waterfall, details, masonry, dwellings, architecture.
 
 class PaintingMountainProfile {
@@ -8089,6 +8121,10 @@ class PaintingStageV5 {
       this.parts.push(Part.near(object.canv));
     }
 
+    if (this.elementTreatment === 'refined-v1') {
+      this.parts[this.parts.length - 1].detail = { motif, bounds:actual };
+    }
+
     this.elements.push({
       motif,
       bounds: {
@@ -8646,11 +8682,12 @@ class PaintingStageV5 {
         if (guest.canv[0]) {
           this.mountainRidges.push(guest.canv[0].pts.slice(0, -2));
         }
-        this.parts.push(new Part(this.engine.paintingInk(guest.canv, 2), null, {
-          top: r.minY + r.height * 0.55,
-          bottom: r.maxY,
-          seed: this.engine.inkSeed()
-        }));
+        const guestInk = this.engine.paintingInk(guest.canv, 2);
+        const fade = { top:r.minY + r.height * 0.55, bottom:r.maxY, seed:this.engine.inkSeed() };
+        const part = this.elementTreatment === 'refined-v1'
+          ? new Part(guestInk, { near:true, fade }) : new Part(guestInk, null, fade);
+        if (this.elementTreatment === 'refined-v1') part.detail = { motif:'guestMountain', bounds:r };
+        this.parts.push(part);
       }
       peakBox = new CRect(peakBox.minX, peakBox.minY, peakBox.width * (deep ? 0.86 : 0.98), peakBox.height);
     }
@@ -8700,11 +8737,11 @@ class PaintingStageV5 {
             }
           }
         }
-        this.parts.push(new Part(object.canv, null, {
-          top: r.maxY - r.height * 0.42,
-          bottom: r.maxY - r.height * 0.04,
-          seed: this.engine.inkSeed()
-        }));
+        const fade = { top:r.maxY - r.height * 0.42, bottom:r.maxY - r.height * 0.04, seed:this.engine.inkSeed() };
+        const part = this.elementTreatment === 'refined-v1'
+          ? new Part(object.canv, { near:true, fade }) : new Part(object.canv, null, fade);
+        if (this.elementTreatment === 'refined-v1') part.detail = { motif:'mainMountain', bounds:r };
+        this.parts.push(part);
         this.engine.noted('ridge', object.canv);
         this.elements.push({
           motif: 'mainMountain',
@@ -9433,7 +9470,9 @@ class PaintingStageV5 {
     if (farShoreScenes.has(scene) && (this.structure === 'level' || this.structure === 'deep')) {
       const shore = this.fitted(this.engine.paintingFarShore(), this.slot(0, this.composition === 'oppositeBank' ? 0.24 : 0.30, 1, 0.16));
       if (shore) {
-        this.parts.push(new Part(shore.canv));
+        this.parts.push(this.elementTreatment === 'refined-v1' ? new Part(shore.canv, { fade:{
+          top:shore.bounds.maxY - shore.bounds.height * 0.65, bottom:shore.bounds.maxY, seed:17
+        } }) : new Part(shore.canv));
         this.elements.push({
           motif: 'farShore',
           bounds: { x: shore.bounds.minX / this.w, y: shore.bounds.minY / this.h, width: shore.bounds.width / this.w, height: shore.bounds.height / this.h }
@@ -10294,6 +10333,7 @@ function generatePoetryPaintingV5(req, palette) {
   const options = resolveSceneOptionsForPainting(req.options, scene, typeof seed === 'object' ? (seed.string || seed.seed) : seed);
 
   const stage = new PaintingStageV5(seed, w, h, palette, verse, quietTop, options);
+  stage.elementTreatment = req.elementTreatment;
   stage.compose(scene, options);
 
   const layers = [];
@@ -10302,10 +10342,19 @@ function generatePoetryPaintingV5(req, palette) {
   for (let index = 0; index < stage.parts.length; index++) {
     const part = stage.parts[index];
     const shapes = [];
-    appendPaintingShapesV5(part.canv, 'scene', palette, shapes);
-
     const record = stage.celestialLayers.find(r => r.layer === index);
-    if (record) {
+    appendPaintingShapesV5(part.canv, req.elementTreatment === 'refined-v1' ? record?.motif : 'scene', palette, shapes);
+    // Night ink stays subordinate to type; preserve celestial colour and atmospheric distance.
+    if (req.elementTreatment === 'refined-v1' && palette.isDark && !record && !part.mist) {
+      for (const shape of shapes) {
+        for (const key of ['fill', 'stroke']) {
+          if (shape[key]) shape[key] = shape[key].map((v, channel) => channel < 3
+            ? palette.paper[channel] + (v - palette.paper[channel]) * 0.72 : v);
+        }
+      }
+    }
+    if (req.elementTreatment === 'refined-v1') tintPaintingDetailsV5(shapes, part.detail, palette);
+    if (record && req.elementTreatment !== 'refined-v1') {
       for (let i = 0; i < shapes.length; i++) {
         if (record.motif === 'sunset' || record.motif === 'sunrise') {
           shapes[i].fill = [171 / 255, 64 / 255, 51 / 255, palette.isDark ? 0.48 : 0.34];
@@ -10333,7 +10382,11 @@ function generatePoetryPaintingV5(req, palette) {
     } else if (part.fade) {
       layers.push({
         shapes,
-        fade: normalizeFade(part.fade)
+        // V5 stores floorY/depth; the Web WashNoise renderer consumes top/bottom.
+        // Keep the original path stable and repair the bridge only for the versioned study treatment.
+        fade: req.elementTreatment === 'refined-v1'
+          ? { top:part.fade.floorY - part.fade.depth, bottom:part.fade.floorY, seed:part.fade.seed }
+          : normalizeFade(part.fade)
       });
     } else {
       layers.push({ shapes });

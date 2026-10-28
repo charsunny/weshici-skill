@@ -101,3 +101,13 @@ test('invalid or incomplete experiments fail instead of silently substituting ar
     assert.throws(() => resolveStudy({ ...base, ...input }, palettes));
   }
 });
+
+test('new element treatment follows the art palette while original treatment omits point colours', () => {
+  const config = resolveStudy({ ...base, theme:'rouge', artPalette:'canglang', appearance:'dark' }, palettes);
+  assert.equal(config.elementTreatment, 'refined-v1');
+  assert.equal(config.artColors.accent, palettes.palettes.canglang.dark.accent);
+  assert.equal(config.artColors.secondary, palettes.palettes.canglang.dark.secondary);
+  const original = resolveStudy({ ...base, elementTreatment:'original' }, palettes);
+  assert.equal(original.artColors.accent, undefined);
+  assert.throws(() => resolveStudy({ ...base, elementTreatment:'typo' }, palettes));
+});

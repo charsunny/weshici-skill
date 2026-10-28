@@ -19,6 +19,9 @@ node scripts/theme-art-fonts.mjs /path/to/wish/fonts
 # 七主题浅色、六款书法的浅深对照、全文及自定义字体
 node scripts/theme-art-study.mjs examples/theme-art-fonts.json out/theme-art-validation/light-font-v3
 
+# 元素优化：花茎、岸脚、山尖／茅草／枝叶的主题点染
+node scripts/theme-art-study.mjs examples/theme-art-elements.json out/theme-art-validation/elements-after
+
 # 重放已保存的作品；直接使用保存的颜色、请求及诗句框
 node scripts/theme-art-study.mjs out/theme-art-validation/round-c/recipes.json out/theme-art-validation/replay-all
 
@@ -62,8 +65,9 @@ node scripts/theme-art-motion-check.mjs out/theme-art-validation/motion
 | artwork | 默认 auto；可显式 shanshui、flowers、none。none 关闭景物，保留文字和纸感 |
 | auto 题材 | 梅花/咏梅/梅枝/梅蕊、菊、兰花/幽兰/咏兰进入对应花卉；其余走现有 poetryScene。荷塘默认山水场景；“兰舟”不当兰花。这是有限规则，不声称完整理解诗意 |
 | flower | 显式自然、梅、荷、菊、兰优先；未指定时使用识别到的花卉，否则自然。用户要独立荷花时同时设 artwork=flowers、flower=荷 |
-| artPalette | 默认 follow-theme，只取主题的 ink；显式七套 id 可锁定墨色。绘画 paper 始终与界面纸色相同，花卉原色不取 accent |
+| artPalette | 默认 follow-theme；显式七套 id 可锁定墨色与点染色。绘画 paper 始终与界面纸色相同，花瓣原色不取 accent |
 | purpose | inscription 题诗画屏：用显式 excerpt，否则用 poem；reading 全文：使用完整 poem（或 fullPoem），不采用 excerpt |
+| elementTreatment | 新作默认 refined-v1，修正花茎明暗、景物淡出与深色高亮，并启用局部主题点染；original 保留原处理，供对照 |
 | font | 独立于主题和题材，默认 source_han_serif；可选下表中的 App 字体 id 或自定义本地文件对象 |
 
 摘句每一行必须在原诗中存在；全文超出固定阅读区直接报错，交由调用方明确分篇。此入口不自动分页，也没有动态字体/任意画幅适配。
@@ -99,8 +103,19 @@ node scripts/theme-art-motion-check.mjs out/theme-art-validation/motion
 - 实验纸感：禁用引擎背景纸纹，统一加极淡、固定种子的纸层。Worker 的 `paperStrength` 为可选参数，旧调用不传时完全沿用旧纸纹。
 - 浅色纸面：鸦青 `#E8EEEB`、月白 `#E5EFF5`、缃叶 `#F3EBD7`、苍筤 `#E6EFE2`、藕丝 `#F1E6EE`、青黛 `#E5EAF3`、胭脂 `#F5E6E2`。与深色一样，仅实验入口采用；保留可见但低饱和的主题底色，不给花朵整体染色。
 - 深色纸面：实验入口使用低饱和、可辨识色相的主题深色，不把七套主题都压到近黑。鸦青 `#202E30`、月白 `#263642`、缃叶 `#383022`、苍筤 `#243B30`、藕丝 `#392B36`、青黛 `#23334E`、胭脂 `#402B2B`。纸色同时供页面和绘画使用；原 App 色板文件和花卉原色不变。已保存作品仍使用快照内的颜色。
-- 深色山水：在独立实验模板中沿用现有 deepenInk 算法，以 1.65 倍增益加强离纸色足够远的笔迹；不改变花卉原色，也不作用于原视频模板。
+- 深色山水：refined-v1 去掉旧实验的 1.65 倍整体增亮，近景墨色向纸色收敛；月盘与周围淡云分别处理，避免云形变成高亮实心块。original 继续保留旧增亮用于对照。
 - shanshui@5 是此仓库的 Web 快照；nonflowers@2 是现有程序花卉。主题名不是笔法名，`artPalette=canglang` 不能描述为完成青绿设色移植。
+
+## 元素处理与局部点染
+
+`refined-v1` 通过 Worker 的 `params.element_treatment` 显式启用；现有其他入口不传此参数，仍走 original。此字段和实际点染色随请求保存，不在重放时重新解析。
+
+- 山水在已放置景物的范围内筛选少量细笔：山体上段用 accent，屋顶上半部用 secondary，树冠与枝干细笔用 accent。保留大面积纸色遮罩和主要墨骨，不给整幅画加色罩。
+- 被选中的笔触仅部分混入主题色；最低不透明度限制为 0.26（屋顶 0.30），极淡的底层晕染不加重。深色点染使用主题深色配色。
+- 花茎纠正原来超范围的明暗插值，草本主茎收窄接向分枝；一侧少量混入 accent。花瓣层不改色，不把梅花染绿。
+- 山脚与远岸使用有效的淡出参数，减轻截断感；保留同种子的山水几何、诗句框、景物与天气锚点。
+
+这是 Web 细部修订，不是植物解剖或完整青绿笔法重写。点染位置按景物范围与细笔大小筛选，不承诺所有种子的每片叶子、每根茅草都可独立设色。原图位于 `elements-before`，新版位于 `elements-after`，验收页顶部提供局部放大与全部浅深对照。
 
 ## 保存与复现
 

@@ -643,7 +643,9 @@
     var ink = hexToRgb(p.ink);
     var washAlpha = typeof p.washAlpha === 'number' ? p.washAlpha : 0.4;
     var wash = compositedOver(opacity(ink, washAlpha), paper);
-    return { paper: paper, ink: ink, wash: wash, isDark: luminance(paper) < luminance(ink) };
+    return { paper: paper, ink: ink, wash: wash, isDark: luminance(paper) < luminance(ink),
+      ...(p.accent ? { accent:hexToRgb(p.accent) } : {}),
+      ...(p.secondary ? { secondary:hexToRgb(p.secondary) } : {}) };
   }
 
   /** CSS 颜色串 → [r,g,b,a] (0…255, a 0…1); "none" / 不认识 → null。 */
@@ -1592,13 +1594,13 @@
           var p1 = v3.lerp(L[i], Rr[i], m);
           var p2 = v3.lerp(L[i - 1], Rr[i - 1], n);
           var p3 = v3.lerp(L[i], Rr[i], n);
-          var lt = clampShade ? Math.min(n / p, 1) : n / p;
-          var nz = g.Noise.noise(p * 10, m * 10, n * 10);
-          var h = g.lerpHue(col.min[0], col.max[0], lt) * mapval(nz, 0, 1, 0.5, 1);
+          var lt = state.refined ? n : clampShade ? Math.min(n / p, 1) : n / p;
+          var nz = state.refined ? mapval(g.Noise.noise(p * 2, 0), 0, 1, 0.76, 1) : g.Noise.noise(p * 10, m * 10, n * 10);
+          var h = g.lerpHue(col.min[0], col.max[0], lt) * (state.refined ? 1 : mapval(nz, 0, 1, 0.5, 1));
           var s = mapval(lt, 0, 1, col.max[1], col.min[1]) * mapval(nz, 0, 1, 0.5, 1);
           var v = mapval(lt, 0, 1, col.min[2], col.max[2]) * mapval(nz, 0, 1, 0.5, 1);
           var a = mapval(lt, 0, 1, col.min[3], col.max[3]);
-          g.polygon({ ctx: ctx, pts: [p0, p1, p3, p2], xof: xof, yof: yof, fil: true, str: true, col: g.hsv(h, s, v, a) });
+          g.polygon({ ctx: ctx, pts: [p0, p1, p3, p2], xof: xof, yof: yof, fil: true, str: true, col: g.hsv(h, s, v, a), stem:state.refined, accent:state.refined && j === 1 });
         }
       }
       g.stroke({ ctx: ctx, pts: L, xof: xof, yof: yof, col: g.rgba(0, 0, 0, 0.5) });
@@ -1981,6 +1983,24 @@
     g.vizParams = function () {};
 
     var polys = [];
+    // Versioned study treatment: retain original centerlines and random draws, correct only stem shading.
+    var stemPaint = null;
+    if (req.elementTreatment === 'refined-v1') {
+      var originalStem = g.stem;
+      g.stem = function (args) {
+        var previous = stemPaint;
+        if (!state.woody) {
+          // The original herb has a violet main stalk and yellow shoots with an abrupt width step.
+          // Keep the centerline, taper its tip into the shoots, and give the connected stems one local colour.
+          var primary = !args.col, width = args.wid;
+          args = Object.assign({}, args, { col:{ min:[95, 0.22, 0.48, 1], max:[85, 0.18, 0.62, 1] } });
+          if (primary && width) args.wid = function (t) { return width(t) * (1 - t * t) + 2 * t * t; };
+        }
+        stemPaint = { index:0, segments:args.seg || 40,
+          color:args.col || { min:[250, 0.2, 0.4, 1], max:[250, 0.3, 0.6, 1] } };
+        try { return originalStem(args); } finally { stemPaint = previous; }
+      };
+    }
     g.polygon = function (args) {
       args = args != undefined ? args : {};
       var xof = args.xof != undefined ? args.xof : 0;
@@ -1989,6 +2009,17 @@
       var col = args.col != undefined ? args.col : 'black';
       var fil = args.fil != undefined ? args.fil : true;
       var str = args.str != undefined ? args.str : !fil;
+      if (stemPaint && fil && pts.length === 4) {
+        // The source uses n / p, extrapolating far past 1 near the base. Shade across the tube,
+        // with slow longitudinal variation, instead of clipping overexposed rectangles afterwards.
+        var n = (stemPaint.index % 3 + 1) / 3;
+        var t = (Math.floor(stemPaint.index++ / 3) + 1) / stemPaint.segments;
+        var lo = stemPaint.color.min, hi = stemPaint.color.max;
+        var value = (lo[2] + (hi[2] - lo[2]) * n) * (0.88 + 0.12 * g.Noise.noise(t * 2, 0));
+        if (palette.isDark) value = Math.max(value, 0.42 + 0.08 * n);
+        col = g.hsv(g.lerpHue(lo[0], hi[0], n), Math.min(1, lo[1] + (hi[1] - lo[1]) * n),
+          Math.min(1, value), Math.min(1, lo[3] + (hi[3] - lo[3]) * n));
+      }
       var layer = created.indexOf(args.ctx);
       polys.push({
         p: pts.map(function (v) {
@@ -1997,6 +2028,8 @@
         c: col,
         fil: !!fil,
         str: !!str,
+        stem: !!stemPaint || !!args.stem,
+        accent: (!!stemPaint && fil && pts.length === 4 && (stemPaint.index % 3 === 1)) || !!args.accent,
         layer: layer === 1 ? 1 : 0,
       });
     };
@@ -2019,6 +2052,7 @@
       hooks.onFillRect = null;
     }
     var state = { woody: Math.random() <= 0.5, childBranchColor: null, form: 'original', petalSeg: null };
+    state.refined = req.elementTreatment === 'refined-v1';
     var PAR = g.genParams();
     applySeason(season, PAR, state, req.density);
     if (typeof req.hue === 'number' && isFinite(req.hue)) {
@@ -2140,6 +2174,12 @@
       }
       var parsed = parseCss(p.c) || [0, 0, 0, 1];
       var c = color(parsed);
+      if (p.stem && palette.isDark && parsed[0] === 0 && parsed[1] === 0 && parsed[2] === 0) {
+        c = opacity(palette.ink, parsed[3] * 0.4);
+      }
+      if (p.accent && palette.accent && p.layer === 0) {
+        c = c.map(function (v, channel) { return channel < 3 ? v * 0.65 + palette.accent[channel] * 0.35 : v; });
+      }
       var s = { points: pts, fill: p.fil ? c : null, stroke: p.str ? c : null, lineWidth: k };
       if (p.layer === 0) shapes0.push(s);
       else shapes1.push(s);
@@ -2228,6 +2268,8 @@
     var generator = effectiveGenerator(req.generator, req.allowsShanShuiV3);
     var palette = makePalette(req.palette || {});
     var ep = engineParams(req.params);
+    var elementTreatment = (req.params && req.params.element_treatment) || 'original';
+    if (elementTreatment !== 'original' && elementTreatment !== 'refined-v1') throw new Error('unknown element_treatment');
     var base = {
       width: req.width,
       height: req.height,
@@ -2238,6 +2280,7 @@
       hue: ep.hue,
       paperTexture: req.paperTexture,
       loadPaperScript: req.loadPaperScript,
+      elementTreatment: elementTreatment,
     };
     if (generator === 'shanshui@2' || generator === 'nonflowers@2' || generator === 'shanshui@3') {
       base.verse = verseLayoutFor(generator, req.params, req.width, req.height);
@@ -2246,6 +2289,7 @@
     if (generator === 'shanshui@5') {
       var verse5 = verseLayoutFor(generator, req.params, req.width, req.height);
       var req5 = {
+        elementTreatment: elementTreatment,
         seed: String(req.seed),
         width: req.width,
         height: req.height,
