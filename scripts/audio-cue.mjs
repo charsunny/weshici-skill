@@ -16,6 +16,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { ASSETS_ROOT, STUDIO_ROOT } from './server-util.mjs';
 import { lookupPoem, poemFacts } from './poem-lookup.mjs';
+import { beijingDay, huapingCalendar } from '../resources/core/huaping-footer.js';
 
 const args = process.argv.slice(2);
 const getArg = (k, def) => {
@@ -86,13 +87,17 @@ const couplets = timed.map((item, idx) => {
 });
 
 const slug = `auto-${matched.split('-').slice(1, 3).join('-')}`;
+const style = getArg('style', 'ink-story');
+// 节气取制作当天（北京时间），不写「时令」之类的占位；动态画屏随节气取 App 配色。
+const date = getArg('date', beijingDay());
 const recipe = {
   id: slug,
   poemId,
   title,
   dynasty: facts.dynasty,
   author,
-  term: '时令',
+  date,
+  term: huapingCalendar(date).term,
   mood: '旷达',
   weather: 'mist',
   location: '微诗 · 声画同步朗读',
@@ -102,7 +107,8 @@ const recipe = {
   bgm: '/artifacts/promo-8.0/assets/audio/radio-calm.m4a',
   seal: '微詩',
   lines: couplets.map((c) => c.text),
-  procedural: {
+  // 动态画屏用 ShanShui@5：只记 seed，用途、构图和母题由引擎按诗决定。
+  procedural: style === 'huaping-motion' ? { generator: 'shanshui@5', seed: matched, verseSide: 'left' } : {
     generator: 'shanshui@2',
     seed: matched,
     variant: '远山',

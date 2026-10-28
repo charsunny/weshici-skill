@@ -11,7 +11,7 @@ export function huapingClauses(text) {
 }
 
 export function huapingPlan({ poem, title = '', author = '', dynasty = '', verse, width, height,
-  wallpaper = false, shareFooter = false, cell = 1.44, inkBottom = () => 0, preferredSize = Infinity }) {
+  wallpaper = false, shareFooter = false, cell = 1.44, inkBottom = () => 0, preferredSize = Infinity, minInscription = 0 }) {
   if (!verse?.rect || !huapingClauses(poem).length) throw new Error('画屏缺少诗句或留白框');
   const raw = verse.rect;
   const top = Math.max((raw.y + raw.height * 0.03) * height, height * (wallpaper ? 0.32 : 0.10));
@@ -42,12 +42,12 @@ export function huapingPlan({ poem, title = '', author = '', dynasty = '', verse
   }
   const verseHeight = Math.max(...clauses.map(line => units(line, cell))) * fontSize;
   const bottomInset = inkBottom(clauses) * fontSize;
-  const sealWidth = fontSize * 0.44 * 0.9;
-  const sealHeight = sealWidth * 354 / 173;
+  let sealWidth = fontSize * 0.44 * 0.9;
+  let sealHeight = sealWidth * 354 / 173;
   const inscriptionHeight = Math.max(sealHeight, Math.min(box.height, verseHeight * 0.86) - bottomInset);
   const titleGlyphs = glyphs(title);
-  const separateTitle = titleGlyphs.length > 8;
-  const titleColumns = titleGlyphs.length > 18
+  let separateTitle = titleGlyphs.length > 8;
+  let titleColumns = titleGlyphs.length > 18
     ? [titleGlyphs.slice(0, Math.ceil(titleGlyphs.length / 2)).join(''), titleGlyphs.slice(Math.ceil(titleGlyphs.length / 2)).join('')]
     : title ? [title] : [];
   let inscriptionSize = Math.min(fontSize * 0.44, separateTitle
@@ -58,6 +58,17 @@ export function huapingPlan({ poem, title = '', author = '', dynasty = '', verse
   // Keep a multi-column title inside the colophon's reserved width; never shrink the poem for its title.
   if (separateTitle) inscriptionSize = Math.min(inscriptionSize,
     (box.width - (clauses.length + (clauses.length - 1) * GAP) * fontSize - sealWidth - fontSize * 0.45) / (titleColumns.length + 0.6 + (titleColumns.length - 1) * 0.45));
+  // Video frames have a type floor (VIDEO_V2_PLAN §2.3). The colophon and seal grow to it, and the
+  // title moves to its own column when one column can no longer hold title, attribution and seal.
+  if (minInscription && inscriptionSize < minInscription) {
+    inscriptionSize = minInscription;
+    sealWidth = Math.max(sealWidth, inscriptionSize * 0.9);
+    sealHeight = sealWidth * 354 / 173;
+    if (vertical && title && !separateTitle && (units(title, cell) + units(attribution, cell) + 0.9 + 0.45) * inscriptionSize + sealHeight > verseHeight - bottomInset) {
+      separateTitle = true;
+      titleColumns = [title];
+    }
+  }
   return { box, vertical, clauses, omittedClauses: all.slice(clauses.length), fontSize, cell,
     verseHeight, bottomInset, title, attribution, titleColumns, separateTitle,
     inscriptionSize, sealWidth, sealHeight, inscriptionHeight };

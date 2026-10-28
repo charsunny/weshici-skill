@@ -4,10 +4,7 @@
   "dynasty": "唐",
   "author": "杜甫",
   "term": "寒露",
-  "lunar": "九月初七 · 寒露 · 鸿雁来宾",
-  "layout": "quote",
-  "paletteId": "lanhui",
-  "scheme": "dark",
+  "palette": "seasonal",
   "audioMode": "bgm+foley",
   "bgm": "/artifacts/promo-8.0/assets/audio/radio-calm.m4a",
   "lines": [
@@ -22,18 +19,9 @@
     "有弟皆分散，无家问死生。",
     "寄书长不达，况乃未休兵。"
   ],
-  "note": "乾元二年秋，杜甫客居秦州。寒露夜深，边塞断行，唯闻孤雁南飞。",
-  "seal": "微詩",
   "procedural": {
-    "generator": "shanshui@2",
+    "generator": "shanshui@5",
     "seed": "hanlu-dufu-80",
-    "variant": "distant",
-    "params": {
-      "density": 0.92,
-      "quiet_top": 0.34,
-      "verse_side": "left",
-      "verse_columns": 4,
-      "verse_chars": 5
-    }
+    "verseSide": "left"
   }
 }

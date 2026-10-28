@@ -187,17 +187,17 @@ export function inkUnitState(t, startTime, index, totalUnits = 1, options = {}) 
 }
 
 /**
- * 落印状态：最后一个字完成后 0.3s 开始，0.2s 内从 scale 1.15 落到 1.0
+ * 落印状态（HuapingInkReveal）：0.2s 内从 scale 1.15 落到 1.0，三次 ease-out，无回弹。
+ * 新模板用 huaping-video.js 的 sealState；此处保留给尚未改写的模板，数值与之相同。
  */
-export function sealStampState(t, stampStartTime, duration = 0.22) {
-  const p = easeOutBack(inv(stampStartTime, stampStartTime + duration, t));
-  const op = easeOut(inv(stampStartTime, stampStartTime + duration * 0.85, t));
-  const scale = lerp(1.18, 1.0, p);
+export function sealStampState(t, stampStartTime, duration = 0.2) {
+  const p = easeOut(inv(stampStartTime, stampStartTime + duration, t));
+  const scale = 1 + 0.15 * (1 - p);
   return {
-    progress: op,
-    opacity: op,
+    progress: p,
+    opacity: p,
     scale,
-    style: `opacity:${op.toFixed(3)};transform:scale(${scale.toFixed(3)})`,
+    style: `opacity:${p.toFixed(3)};transform:scale(${scale.toFixed(3)})`,
   };
 }
 
