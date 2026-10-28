@@ -1,0 +1,230 @@
+{
+  "cases": [
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "theme": "canglang",
+      "poem": "空山新雨后，天气晚来秋。明月松间照，清泉石上流。竹喧归浣女，莲动下渔舟。随意春芳歇，王孙自可留。",
+      "excerpt": "明月松间照，清泉石上流。",
+      "seed": "study-山居秋暝",
+      "date": "2026-10-28",
+      "appearance": "light",
+      "purpose": "inscription"
+    },
+    {
+      "title": "江雪",
+      "author": "柳宗元",
+      "theme": "moon-white",
+      "poem": "千山鸟飞绝，万径人踪灭。孤舟蓑笠翁，独钓寒江雪。",
+      "excerpt": "孤舟蓑笠翁，独钓寒江雪。",
+      "seed": "study-江雪",
+      "date": "2026-10-28",
+      "appearance": "light",
+      "purpose": "inscription"
+    },
+    {
+      "title": "梅花",
+      "author": "王安石",
+      "theme": "canglang",
+      "poem": "墙角数枝梅，凌寒独自开。遥知不是雪，为有暗香来。",
+      "excerpt": "墙角数枝梅，凌寒独自开。",
+      "seed": "study-梅花",
+      "date": "2026-10-28",
+      "appearance": "light",
+      "purpose": "inscription"
+    },
+    {
+      "title": "小池",
+      "author": "杨万里",
+      "theme": "yaqing",
+      "poem": "泉眼无声惜细流，树阴照水爱晴柔。小荷才露尖尖角，早有蜻蜓立上头。",
+      "excerpt": "小荷才露尖尖角，早有蜻蜓立上头。",
+      "seed": "study-小池",
+      "date": "2026-10-28",
+      "appearance": "light",
+      "purpose": "inscription"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "theme": "canglang",
+      "poem": "空山新雨后，天气晚来秋。明月松间照，清泉石上流。竹喧归浣女，莲动下渔舟。随意春芳歇，王孙自可留。",
+      "excerpt": "明月松间照，清泉石上流。",
+      "seed": "study-山居秋暝",
+      "date": "2026-10-28",
+      "appearance": "light",
+      "purpose": "reading"
+    },
+    {
+      "title": "江雪",
+      "author": "柳宗元",
+      "theme": "moon-white",
+      "poem": "千山鸟飞绝，万径人踪灭。孤舟蓑笠翁，独钓寒江雪。",
+      "excerpt": "孤舟蓑笠翁，独钓寒江雪。",
+      "seed": "study-江雪",
+      "date": "2026-10-28",
+      "appearance": "light",
+      "purpose": "reading"
+    },
+    {
+      "title": "梅花",
+      "author": "王安石",
+      "theme": "canglang",
+      "poem": "墙角数枝梅，凌寒独自开。遥知不是雪，为有暗香来。",
+      "excerpt": "墙角数枝梅，凌寒独自开。",
+      "seed": "study-梅花",
+      "date": "2026-10-28",
+      "appearance": "light",
+      "purpose": "reading"
+    },
+    {
+      "title": "小池",
+      "author": "杨万里",
+      "theme": "yaqing",
+      "poem": "泉眼无声惜细流，树阴照水爱晴柔。小荷才露尖尖角，早有蜻蜓立上头。",
+      "excerpt": "小荷才露尖尖角，早有蜻蜓立上头。",
+      "seed": "study-小池",
+      "date": "2026-10-28",
+      "appearance": "light",
+      "purpose": "reading"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "theme": "canglang",
+      "poem": "空山新雨后，天气晚来秋。明月松间照，清泉石上流。竹喧归浣女，莲动下渔舟。随意春芳歇，王孙自可留。",
+      "excerpt": "明月松间照，清泉石上流。",
+      "seed": "study-山居秋暝",
+      "date": "2026-10-28",
+      "appearance": "dark",
+      "purpose": "inscription"
+    },
+    {
+      "title": "江雪",
+      "author": "柳宗元",
+      "theme": "moon-white",
+      "poem": "千山鸟飞绝，万径人踪灭。孤舟蓑笠翁，独钓寒江雪。",
+      "excerpt": "孤舟蓑笠翁，独钓寒江雪。",
+      "seed": "study-江雪",
+      "date": "2026-10-28",
+      "appearance": "dark",
+      "purpose": "inscription"
+    },
+    {
+      "title": "梅花",
+      "author": "王安石",
+      "theme": "canglang",
+      "poem": "墙角数枝梅，凌寒独自开。遥知不是雪，为有暗香来。",
+      "excerpt": "墙角数枝梅，凌寒独自开。",
+      "seed": "study-梅花",
+      "date": "2026-10-28",
+      "appearance": "dark",
+      "purpose": "inscription"
+    },
+    {
+      "title": "小池",
+      "author": "杨万里",
+      "theme": "yaqing",
+      "poem": "泉眼无声惜细流，树阴照水爱晴柔。小荷才露尖尖角，早有蜻蜓立上头。",
+      "excerpt": "小荷才露尖尖角，早有蜻蜓立上头。",
+      "seed": "study-小池",
+      "date": "2026-10-28",
+      "appearance": "dark",
+      "purpose": "inscription"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "theme": "canglang",
+      "poem": "空山新雨后，天气晚来秋。明月松间照，清泉石上流。竹喧归浣女，莲动下渔舟。随意春芳歇，王孙自可留。",
+      "excerpt": "明月松间照，清泉石上流。",
+      "seed": "study-山居秋暝",
+      "date": "2026-10-28",
+      "appearance": "dark",
+      "purpose": "reading"
+    },
+    {
+      "title": "江雪",
+      "author": "柳宗元",
+      "theme": "moon-white",
+      "poem": "千山鸟飞绝，万径人踪灭。孤舟蓑笠翁，独钓寒江雪。",
+      "excerpt": "孤舟蓑笠翁，独钓寒江雪。",
+      "seed": "study-江雪",
+      "date": "2026-10-28",
+      "appearance": "dark",
+      "purpose": "reading"
+    },
+    {
+      "title": "梅花",
+      "author": "王安石",
+      "theme": "canglang",
+      "poem": "墙角数枝梅，凌寒独自开。遥知不是雪，为有暗香来。",
+      "excerpt": "墙角数枝梅，凌寒独自开。",
+      "seed": "study-梅花",
+      "date": "2026-10-28",
+      "appearance": "dark",
+      "purpose": "reading"
+    },
+    {
+      "title": "小池",
+      "author": "杨万里",
+      "theme": "yaqing",
+      "poem": "泉眼无声惜细流，树阴照水爱晴柔。小荷才露尖尖角，早有蜻蜓立上头。",
+      "excerpt": "小荷才露尖尖角，早有蜻蜓立上头。",
+      "seed": "study-小池",
+      "date": "2026-10-28",
+      "appearance": "dark",
+      "purpose": "reading"
+    },
+    {
+      "title": "梅花",
+      "author": "王安石",
+      "theme": "canglang",
+      "poem": "墙角数枝梅，凌寒独自开。遥知不是雪，为有暗香来。",
+      "excerpt": "墙角数枝梅，凌寒独自开。",
+      "seed": "study-梅花",
+      "date": "2026-10-28",
+      "appearance": "light",
+      "purpose": "reading",
+      "artwork": "none"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "theme": "canglang",
+      "poem": "空山新雨后，天气晚来秋。明月松间照，清泉石上流。竹喧归浣女，莲动下渔舟。随意春芳歇，王孙自可留。",
+      "excerpt": "明月松间照，清泉石上流。",
+      "seed": "study-山居秋暝",
+      "date": "2026-10-28",
+      "appearance": "dark",
+      "purpose": "reading",
+      "artwork": "none"
+    },
+    {
+      "title": "梅花",
+      "author": "王安石",
+      "theme": "seasonal",
+      "poem": "墙角数枝梅，凌寒独自开。遥知不是雪，为有暗香来。",
+      "excerpt": "墙角数枝梅，凌寒独自开。",
+      "seed": "study-梅花",
+      "date": "2026-10-28",
+      "appearance": "light",
+      "purpose": "inscription",
+      "artPalette": "yaqing"
+    },
+    {
+      "title": "小池",
+      "author": "杨万里",
+      "theme": "moon-white",
+      "poem": "泉眼无声惜细流，树阴照水爱晴柔。小荷才露尖尖角，早有蜻蜓立上头。",
+      "excerpt": "小荷才露尖尖角，早有蜻蜓立上头。",
+      "seed": "study-小池",
+      "date": "2026-10-28",
+      "appearance": "light",
+      "purpose": "inscription",
+      "artwork": "flowers",
+      "flower": "荷",
+      "artPalette": "yaqing"
+    }
+  ]
+}

@@ -528,6 +528,11 @@ self.onmessage = function (event) {
         importScripts(ZXArtCompose.SHANSHUI_PAPER_SCRIPT);
       },
     });
+    // Optional study control; existing callers retain the engine's original texture strength.
+    if (req.paperStrength !== undefined) {
+      if (!Number.isFinite(req.paperStrength) || req.paperStrength < 0 || req.paperStrength > 1) throw new Error('paperStrength must be between 0 and 1');
+      if (drawing.paper) drawing.paper.strength *= req.paperStrength;
+    }
     var bitmap = render(drawing, pw, ph);
     self.postMessage({
       ok: true,

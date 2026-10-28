@@ -1,0 +1,11 @@
+{
+  "title": "春日",
+  "author": "朱熹",
+  "poem": "胜日寻芳泗水滨，无边光景一时新。",
+  "seed": "theme-art-study-spring-20261028",
+  "artPalette": "yaqing",
+  "flower": "自然",
+  "themes": ["yaqing", "moon-white", "canglang"],
+  "appearances": ["light", "dark"],
+  "artworks": ["shanshui", "flowers", "none"]
+}
