@@ -128,3 +128,13 @@
 证据：`landscape-after`、`landscape-replay`、`landscape-brush`、`landscape-tests.txt`、`landscape-legacy-checks.json`、`landscape-review-layout.json`，均位于 `out/theme-art-validation/`。
 
 视觉判断：峰肩与遮掩比柱状稿明确，两种皴法已能区分；局部岩面、松冠和坡岸仍有重复和程序化痕迹，尚不等同于传统绘画的自然笔墨。未实现真实水墨扩散或破墨。默认 refined-v1 与 App 不变，landscape-v3 作为显式候选供统一验收。
+
+## 原画复核后的枯笔与近岸修订（2026-10-28）
+
+继续对照《Brushstrokes》第 19 页查士标作品与第 41 页皴法图版，确认上一稿存在等距细丝、相似峰肩和近岸缺少承托的问题。本次在 landscape-v3 候选内修订：直笔补充中间采样以保留提按；枯笔改为不等长的透明断续落墨；峰肩轮廓和岩面倾斜增加变化，皴笔沿共同转折分组；近岸补洗染、短皴与不等长裂隙；前景树屋恢复墨量，并修正新模式镜像坡岸两套坐标别名不一致。中间稿中过重的平涂和重复折线已去除。
+
+验证：最终源码下 62 项 Node 测试通过；14 张浅深、多种子与全文阅读样本通过浏览器排字、字体、阅读区检查，14 张配方重放 PNG 完全一致。original、refined-v1、painted-v2 各一个固定种子引擎样本与 42c5972 哈希相同。验收页 1280px 与 390px 无横向溢出，顶部 22 张对照／矩阵图均正常解码。
+
+证据为 `out/theme-art-validation/landscape-mass-after`、`landscape-mass-replay`、`landscape-mass-brush`、`landscape-mass-tests.txt`、`landscape-mass-legacy-checks.json`、`landscape-mass-review-layout.json`。上一稿 `landscape-after` 原图保留，统一验收页顶部展示同种子前后对照。
+
+视觉结论：岸脚承托与前景墨色更明确，但主峰仍偏平、部分皴笔像附着纹理，松树枝法与叶簇仍重复。这是局部改进候选，不能宣称达到原画或传统山水画水准。默认处理、App 与视频模板未更改。

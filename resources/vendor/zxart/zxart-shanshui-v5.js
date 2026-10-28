@@ -2459,6 +2459,7 @@ Object.assign(ShanShuiEngineV5.prototype, {
       c = c.map(poly => {
         const p = clonePoly(poly);
         p.p = p.p.map(pt => P(width - pt.x, pt.y));
+        if (this.landscapeSeed) p.pts = p.p;
         return p;
       });
     }
@@ -2671,17 +2672,50 @@ Object.assign(ShanShuiEngineV5.prototype, {
   paintingLandscapeStone(mask, crest, fold, floor, rank) {
     const b=landscapeBrushEngineV5('stone-v3:'+this.landscapeSeed+':'+crest[0].x+':'+floor+':'+rank);
     const c=[mask];
+    const x0=crest[0].x,x1=crest[crest.length-1].x;
+    const ridge=x=>{
+      for(let i=0;i<crest.length-1;i++) if(x>=crest[i].x && x<=crest[i+1].x) {
+        const a=crest[i],z=crest[i+1];
+        return a.y+(z.y-a.y)*(x-a.x)/Math.max(.001,z.x-a.x);
+      }
+      return floor;
+    };
+    const face=(u,v)=>{
+      const x=x0+(x1-x0)*u,top=ridge(x),height=floor-top;
+      return P(x,top+height*(.16+.84*v));
+    };
     // Keep the existing bank surface (and tree/building supports), redraw its exposed rock face.
-    for(let band=0;band<20;band++) {
-      const v=band/20;
-      const edge=t=>fold.map(p=>P(p.x+(t*.12)*(p.x-fold[0].x),p.y+(floor-p.y)*t));
-      c.push(b.poly([...edge(v),...edge((band+1)/20).reverse()],{fil:C.gray(0,.18*(1-v)),str:null}));
+    for(let band=0;band<16;band++) {
+      const edge=t=>Array.from({length:35},(_,j)=>{
+        const u=.02+j/34*.96;
+        return face(u,Math.min(1,t+.07*Math.sin(u*15)));
+      });
+      c.push(b.poly([...edge(band/24),...edge(1).reverse()],{fil:C.gray(0,.018),str:null}));
+    }
+    for(let group=0;group<12;group++) {
+      const u=.05+b.r()*.90, v=b.r()*.70;
+      for(let j=0;j<3;j++) {
+        const start=Math.min(.96,u+j*.014),length=.10+b.r()*.26,lean=-.045;
+        const pts=Array.from({length:5},(_,k)=>face(Math.max(.02,Math.min(.98,start+lean*k/4)),Math.min(.98,v+length*k/4)));
+        c.push(...b.paintingBrushStroke(pts,{width:2.1+b.r()*2.8,ink:.25+b.r()*.25,
+          moisture:.26,pressure:[.2,1,.6,.3,.03]}));
+      }
+    }
+    // Unequal fissures turn through the face; their ink breaks before the rock foot.
+    for(let k=0;k<3;k++) {
+      const u=.13+k*.28+(b.r()-.5)*.12, start=.04+b.r()*.24;
+      const reach=.35+b.r()*.40,turn=(b.r()-.5)*.10;
+      const pts=[face(u,start),face(u+turn,start+reach*.35),
+        face(u-turn*.4,start+reach*.55),face(u+turn*.3,Math.min(.98,start+reach))];
+      c.push(...b.paintingBrushStroke(pts,{width:1.2+b.r(),ink:.55,moisture:.24}));
+      c.push(...b.paintingBrushStroke([pts[2],face(Math.min(.98,u+.08),start+reach*.6)],
+        {width:1,ink:.35,moisture:.24}));
     }
     for(let k=0;k<crest.length-2;k+=9) {
       if(b.r()<.25)continue;
-      c.push(...b.paintingBrushStroke(crest.slice(k,k+8),{width:1.8,ink:.70,moisture:.46}));
+      c.push(...b.paintingBrushStroke(crest.slice(k,k+8),{width:1.8,ink:.70,moisture:.25}));
     }
-    c.push(...b.paintingBrushStroke(fold,{width:2.4,ink:.65,moisture:.48}));
+    c.push(...b.paintingBrushStroke(fold,{width:2.3,ink:.7,moisture:.25}));
     for(let k=0;k<30;k++) {
       const p=fold[Math.floor(b.r()*fold.length)],reach=(floor-p.y)*(.25+b.r()*.6);
       c.push(...b.paintingBrushStroke([p,P(p.x-reach*.2,p.y+reach*.5),P(p.x-reach*.35,p.y+reach)],
@@ -2772,26 +2806,25 @@ Object.assign(ShanShuiEngineV5.prototype, {
     return c;
   },
 
-  /// 矾头 and stacked shoulders, with dry folds flowing down from the ridge.
-  // Study geometry keeps the original asset bounds so scene placement and anchors do not drift.
-  // Pressure, side loading and separated dry hairs are independent of the path.
+  // Pressure, side loading and broken ink deposits are independent of the path.
   // These are geometric approximations of Brushstrokes, PDF pp. 43–45, not fluid simulation.
   paintingBrushStroke(path, { width=2, ink=.6, moisture=.3, oblique=0, pressure=[.15,1,.8,.4,.02] } = {}) {
     if (path.length < 2) return [];
-    const points = this.inkCurve(path, 4), frames=[];
+    const points = this._densify(this.inkCurve(path, 4), 1.2), frames=[];
     for (let i=0;i<points.length;i++) {
       const a=points[Math.max(0,i-1)],z=points[Math.min(points.length-1,i+1)];
       const length=Math.hypot(z.x-a.x,z.y-a.y)||1, t=i/(points.length-1);
       const f=t*(pressure.length-1), k=Math.min(pressure.length-2,Math.floor(f));
       const p=pressure[k]+(pressure[k+1]-pressure[k])*(f-k);
       frames.push({p:points[i],nx:-(z.y-a.y)/length,ny:(z.x-a.x)/length,
-        radius:width*p*.5*(.88+this.r()*.24),t});
+        radius:width*p*.5*(.72+this.r()*.48),t});
     }
     const ribbon=(from,to,alpha,start=0,end=frames.length) => {
       const left=[],right=[];
       for(let i=start;i<end;i++) {
         const f=frames[i], shift=oblique*.35*f.radius;
-        const at=u=>P(f.p.x+f.nx*(f.radius*u+shift),f.p.y+f.ny*(f.radius*u+shift));
+        const edgeTaper=moisture<.3 ? Math.min(1,(i-start+1)/2,(end-i)/2) : 1;
+        const at=u=>P(f.p.x+f.nx*(f.radius*u*edgeTaper+shift),f.p.y+f.ny*(f.radius*u*edgeTaper+shift));
         left.push(at(from));right.push(at(to));
       }
       return this.poly([...left,...right.reverse()],{fil:C.gray(0,alpha),str:null});
@@ -2802,14 +2835,19 @@ Object.assign(ShanShuiEngineV5.prototype, {
       c.push(ribbon(-1.28,1.28,ink*moisture*.08));
       c.push(ribbon(-1.1,1.1,ink*moisture*.12));
     }
-    // Sparse moisture leaves actual gaps between hairs, rather than white paint over prior ink.
+    // Dry ink breaks into unequal connected deposits, not evenly spaced parallel hairs.
+    // Transparent omissions expose earlier ink and paper without painting either over.
     if(moisture<.3) {
-      const hairs=Math.max(3,Math.ceil(width*1.4));
-      for(let k=0;k<hairs;k++) {
-        const from=-1+2*k/hairs,span=2/hairs*(.35+moisture);
-        const cut=Math.floor(frames.length*(.50+this.r()*.25));
-        c.push(ribbon(from,from+span,ink*(.45+this.r()*.45),0,cut));
-        if(this.r()>.28)c.push(ribbon(from,from+span,ink*.45,Math.min(cut+2,frames.length-1),frames.length));
+      for(let strand=0;strand<4;strand++) {
+        let start=Math.floor(this.r()*3);
+        while(start<frames.length-2) {
+          const end=Math.min(frames.length,start+3+Math.floor(this.r()*9));
+          const centre=(strand-1.5)*.43+(this.r()-.5)*.22;
+          const span=.10+this.r()*.20;
+          c.push(ribbon(Math.max(-1,centre-span),Math.min(1,centre+span),
+            ink*(.4+this.r()*.45)*(1-start/frames.length*.35),start,end));
+          start=end-1+Math.floor(this.r()*4);
+        }
       }
     } else {
       c.push(ribbon(-1,1,ink*.48));
@@ -2832,7 +2870,7 @@ Object.assign(ShanShuiEngineV5.prototype, {
     const flip = profile.form === 'leaning' || profile.form === 'clustered';
     const point = (x, y) => P((flip ? 1 - x : x) * w, y * h);
     // Successive shoulders turn across the slope; subordinate rocks buttress the main peak.
-    const peakX=.40+b.r()*.18, peakWidth=.48+b.r()*.15;
+    const peakX=.40+b.r()*.18, peakWidth=.56+b.r()*.15;
     const rocks = [
       [peakX, .015, peakWidth, .62+b.r()*.13], [.76, .27+b.r()*.16, .28, .44], [.25, .32+b.r()*.18, .35, .38],
       [.44+b.r()*.15, .53+b.r()*.10, .46, .32], [.17, .73, .30, .22], [.72, .75, .38, .21],
@@ -2843,17 +2881,22 @@ Object.assign(ShanShuiEngineV5.prototype, {
       y += index ? (b.r()-.5)*.06 : 0;
       rw *= .88+b.r()*.24;
       rh *= .90+b.r()*.18;
-      let crest = [[-.50,.50],[-.41,.34],[-.29,.30],[-.23,.14],[-.08,.16],
-        [.06,0],[.17,.035],[.25,.11],[.39,.19],[.50,.38]].map(([u,v], k) =>
-        P(cx + rw * u, y + rh * (v + (k > 0 && k < 9 ? (b.r() - .5) * .045 : 0))));
+      const ridgeForms=[
+        [[-.50,.60],[-.41,.38],[-.29,.34],[-.23,.17],[-.08,.19],[.06,0],[.17,.025],[.25,.13],[.39,.23],[.50,.48]],
+        [[-.50,.48],[-.41,.28],[-.29,.27],[-.23,.08],[-.08,.04],[.06,.09],[.17,0],[.25,.03],[.39,.34],[.50,.52]],
+        [[-.50,.58],[-.41,.42],[-.29,.13],[-.23,.10],[-.08,0],[.06,.04],[.17,.22],[.25,.19],[.39,.39],[.50,.45]]
+      ];
+      let crest = ridgeForms[Math.floor(b.r()*ridgeForms.length)].map(([u,v], k) =>
+        P(cx + rw * u, y + rh * (v + (k > 0 && k < 9 ? (b.r() - .5) * .11 : 0))));
       if (terraced && index === 0) for (let k = 2; k < 7; k++) crest[k].y = y + rh * .08;
       if (method === 'hemp' && !terraced) crest = b.inkCurve(crest,4);
-      // The front plane rolls one way, then reverses into the foot; no parallel vertical ribs.
+      const lean=(index%2 ? -.19 : .14) + (b.r()-.5)*.12;
+      // Each shoulder has its own leaning plane, turning back towards the shared foot.
       const at = (u, v) => {
         const i = Math.min(crest.length - 2, Math.floor(u * (crest.length - 1)));
         const t = u * (crest.length - 1) - i;
         const start = P(crest[i].x * (1-t) + crest[i+1].x*t, crest[i].y*(1-t)+crest[i+1].y*t);
-        const drift = rw * (.065 * Math.sin(v * 5.0 + index*.8) - .14 * v * v);
+        const drift = rw * (lean*Math.sin(v*Math.PI*.85) - .12*v*v);
         const tooth=(b.n(u*30+index*11,v*19)-.5)*.009;
         return point(start.x + drift + (u - .5) * rw * .32 * v + rw*tooth,
           start.y + (y + rh - start.y) * v + rh*tooth*.5);
@@ -2886,11 +2929,11 @@ Object.assign(ShanShuiEngineV5.prototype, {
       c.push(b.poly(pts, { fil:C.gray(gray,tone), str:null }));
     };
     const dry = (points, width, alpha) => c.push(...b.paintingBrushStroke(points,
-      {width,ink:alpha,moisture:.17,pressure:[.3,1,.65,.8,.04]}));
+      {width,ink:alpha,moisture:.22,pressure:[.65,1,.55,.7,.02]}));
     for (const s of surfaces) {
       // Opaque paper masks the preceding rock, then thin wet layers build its body.
       patch(s,0,1,0,1,.94,255);
-      patch(s,0,1,0,1,.045);
+      patch(s,0,1,0,1,.025);
       // Shaded side, a smaller returned plane and a soft base: all follow the same fold.
       // Overlapping pale washes avoid the visible grid produced by disjoint translucent tiles.
       for (let k=0;k<24;k++) patch(s,.18+k/30,1,0,1,.012);
@@ -2908,33 +2951,31 @@ Object.assign(ShanShuiEngineV5.prototype, {
       for (let k=0;k<9;k++) if (k!==3 && k!==7) {
         const pts=[];
         for(let j=0;j<=5;j++) pts.push(s.at((k+j/5)/9,.006));
-        c.push(...b.paintingBrushStroke(pts, {width:.9+b.r()*1.2,ink:.55+b.r()*.15,moisture:.26}));
+        c.push(...b.paintingBrushStroke(pts, {width:1.1+b.r()*1.3,ink:.55+b.r()*.2,moisture:.24}));
       }
-      // Long structural folds only at two turns; shorter cun gather around them unevenly.
-      for (const u of [.10,.69,.92]) {
-        const length=.48+b.r()*.36, pts=[];
-        for(let j=0;j<=18;j++) pts.push(s.at(u + .018*Math.sin(j*1.2),j/18*length));
-        dry(pts,1.3+b.r()*2,.48+b.r()*.15);
+      // Turns form a few linked folds. Cun gather around these routes in staggered groups.
+      const routes=[.08,.43,.72,.92].map((root,i)=>({root,
+        bend:(i%2?-.045:.06)*(1+b.r()),phase:b.r(),length:.68+b.r()*.25}));
+      const route=(r,v)=>Math.max(.02,Math.min(.98,r.root+r.bend*Math.sin(v*4+r.phase)*v));
+      for(const r of routes) {
+        const pts=Array.from({length:10},(_,j)=>s.at(route(r,j/9*r.length),j/9*r.length));
+        dry(pts,2.0+b.r()*1.5,.55+b.r()*.20);
       }
-      for(let k=0;k<(method==='axe'?180:330);k++) {
-        const v=b.r()*.91;
-        const root=[.08,foldAt(v),.88][k%3];
-        const u=Math.max(.025,Math.min(.975,root+(b.r()-.35)*.24));
-        // Related clusters follow the three structural folds, leaving the lit planes open.
-        const density=.60+.24*Math.sin(v*19+u*13);
-        if(b.r()>density) continue;
-        const len=method==='axe' ? .035+b.r()*.12 : .06+b.r()*.25, pts=[];
-        for(let j=0;j<9;j++) {
-          const t=j/8;
-          const across=method==='axe' ? -.065*t : .012*Math.sin(t*5+k);
-          pts.push(s.at(Math.max(.01,Math.min(.99,u+across)),Math.min(.98,v+len*t)));
-        }
-        if(method==='axe') c.push(...b.paintingBrushStroke(pts,{width:3+b.r()*7,ink:.35+b.r()*.35,
-          moisture:.32+b.r()*.16,oblique:1,pressure:[.90,1,.6,.22,.01]}));
-        else dry(pts,1.5+b.r()*3,.42+b.r()*.3);
-        if(k%4===0) {
-          const p=pts[0];
-          c.push(...b.inkBlot(p.x,p.y,.6+b.r()*.9,.65,0,.18+b.r()*.22));
+      for(let group=0;group<32;group++) {
+        const r=routes[group%routes.length],v0=b.r()*.82;
+        const u0=route(r,v0), spread=.055+b.r()*.10;
+        for(let k=0;k<4+b.r()*3;k++) {
+          const v=Math.min(.91,v0+b.r()*.09),u=u0+(b.r()-.45)*spread*2;
+          const len=method==='axe' ? .065+b.r()*.17 : .08+b.r()*.25;
+          const bend=(group%2?-.025:.03),pts=[];
+          for(let j=0;j<7;j++) {
+            const t=j/6,along=Math.min(.98,v+len*t);
+            const across=route(r,along)-route(r,v)+(method==='axe'?-.075*t:bend*Math.sin(t*3));
+            pts.push(s.at(Math.max(.01,Math.min(.99,u+across)),along));
+          }
+          if(method==='axe') c.push(...b.paintingBrushStroke(pts,{width:3+b.r()*6,ink:.30+b.r()*.30,
+            moisture:.32+b.r()*.16,oblique:1,pressure:[.35,1,.6,.22,.01]}));
+          else dry(pts,1.5+b.r()*2.2,.38+b.r()*.25);
         }
       }
       // Moss is grouped on ledges, never an evenly spaced dotted border.
@@ -2954,15 +2995,15 @@ Object.assign(ShanShuiEngineV5.prototype, {
     const c=[];
     // Pine-leaf dots converge towards a twig; broad leaves use upright grouped dabs (PDF p. 40).
     for (const [u,v,scale] of [[-.28,.03,.85],[.04,-.24,1],[.32,.10,.60]]) {
-      const cx=x+width*u,cy=y+height*v;
-      const count=pine?7:10;
+      const cx=x+width*(u+(b.r()-.5)*.14),cy=y+height*(v+(b.r()-.5)*.25);
+      const count=10;
       for(let i=0;i<count;i++) {
         if(pine) {
-          const angle=-Math.PI*.94+Math.PI*.90*(i+.3+b.r()*.4)/count;
-          const radius=height*(.48+b.r()*.3)*scale;
+          const angle=-Math.PI*(.90+b.r()*.12)+Math.PI*.94*(i+b.r())/count;
+          const radius=height*(.30+b.r()*.48)*scale;
           const tip=P(cx+Math.cos(angle)*radius*1.45,cy+Math.sin(angle)*radius);
           c.push(...b.paintingBrushStroke([tip,P((tip.x+cx)*.5,(tip.y+cy)*.5-1),P(cx,cy)],
-            {width:1.0+b.r()*.8,ink:.65+b.r()*.25,moisture:.4,pressure:[.05,.5,.85,.55,.02]}));
+            {width:1.4+b.r()*1.2,ink:.70+b.r()*.25,moisture:.4,pressure:[.05,.7,1,.65,.02]}));
         } else {
           const px=cx+(b.r()-.5)*width*.35*scale,py=cy+(b.r()-.5)*height*.65;
           c.push(...b.paintingBrushStroke([P(px,py),P(px+height*.1,py+height*.20),P(px,py+height*.30)],
@@ -8387,7 +8428,7 @@ class PaintingStageV5 {
       'mooredBoat', 'traveler', 'horse', 'bridge', 'reeds'
     ]);
     if (accents.has(motif)) {
-      object.canv = this.engine.paintingInk(object.canv, 1);
+      object.canv = this.engine.paintingInk(object.canv, this.engine.landscapeSeed ? 'middle' : 1);
     }
 
     const actual = object.bounds;
@@ -9773,7 +9814,7 @@ class PaintingStageV5 {
 
     if (this.preparedGround) {
       const b = this.preparedGround.bounds;
-      const canvas = this.engine.paintingInk(this.preparedGround.canv, this.engine.landscapeSeed ? 'middle' : (scene === 'historic' ? 3 : 1));
+      const canvas = this.engine.paintingInk(this.preparedGround.canv, this.engine.landscapeSeed ? 'near' : (scene === 'historic' ? 3 : 1));
       if (this.groundInBand) {
         this.parts.push(new Part(canvas, null, {
           top: b.minY + b.height * 0.60,

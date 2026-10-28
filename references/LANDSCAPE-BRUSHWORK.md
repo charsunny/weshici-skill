@@ -33,12 +33,25 @@
 ## 复现与审图
 
 ```bash
-node scripts/landscape-brush-study.mjs
-node scripts/theme-art-study.mjs examples/theme-art-landscape.json out/theme-art-validation/landscape-after
-node scripts/theme-art-study.mjs out/theme-art-validation/landscape-after/recipes.json out/theme-art-validation/landscape-replay
+node scripts/landscape-brush-study.mjs out/theme-art-validation/landscape-mass-brush
+node scripts/theme-art-study.mjs examples/theme-art-landscape.json out/theme-art-validation/landscape-mass-after
+node scripts/theme-art-study.mjs out/theme-art-validation/landscape-mass-after/recipes.json out/theme-art-validation/landscape-mass-replay
 node scripts/theme-art-review.mjs
 ```
 
 第一步输出笔触及同种子双皴法证明页；第二步输出多种子、浅深、不同诗意与全文阅读矩阵。主验收页将新图与保留的 painted-v2 PNG 对照。按单笔、岩面、整幅的顺序审图，同时看缩小后的效果。旧配方遇到源码版本变化仍拒绝静默重放。
 
 配置使用 `elementTreatment: "landscape-v3"`；其他入口和默认 `refined-v1` 不变。此版本允许景物边界变化，因此天气锚点必须来自新几何，不能继续套用上一版的锚点。
+
+## 原画对照后的继续修订
+
+上一稿（42c5972）的主要问题是等距细丝式枯笔、相似峰肩、大面积平滑明面，以及树屋与近岸墨量不足。本次仍修订显式 landscape-v3 候选，不另增用户配置：
+
+- 枯笔改为不等长、不等宽的断续落墨；按距离补足采样，使只有两端点的直笔也能有中段提按。露纸仍为透明缺口。
+- 峰肩使用不同转折轮廓；每个岩面的倾斜不同，长短皴笔沿共同裂隙成组错落。
+- 近岸增加与原岸面相接的洗染、转面、折线裂隙及短皴；前景树屋与坡岸使用明确的墨色层次。修正新模式镜像坡岸的两套坐标别名不一致。
+- 松叶收拢位置、长度与组间距离有所变化，但尚未重做树干分枝拓扑，树冠重复感仍在。
+
+当前样张用 `landscape-mass-after`，重放用 `landscape-mass-replay`，笔触证明用 `landscape-mass-brush`；上一轮 `landscape-after` 保留作为固定种子对照。验收页顶部提供前后全图及局部。两轮源码不同，必须各自使用所保存版本重放，不能混用旧配方和新源码。
+
+本轮视觉判断：前景承托与墨色层次更清楚，但皴笔、峰形、松冠仍有程序感，未达到原画自然笔墨。不要将本轮修订表述为传统山水画复原完成。

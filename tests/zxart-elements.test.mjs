@@ -147,3 +147,19 @@ test('versioned seed streams distinguish nearby and reordered strings, and build
   assert.ok(moved.maxX<190||moved.minX>210);
   assert.equal(moved.maxY,400,'building remains supported by the bank');
 });
+
+test('two-point brush gestures retain pressure and mirrored study banks keep geometry aliases aligned', () => {
+  const api=engine();
+  const brush=new api.Engine('two-point-pressure').paintingBrushStroke([{x:0,y:0},{x:80,y:0}],
+    {width:12,moisture:.6,pressure:[.05,1,.05]});
+  const points=brush.flatMap(p=>p.p);
+  assert.ok(points.some(p=>p.x>25&&p.x<55&&Math.abs(p.y)>4),
+    'a straight gesture must press down between its two endpoints');
+  assert.ok(points.filter(p=>p.x===0||p.x===80).every(p=>Math.abs(p.y)<1),
+    'entry and exit remain light');
+  for(const seed of ['bank-01','bank-02','bank-03','bank-04']) {
+    const e=new api.Engine(seed);e.landscapeSeed=seed;
+    for(const p of e.paintingSlope('cliff')) assert.equal(json(p.p),json(p.pts),
+      'fitting and rendering must see the same mirrored geometry');
+  }
+});

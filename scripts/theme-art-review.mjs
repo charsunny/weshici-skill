@@ -16,6 +16,18 @@ const motion=JSON.parse(fs.readFileSync(path.join(root,'motion/checks.json'),'ut
 const parts=[`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>微诗 · 主题与诗画验收</title>
 <style>body{margin:0;background:#f4f5f3;color:#1d2926;font:16px/1.75 system-ui,sans-serif}main{max-width:1180px;margin:0 auto;padding:56px 24px}h1{font:36px/1.4 serif;margin:12px 0}h2{font-size:25px;margin:44px 0 12px}h3{font-size:18px;margin:26px 0 10px}p{max-width:850px;color:#4d5c57}nav{display:flex;gap:22px;flex-wrap:wrap;margin:28px 0}a{color:#2e6a4e}small{color:#60736b}section{border-top:1px solid #d9dfdb;padding-bottom:28px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.sample{text-decoration:none;display:block}.sample img{width:100%;display:block;border:1px solid #d5dbd7;box-sizing:border-box}.sample span{display:block;padding:9px 0;font-size:13px}.sheet{display:block;max-width:100%;margin:18px 0}summary{cursor:pointer;padding:14px 0;font-weight:600}.note{padding:16px 20px;background:#e9eee9;border-left:3px solid #758f7d}code{font-size:14px}@media(max-width:700px){main{padding:28px 16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}h1{font-size:28px}}</style>
 <main><small>WESHICI SKILL · 2026-10-28 · A–D 统一验收</small><h1>主题相随，诗画各有其意</h1><p>本轮验证主题、绘画与阅读用途的关系。App 尚未修改。点击任意小样查看原图；这页保留全部结果和已知限制，等待统一审美验收。</p><nav><a href="#reading">全文阅读</a><a href="#inscription">题诗画屏</a><a href="#themes">三主题对照</a><a href="#motion">动态抽查</a><a href="#checks">验证与限制</a></nav>`];
+const massChecks = path.join(root,'landscape-mass-after/checks.json');
+if(fs.existsSync(massChecks)) {
+ const records=JSON.parse(fs.readFileSync(massChecks,'utf8')).records;
+ const before=JSON.parse(fs.readFileSync(path.join(root,'landscape-after/checks.json'),'utf8')).records;
+ const sample=(directory,r,label)=>`<a class="sample" href="${directory}/${r.name}.png"><img loading="lazy" src="${directory}/${r.name}.png" alt="${esc(label)}"><span>${esc(label)}</span></a>`;
+ parts.push('<section id="landscape-mass"><h2>本轮 · 枯笔、岩面与近岸墨色</h2><p>左为 42c5972 保存的上一稿，右为当前候选；种子、诗句、主题与字体相同。调整峰肩轮廓、皴笔分组与枯笔落墨，增加近岸转面和裂隙，并恢复前景树屋的墨量。景物会随新岩面重新落位。</p><style>.mass-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:960px}.mass-pair svg{width:100%;display:block}</style>');
+ for(const i of [0,1,4,8]) parts.push(`<h3>${esc(records[i].config.seed)} · ${records[i].config.appearance==='dark'?'深色':'浅色'}</h3><div class="mass-pair">${sample('landscape-after',before[i],'上一稿')}${sample('landscape-mass-after',records[i],'当前候选')}</div>`);
+ parts.push('<details><summary>放大近岸与树屋</summary><div class="mass-pair">');
+ for(const directory of ['landscape-after','landscape-mass-after']) parts.push(`<svg viewBox="40 620 680 530" role="img" aria-label="近岸对照"><image href="${directory}/${records[0].name}.png" width="1080" height="1440"/></svg>`);
+ parts.push('</div></details><h3>完整矩阵</h3>'+grid('landscape-mass-after',()=>true));
+ parts.push('<p>仍有差距：峰形与皴笔的组合可辨认出程序规则，松冠重复，纸墨交融不足。本轮仅作为继续试验的候选，不等同于原画水准，也不迁移 App。</p><p><a href="landscape-mass-brush/index.html">单笔、岩石与双皴法证明页</a> · <a href="landscape-mass-after/recipes.json">配方</a> · <a href="landscape-mass-replay/checks.json">重放检查</a> · <a href="landscape-mass-tests.txt">测试记录</a></p></section>');
+}
 const landscapeChecks = path.join(root, 'landscape-after/checks.json');
 if (fs.existsSync(landscapeChecks)) {
  const records = JSON.parse(fs.readFileSync(landscapeChecks,'utf8')).records;
