@@ -56,6 +56,9 @@
         const matched = window.poetryScene(config.fullPoem, title);
         const recipe = matched.paintingProcedural(seed, { purpose:reading ? 'reading-v1' : 'inscription-v1', quietTop:.18,
           verseSide:'right', verseColumns:params.verse_columns, verseChars:params.verse_chars });
+        if(config.elementTreatment==='landscape-v3') {
+          recipe.params.scene.cun=/望岳|岱宗|泰山|华山|峭壁|绝壁|千仞/.test(title+config.fullPoem)?'axe':'hemp';
+        }
         request = { generator, seed, variant:recipe.variant, params:{ ...recipe.params, ...params },
           palette:config.artColors, paperStrength:config.paperStrength, width, height:artHeight };
       } else if (!saved) {

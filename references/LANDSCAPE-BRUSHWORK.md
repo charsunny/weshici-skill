@@ -24,7 +24,7 @@
 | 点叶 | 松树主枝弯转分叉，枝梢以聚散针叶和墨点成冠；阔叶成组点写 | 组间留空、尺度不齐；避免整齐椭圆贴片 |
 | 主题 | 继承主题纸色、墨色、字体；山体小笔触局部点色 | 长而窄的洗染色带不参与山尖点色，避免整片阴面变成色块 |
 
-`cun:<seed>` 决定主导皴法；山体、叶簇、坡石各有带用途前缀的独立随机序列。旧处理仍使用原来的随机序列。相同版本、输入和 seed 重放一致；不同 seed 的变化受到上述结构约束。输出 `brushwork` 记录本次主导皴法，不要求用户自己辨认代码中的随机选择。
+主导皴法由诗境决定：实验模板识别望岳、岱宗、泰山、华山、峭壁、绝壁、千仞等题材为斧劈，其余默认披麻；结果保存为请求内部的 `params.scene.cun`。这是简单关键词规则，不是完整的诗意理解。种子不再切换皴法；山体、叶簇、坡石各有带用途前缀的独立随机序列。旧处理仍使用原来的随机序列。相同版本、输入和 seed 重放一致；不同 seed 的变化受到上述结构约束。输出 `brushwork` 记录本次主导皴法，可核对保存的皴法选择。
 
 新模式对完整字符串做顺序敏感的哈希和混合，再初始化局部随机流；不沿用旧初始化的编码字符求和，以减少相近编号的相关性和重排字符串碰撞。建筑沿坡岸落位时另避开已有树干区域，避免重排后出现房屋搭在树干上的错觉。
 
@@ -33,13 +33,13 @@
 ## 复现与审图
 
 ```bash
-node scripts/landscape-brush-study.mjs out/theme-art-validation/landscape-structure-brush
-node scripts/theme-art-study.mjs examples/theme-art-landscape.json out/theme-art-validation/landscape-structure-after
-node scripts/theme-art-study.mjs out/theme-art-validation/landscape-structure-after/recipes.json out/theme-art-validation/landscape-structure-replay
+node scripts/landscape-brush-study.mjs out/theme-art-validation/landscape-flow-brush
+node scripts/theme-art-study.mjs examples/theme-art-landscape.json out/theme-art-validation/landscape-flow-after
+node scripts/theme-art-study.mjs out/theme-art-validation/landscape-flow-after/recipes.json out/theme-art-validation/landscape-flow-replay
 node scripts/theme-art-review.mjs
 ```
 
-第一步输出笔触及同种子双皴法证明页；第二步输出多种子、浅深、不同诗意与全文阅读矩阵。主验收页将新图与 79b9812 保存的上一稿 PNG 对照，历史各轮仍保留。按单笔、岩面、整幅的顺序审图，同时看缩小后的效果。旧配方遇到源码版本变化仍拒绝静默重放。
+第一步输出笔触及同种子双皴法证明页；第二步输出多种子、浅深、不同诗意与全文阅读矩阵。主验收页将新图与 483a8b9 保存的上一稿 PNG 对照，历史各轮仍保留。按单笔、岩面、整幅的顺序审图，同时看缩小后的效果。旧配方遇到源码版本变化仍拒绝静默重放。
 
 配置使用 `elementTreatment: "landscape-v3"`；其他入口和默认 `refined-v1` 不变。此版本允许景物边界变化，因此天气锚点必须来自新几何，不能继续套用上一版的锚点。
 
@@ -69,3 +69,18 @@ node scripts/theme-art-review.mjs
 当前证据目录为 `landscape-structure-after`、`landscape-structure-replay`、`landscape-structure-brush`；79b9812 的 `landscape-mass-after` 保留为同种子对照。证明页增加整棵松树与完整坡岸，避免只凭单笔证明判断整幅。
 
 视觉界限：墨色厚度、叠嶂和树枝关系已有实质变化，但岩面组合仍重复，局部洗染平滑，皴笔仍带程序特征。不能将这些变化或回归通过表述为“已经接近原画水平”。
+
+
+## 按原画局部再校正：阴阳面与折带
+
+本轮直接采用 VPS Claude 转来的审图意见，参考博物馆发布的[查士标原画局部](https://education.asianart.org/wp-content/uploads/sites/6/2019/09/B69D41_Landscape_Detail.jpg)（作品 B69D41，1686，[资料页](https://education.asianart.org/resources/brushpainting-nature-in-art-school-program-selected-resources/)）。原图只作对照，不参与生成。
+
+- 撤回中间试验 `landscape-flow-grain` 的整层墨粒，worker 回到 483a8b9 的实现；没有引入山面各向同性噪点。枯笔缺口沿笔势分布在笔触内部，细笔不再强拆成亚像素的六条细丝；负向侧锋同步反转浓墨边。
+- 山体从十三块改成九块肩面，次峰增加宽肩与偏峰。明面取消整面墨底，阴面及转折聚集皴染。各岩面按淡湿断勾、顺势皴、薄染、浓淡横点顺序生成；前后岩面的遮挡仍由纸色遮罩处理。
+- 岩面底边由统一平底改成起伏收脚，缩小过界的洗染范围。固定样张左侧硬截边消失；`fitted` 本身只拟合，不裁剪，问题来自局部岩面的闭合边与受限洗染几何。
+- 近岸替换旧长平板遮罩，以错落肩线、斜收脚和前后遮挡构成台阶；小石减少折笔数量。笔路先横行、到角处按下侧锋再向下；干擦紧随同一转角，淡染从缝向外展开，最后补浓淡横点。溪流使用同一套石法，并用断续岸线串联。
+- 主峰缩窄，客峰位置抬高，减少轮廓完全重合。曾尝试单独拉长水路，但造成上游石块悬空，已撤回；贯通近远的 S 形路径尚未完成，须连同坡岸和山谷构图一起重做。
+
+本轮输出 `landscape-flow-after` / `landscape-flow-replay` / `landscape-flow-brush`。验收页增加原画与候选的局部并排，使用相同图像像素尺寸、同缩放对齐，并保留同种子的前后对照；不声称按原作实物尺寸校准。原图需另存为 `out/theme-art-validation/landscape-flow-reference/cha-shibiao-detail.jpg` 才展示原画区，其来源说明同目录保存。
+
+剩余差距：披麻笔簇仍偏卷曲，重复的岩面搭接与折带节奏可辨认，岸石干擦缺少原画的厚薄变化。主客峰已有分离，但溪流仍只在近岸，整体龙脉尚不充分。继续保留试验版本，不切换默认，不迁移 App；这些变化并不代表已达到原画水平。

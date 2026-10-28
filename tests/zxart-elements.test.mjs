@@ -137,7 +137,7 @@ test('versioned seed streams distinguish nearby and reordered strings, and build
   const seeds=Array.from({length:20},(_,i)=>'ridge-'+String(i+1).padStart(2,'0'));
   const values=seeds.map(seed=>api.landscapeBrushEngine('cun:'+seed).r());
   assert.equal(new Set(values).size,20);
-  assert.ok(values.some(v=>v<.5)&&values.some(v=>v>=.5),'consecutive seeds cover both cun families');
+  assert.ok(values.some(v=>v<.5)&&values.some(v=>v>=.5),'nearby seeds do not collapse to one narrow range');
   assert.notEqual(api.landscapeBrushEngine('abcd').r(),api.landscapeBrushEngine('dcba').r());
   // A building can move sideways along the same bank, without occupying the trunk corridor.
   const stage=new api.Stage('clearance',420,560,{},null,.08,{});
@@ -174,4 +174,33 @@ test('successive study banks vary within a reproducible scene', () => {
   const [left,right]=make();
   assert.notEqual(json(left),json(right),'separate banks must not stamp the same rock group twice');
   assert.equal(json([left,right]),json(make()),'scene-level replay includes all bank instances');
+});
+
+
+test('landscape cun follows the scene choice rather than changing with the seed', () => {
+  const api=engine();
+  const request={generator:'shanshui@5',variant:'retreat',palette,width:540,height:720,
+    params:{...params,element_treatment:'landscape-v3',scene:{motifs:['pine','hut','stream'],purpose:'inscription-v1',composition:'corner'}}};
+  for(const seed of ['ridge-01','ridge-02']) {
+    const plain=api.generate({...request,seed});
+    const axe=api.generate({...request,seed,params:{...request.params,scene:{...request.params.scene,cun:'axe'}}});
+    assert.equal(plain.brushwork.technique,'hemp');
+    assert.equal(axe.brushwork.technique,'axe');
+    assert.notEqual(json(plain.layers),json(axe.layers));
+    const stream=plain.sceneElements.find(e=>e.motif==='stream');
+    assert.ok(stream, 'the winding stream is still placed');
+    const v=plain.verse.rect,b=stream.bounds;
+    assert.ok(b.x+b.width<=v.x||b.x>=v.x+v.width||b.y+b.height<=v.y||b.y>=v.y+v.height, 'stream clears the verse');
+  }
+});
+
+test('negative side loading moves the dark edge to the opposite side of the brush', () => {
+  const api=engine(),path=[{x:0,y:0},{x:60,y:0}];
+  const weight=oblique=>new api.Engine('side-load').paintingBrushStroke(path,
+    {width:12,ink:.8,moisture:.7,oblique,pressure:[1,1]}).reduce((sum,p)=>{
+      const centre=p.p.reduce((n,q)=>n+q.y,0)/p.p.length;
+      return sum+centre*p.fil.a;
+    },0);
+  assert.ok(weight(1)>0);
+  assert.ok(weight(-1)<0);
 });
