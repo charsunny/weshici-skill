@@ -138,3 +138,16 @@
 证据为 `out/theme-art-validation/landscape-mass-after`、`landscape-mass-replay`、`landscape-mass-brush`、`landscape-mass-tests.txt`、`landscape-mass-legacy-checks.json`、`landscape-mass-review-layout.json`。上一稿 `landscape-after` 原图保留，统一验收页顶部展示同种子前后对照。
 
 视觉结论：岸脚承托与前景墨色更明确，但主峰仍偏平、部分皴笔像附着纹理，松树枝法与叶簇仍重复。这是局部改进候选，不能宣称达到原画或传统山水画水准。默认处理、App 与视频模板未更改。
+
+
+## 积墨与山石、松树结构重做（2026-10-28）
+
+继续按《Brushstrokes》第 20 页的断带、转角侧笔，以及第 40–45 页的点叶、皴法和装墨图版调整显式 landscape-v3。山体由较短岩面错落搭接，横向峰肩接下行裂隙；披麻组的淡染沿同一笔势落下，细皴补充纹理。枯笔使用错落搭接的笔毫，避免等重双边线和整笔横向断成块。松树改为弯转主干、上挑主枝与二次分叉，枝端聚叶；岸坡由沿水倾斜的主体和少量脚石组成，每处岸坡的随机流独立变化。
+
+本轮定位到实际成图与 SVG 证明页不一致的原因：Canvas 合批将相邻同色淡墨并成一次填色，丢失了多次积墨。新增 `overprint` 元数据并贯穿拟合、设色、导出与 Worker；只对新皴染逐遍绘制，旧模式继续原合批。岩石层使用已有纸面滤镜做轻微墨边扰动，保留完整分辨率，避免半分辨率处理使细笔变糊。这些是几何与像素近似，不是物理扩散或破墨。
+
+对照证据：`landscape-structure-after`、`landscape-structure-replay`、`landscape-structure-brush`、`landscape-structure-tests.txt`、`landscape-structure-compositing.txt`、`landscape-structure-legacy-checks.json`、`landscape-structure-review-layout.json`，均在 `out/theme-art-validation/`。前轮 79b9812 的 `landscape-mass-after` 保留；对照页顶部放置同种子浅深全图、局部放大、完整矩阵，并链接教材原页和实际单笔／整树／坡岸证明。
+
+验证：最终源码下 63 项 Node 测试通过；14 张多种子、浅深与全文阅读样张通过字体、排字和阅读区检查，14 张保存配方重放 PNG 逐字节一致。真实 Canvas 像素回归得到旧合批 alpha 128、两遍积墨 192、三遍积墨 224。original、refined-v1、painted-v2 各一个固定种子引擎输出与 79b9812 相同。统一对照页在 1280px、390px 下无横向溢出，顶部 22 张图正常解码。
+
+审美结论：积墨厚度、叠嶂、松树枝叶关系与岸坡承托均有改善。仍有岩面组合重复、洗染平滑、细皴与树叶程序感的问题；没有达到“接近原画水平”的完成条件，不据此提高默认版本或迁移 App。自动检查仅证明行为和重放稳定，不证明绘画水准。

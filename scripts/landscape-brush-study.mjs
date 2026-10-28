@@ -37,6 +37,8 @@ for (const pine of [true,false]) {
 }
 stroke.landscapeSeed='bank-proof';
 swatches.push(`<article><h3>近岸 · 岩面与裂隙</h3>${svg(stroke.paintingStone(0,220,0,75,'cliff',1),'-5 -5 240 90')}</article>`);
+swatches.push(`<article><h3>岸势 · 主坡与岸脚遮挡</h3>${svg(stroke.paintingSlope('cliff'),'-5 -10 350 120')}</article>`);
+swatches.push(`<article><h3>松树 · 分枝、转干与聚叶</h3>${svg(stroke.paintingTree('pine'),'-35 0 210 195')}</article>`);
 const paintings=[];
 for (const seed of ['ridge-01','ridge-02','ridge-03']) for (const technique of ['hemp','axe']) {
   const engine = new Engine(seed);

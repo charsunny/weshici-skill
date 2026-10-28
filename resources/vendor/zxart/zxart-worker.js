@@ -43,7 +43,9 @@ function sameColor(a, b) {
 }
 
 /** Prepared.sameStyle: 填色、线宽相同, 有线宽时描色也相同。 */
+// Separate wash passes accumulate ink; merging their paths would erase that accumulation.
 function sameStyle(a, b) {
+  if (a.overprint || b.overprint) return false;
   return sameColor(a.fill, b.fill) && a.lineWidth === b.lineWidth && (a.lineWidth > 0 ? sameColor(a.stroke, b.stroke) : true);
 }
 
@@ -397,7 +399,7 @@ function drawWashed(ctx, layer, drawing, pw, ph, s, ox, oy) {
   var noise = ZXArtCompose.WashNoise, unitClamp = ZXArtCompose.Brush.unit, wash = layer.wash;
   var bleed = wash && Number.isFinite(wash.bleed) ? Math.max(0, wash.bleed) : 0;
   var rim = wash && Number.isFinite(wash.rim) ? Math.max(0, wash.rim) : 0;
-  var grain = unitClamp(wash ? wash.grain : 0), unit = wash ? 2 : 1, logicalUnit = unit / s;
+  var grain = unitClamp(wash ? wash.grain : 0), unit = wash && !wash.fullResolution ? 2 : 1, logicalUnit = unit / s;
   var support = 1.73 * bleed + 3 * logicalUnit, strokePad = 0;
   layer.shapes.forEach(function (shape) { strokePad = Math.max(strokePad, shape.lineWidth * 5); });
   var pad = (support + strokePad) * s;

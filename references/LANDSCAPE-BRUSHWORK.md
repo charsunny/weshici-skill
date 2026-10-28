@@ -21,7 +21,7 @@
 | 披麻近似 | 沿结构布置长短不齐的干笔，明面疏、转折密 | 变长短、起点和笔压，不打乱坡向 |
 | 斧劈近似 | 侧锋宽起、逐渐收尖，集中在转面和裂隙 | 一张画保留主导皴法，不无差别混合所有笔型 |
 | 笔触 | 局部法线方向的提按轮廓、侧面墨色差、分毫露纸 | 墨量、湿度、宽度独立；露纸用透明空隙，不用白笔覆盖下层 |
-| 点叶 | 松针向枝心收拢；阔叶成组点写 | 组间留空、尺度不齐；避免整齐椭圆贴片 |
+| 点叶 | 松树主枝弯转分叉，枝梢以聚散针叶和墨点成冠；阔叶成组点写 | 组间留空、尺度不齐；避免整齐椭圆贴片 |
 | 主题 | 继承主题纸色、墨色、字体；山体小笔触局部点色 | 长而窄的洗染色带不参与山尖点色，避免整片阴面变成色块 |
 
 `cun:<seed>` 决定主导皴法；山体、叶簇、坡石各有带用途前缀的独立随机序列。旧处理仍使用原来的随机序列。相同版本、输入和 seed 重放一致；不同 seed 的变化受到上述结构约束。输出 `brushwork` 记录本次主导皴法，不要求用户自己辨认代码中的随机选择。
@@ -33,13 +33,13 @@
 ## 复现与审图
 
 ```bash
-node scripts/landscape-brush-study.mjs out/theme-art-validation/landscape-mass-brush
-node scripts/theme-art-study.mjs examples/theme-art-landscape.json out/theme-art-validation/landscape-mass-after
-node scripts/theme-art-study.mjs out/theme-art-validation/landscape-mass-after/recipes.json out/theme-art-validation/landscape-mass-replay
+node scripts/landscape-brush-study.mjs out/theme-art-validation/landscape-structure-brush
+node scripts/theme-art-study.mjs examples/theme-art-landscape.json out/theme-art-validation/landscape-structure-after
+node scripts/theme-art-study.mjs out/theme-art-validation/landscape-structure-after/recipes.json out/theme-art-validation/landscape-structure-replay
 node scripts/theme-art-review.mjs
 ```
 
-第一步输出笔触及同种子双皴法证明页；第二步输出多种子、浅深、不同诗意与全文阅读矩阵。主验收页将新图与保留的 painted-v2 PNG 对照。按单笔、岩面、整幅的顺序审图，同时看缩小后的效果。旧配方遇到源码版本变化仍拒绝静默重放。
+第一步输出笔触及同种子双皴法证明页；第二步输出多种子、浅深、不同诗意与全文阅读矩阵。主验收页将新图与 79b9812 保存的上一稿 PNG 对照，历史各轮仍保留。按单笔、岩面、整幅的顺序审图，同时看缩小后的效果。旧配方遇到源码版本变化仍拒绝静默重放。
 
 配置使用 `elementTreatment: "landscape-v3"`；其他入口和默认 `refined-v1` 不变。此版本允许景物边界变化，因此天气锚点必须来自新几何，不能继续套用上一版的锚点。
 
@@ -55,3 +55,17 @@ node scripts/theme-art-review.mjs
 当前样张用 `landscape-mass-after`，重放用 `landscape-mass-replay`，笔触证明用 `landscape-mass-brush`；上一轮 `landscape-after` 保留作为固定种子对照。验收页顶部提供前后全图及局部。两轮源码不同，必须各自使用所保存版本重放，不能混用旧配方和新源码。
 
 本轮视觉判断：前景承托与墨色层次更清楚，但皴笔、峰形、松冠仍有程序感，未达到原画自然笔墨。不要将本轮修订表述为传统山水画复原完成。
+
+## 积墨、山石搭接与树法重做
+
+继续对照 PDF 第 20 页的横向断带转为纵斜侧笔，以及第 40–45 页的点叶、皴法和装墨示范：
+
+- 先修复真实渲染路径：Canvas 原先将相邻同色图元合并填色，使多遍淡染只剩一遍。新皴染携带 `overprint`，在拟合、设色和导出中保留，渲染时逐遍填色；旧图元继续原有合批语义。浏览器像素测试验证两遍、三遍半透明墨分别累积到约 75%、87.5% alpha。
+- 山体采用十三块高低错落的短岩面搭接。横向峰肩转为向下裂隙，皴笔及不规则淡染共用曲面；染色限定在岩面内，避免宽笔晕出轮廓。
+- 枯笔有较淡的连续笔势和错落搭接的笔毫，各毫宽度、落墨长度和墨量不同，避免两条等重边线形成空心管，也避免整笔横向断开成块。湿笔分段改变墨量，起收和转折仍由整笔压力控制。
+- 松树根点固定，主干折转、主枝上挑、细枝再次分叉；枝端以疏密不齐的针叶与点墨成冠。岸坡由倾斜主体和少量脚石组成，同一场景不同岸坡使用不同但可重放的随机流，避免重复盖章。
+- 岩石层使用已有纸面滤镜做轻微边缘扰动，并保留完整像素分辨率；没有实现真实毛细扩散或湿墨混色。
+
+当前证据目录为 `landscape-structure-after`、`landscape-structure-replay`、`landscape-structure-brush`；79b9812 的 `landscape-mass-after` 保留为同种子对照。证明页增加整棵松树与完整坡岸，避免只凭单笔证明判断整幅。
+
+视觉界限：墨色厚度、叠嶂和树枝关系已有实质变化，但岩面组合仍重复，局部洗染平滑，皴笔仍带程序特征。不能将这些变化或回归通过表述为“已经接近原画水平”。

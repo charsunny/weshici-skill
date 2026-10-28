@@ -102,6 +102,8 @@ test('structural landscape is seeded, preserves the verse and required subjects,
   assert.notEqual(json(next.trace),json(legacy.trace),'mountain geometry is rebuilt, not just recoloured');
   assert.notEqual(json(next.anchors),json(legacy.anchors),'weather anchors follow rebuilt geometry');
   assert.equal(next.brushwork.version,'landscape-v3');
+  assert.ok(next.layers.some(layer=>layer.shapes.some(shape=>shape.overprint)), 'wash compositing survives fitting and export');
+  assert.ok(legacy.layers.every(layer=>layer.shapes.every(shape=>!shape.overprint)), 'legacy batching is unchanged');
   assert.ok(['hemp','axe'].includes(next.brushwork.technique));
   for (const motif of ['mainMountain','pine','hut']) assert.ok(next.sceneElements.some(e=>e.motif===motif),motif);
   for (const layer of next.layers) for (const shape of layer.shapes) {
@@ -162,4 +164,14 @@ test('two-point brush gestures retain pressure and mirrored study banks keep geo
     for(const p of e.paintingSlope('cliff')) assert.equal(json(p.p),json(p.pts),
       'fitting and rendering must see the same mirrored geometry');
   }
+});
+
+
+test('successive study banks vary within a reproducible scene', () => {
+  const api=engine();
+  const make=()=>{const e=new api.Engine('bank-scene');e.landscapeSeed='bank-scene';
+    return [e.paintingBank('cliff'),e.paintingBank('cliff')];};
+  const [left,right]=make();
+  assert.notEqual(json(left),json(right),'separate banks must not stamp the same rock group twice');
+  assert.equal(json([left,right]),json(make()),'scene-level replay includes all bank instances');
 });
