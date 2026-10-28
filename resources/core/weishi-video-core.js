@@ -247,6 +247,8 @@ export function renderZXArt(canvas, req, workerUrl = '/vendor/zxart/zxart-worker
           const ctx = canvas.getContext('2d');
           ctx.clearRect(0, 0, width, height);
           ctx.drawImage(data.bitmap, 0, 0, width, height);
+          // Canvas 2D may defer the draw; read one pixel back so it lands before the bitmap is released.
+          ctx.getImageData(0, 0, 1, 1);
           if (typeof data.bitmap.close === 'function') data.bitmap.close();
           finish({
             ok: true,

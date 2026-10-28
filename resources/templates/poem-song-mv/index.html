@@ -289,7 +289,7 @@
   const palette = resolvePalette(recipe.paletteId || 'yaqing', recipe.scheme || 'dark');
   document.getElementById('album-pill').textContent = recipe.album || '一曲诗词';
   document.getElementById('song-title').textContent = recipe.title;
-  document.getElementById('song-author').textContent = `${recipe.dynasty} · ${recipe.author}`;
+  document.getElementById('song-author').textContent = [recipe.dynasty, recipe.author].filter(Boolean).join(' · ');
 
   // 构建 44 根金墨细线声波
   const waveEl = document.getElementById('waveform');

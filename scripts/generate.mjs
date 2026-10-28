@@ -19,6 +19,8 @@ import { execFileSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { generatePosters } from './poster.mjs';
+import { lookupPoem, poemFacts, byline } from './poem-lookup.mjs';
+import { beijingDay } from '../resources/core/huaping-footer.js';
 
 import {
   STUDIO_ROOT,
@@ -85,7 +87,9 @@ function parseCliArgs(argv) {
     title: '山居秋暝',
     poem: command === 'poster' ? '明月松间照，清泉石上流。' : '空山新雨后，天气晚来秋。明月松间照，清泉石上流。',
     author: '王维',
-    dynasty: '唐',
+    dynasty: '',
+    note: '',
+    lookup: true,
     scene: '',
     device: 'iphone',
     ratio: '3:4',
@@ -119,13 +123,41 @@ function parseCliArgs(argv) {
     else if (a === '--duration' && argv[i + 1]) opts.duration = Number(argv[++i]) || 10;
     else if (a === '--out' && argv[i + 1]) opts.out = argv[++i];
     else if (a === '--pure') opts.pure = true;
+    else if (a === '--note' && argv[i + 1]) opts.note = argv[++i];
+    else if (a === '--no-lookup') opts.lookup = false;
     else if (a === '--card' && argv[i + 1]) opts.card = Number(argv[++i]);
     else if (a === '--workers' && argv[i + 1]) opts.workers = Number(argv[++i]) || 4;
   }
+  // 只给了诗题时，作者不能沿用示例的「王维」，交给诗库补全。
+  const given = new Set(argv.slice(3).filter(a => a.startsWith('--')));
+  if (given.has('--title') && !given.has('--author')) opts.author = '';
+  if (given.has('--title') && !given.has('--poem')) opts.poem = '';
   return { command, opts };
 }
 
-async function renderCardScreenshot(serverOrigin, queryParams, outPath, width, height) {
+// 朝代、作者、题解只取自诗库或显式参数；查不到就留空并提示，不用示例文案顶替。
+async function enrichPoemFacts(opts) {
+  if (!opts.lookup) {
+    if (!opts.author) console.warn('   · 未提供作者且关闭了诗库查询，署名将只有诗题');
+    return;
+  }
+  const entry = await lookupPoem({ title: opts.title, author: opts.author, poem: opts.poem });
+  if (!entry) {
+    console.warn(`   · 诗库未找到《${opts.title}》${opts.author ? `（${opts.author}）` : ''}：朝代与题解留空，可用 --dynasty / --note 补充`);
+    return;
+  }
+  const facts = poemFacts(entry);
+  if (!opts.author) opts.author = entry.author?.name || '';
+  if (!opts.poem) opts.poem = String(entry.content || (entry.paragraphs || []).join('\n')).trim();
+  if (!opts.dynasty) opts.dynasty = facts.dynasty;
+  if (!opts.note) opts.note = facts.note;
+  const source = String(entry.content || (entry.paragraphs || []).join('')).replace(/[\p{P}\p{Z}\s]/gu, '');
+  const missing = opts.poem.split(/[，。？！；\n]/).map(l => l.replace(/[\p{P}\p{Z}\s]/gu, '')).filter(l => l && !source.includes(l));
+  if (missing.length) console.warn(`   · 以下诗句与诗库原文不一致，请核对：${missing.join('，')}`);
+  console.log(`   · 诗库：${byline(opts.dynasty, opts.author)}《${opts.title}》${opts.note ? '，含题解' : '，无题解'}`);
+}
+
+async function renderCardScreenshot(serverOrigin, queryParams, outPath, width, height, { omitBackground = false } = {}) {
   const puppeteer = await loadPuppeteer();
   const execPath = findChromeExecutable();
   const browser = await puppeteer.launch({
@@ -143,7 +175,8 @@ async function renderCardScreenshot(serverOrigin, queryParams, outPath, width, h
     const omitted = await page.evaluate(() => window.__huapingPlan?.omittedClauses || []);
     if (omitted.length) console.warn(`   · 画屏为摘句排版，本张未展示：${omitted.join('，')}`);
     fs.mkdirSync(path.dirname(outPath), { recursive: true });
-    await page.screenshot({ path: outPath, type: 'png' });
+    await page.screenshot({ path: outPath, type: 'png', omitBackground });
+    return await page.evaluate(() => window.__exports || null);
   } finally {
     await browser.close();
   }
@@ -222,10 +255,11 @@ async function handleXiaohongshu(serverOrigin, opts, outDir) {
     { idx: 4, name: '04-wallpaper-ending.png', label: '纯享壁纸 (尾页长按保存)' },
   ];
 
+  let breakdown = null;
   for (const card of cards) {
     const cardPath = path.join(cardsDir, card.name);
     process.stdout.write(`   · 渲染卡片 ${card.idx}/4: ${card.label}...`);
-    await renderCardScreenshot(
+    const exported = await renderCardScreenshot(
       serverOrigin,
       {
         mode: 'xiaohongshu',
@@ -234,46 +268,40 @@ async function handleXiaohongshu(serverOrigin, opts, outDir) {
         poem: opts.poem,
         author: opts.author,
         dynasty: opts.dynasty,
+        note: opts.note,
         scene,
       },
       cardPath,
       1080,
       1440
     );
+    if (card.idx === 3) breakdown = exported?.breakdown || [];
     console.log(' ✓');
   }
+  if (!opts.note) console.warn('   · 第 2 张没有题解：诗库无此字段，未传 --note，只排原诗');
 
-  // 撰写小红书文案
+  // 撰写小红书文案：只写原诗、诗库题解和第 3 张实际标注的画理，不套用某一首诗的赏析。
   const copyMd = path.join(cardsDir, `copy.md`);
-  const lines = opts.poem.split(/[，。？！；\n]/).filter(Boolean);
+  const lines = opts.poem.split(/[，。？！；\n]/).map(l => l.trim()).filter(Boolean);
+  const couplet = lines.slice(0, 2).join('，');
+  const attribution = byline(opts.dynasty, opts.author);
   const copyContent = `# 小红书发布文案
 
-## 【封面主视觉文案】
-**标题**：一首《${opts.title}》，道尽中国人的隐逸美学与千载诗心 🌿
-**副标**：宋元水墨古韵大片 ✦ 留白皆是境界
+## 标题
+《${opts.title}》｜${lines[0] || opts.title}
 
----
+## 正文
+「${couplet}。」
+—— ${attribution}《${opts.title}》
+${opts.note ? `\n题解（据微诗诗库）：${opts.note}\n` : ''}
+这组图用 ZixiaoArt ShanShui@5 程序化山水为《${opts.title}》配画${breakdown?.length ? '，第 3 张标出了画里的几处笔墨：' : '。'}
+${(breakdown || []).map(item => `· ${item.label}：${item.text}`).join('\n')}
 
-## 【图文笔记正文】
-“${lines[0] || '空山新雨后'}，${lines[1] || '天气晚来秋'}。”
+第 4 张是无字版本，可以长按保存作壁纸。
+读这首诗时，你脑海里最先出现的是哪一幅画面？
 
-如果说盛唐的盛大如烈火烹油，
-那${opts.author}笔下的山水，便是秋雨初霁后的万籁俱寂。
-
-今日以 ZixiaoArt ShanShui@5 算法山水，重现《${opts.title}》的宋元画境：
-⛰️ **高远与深远并济**：墨分五色，山势深厚，山脚溪石微露；
-☁️ **腰云锁翠**：层云横贯山腰，虚实相生，留出神游冥想之境；
-🌊 **清泉激石**：枯湿浓淡间，水墨活泼流动，不见雕琢之痕。
-
-从文字到山水，每看一遍，皆能洗涤浮躁。
-
-✦ 第 4 图为 3:4 / 9:16 纯净无字壁纸，长按即可保存～
-✦ 喜欢的朋友点赞收藏，下一期想看哪一首诗词，评论区告诉我！
-
----
-
-## 【热门话题标签】
-#东方美学 #古诗词里的东方美 #国风壁纸 #山水画 #中国传统色 #小红书图文 #唯美壁纸 #治愈系风景 #宋代美学 #${opts.author} #${opts.title}
+## 话题
+#古诗词 #山水画 #国风壁纸 #东方美学${opts.author ? ` #${opts.author}` : ''} #${opts.title}
 `;
   fs.writeFileSync(copyMd, copyContent, 'utf8');
 
@@ -298,7 +326,8 @@ async function handleWeChatSticker(serverOrigin, opts, outDir) {
     { mode: 'wechat-sticker', type: 'seal', shape: 'circle', title: opts.title },
     sealPath,
     512,
-    512
+    512,
+    { omitBackground: true }
   );
   console.log(' ✓');
 
@@ -321,6 +350,7 @@ async function handleWeChatSticker(serverOrigin, opts, outDir) {
     serverOrigin,
     {
       mode: 'wechat-card',
+      date: opts.date || beijingDay(),
       title: opts.title,
       poem: opts.poem,
       author: opts.author,
@@ -339,7 +369,7 @@ async function handleWeChatSticker(serverOrigin, opts, outDir) {
 async function handleDouyin(opts, outDir) {
   const slug = slugify(`${opts.title}-douyin`);
   console.log(`\n🎵 正在通过 produce.mjs 调度全流程生成抖音 9:16 (1080×1920) 短视频...`);
-  console.log(`   · 诗词: ${opts.dynasty}·${opts.author}《${opts.title}》`);
+  console.log(`   · 诗词: ${byline(opts.dynasty, opts.author, '·')}《${opts.title}》`);
   console.log(`   · 包含黄金 1.5s 开场 Hook、UI 安全区避让与 -14 LUFS Mastering`);
 
   execFileSync(
@@ -394,7 +424,10 @@ async function main() {
                   选项: --title --workers 4
 
 通用选项:
-  --date <YYYY-MM-DD>  静态分享图日期（默认北京时间当天）
+  --date <YYYY-MM-DD>  静态分享图与日签日期（默认北京时间当天）
+  --author / --dynasty 作者与朝代；不传时按诗题从微诗诗库查，查不到就留空
+  --note <text>   小红书第 2 张的题解；不传时取诗库 summary，都没有就只排原诗
+  --no-lookup     不查诗库（离线时用；署名与题解只来自参数）
   --scene <name>  强制指定画境 (retreat|fishing|desert|winterForest|spring|...)
   --out <path>    指定输出文件或目录
 `);
@@ -406,6 +439,10 @@ async function main() {
   const origin = `http://127.0.0.1:${server.port}`;
 
   try {
+    if (['wallpaper', 'image', 'xiaohongshu', 'wechat-sticker', 'wechat'].includes(command)) {
+      await enrichPoemFacts(opts);
+      if (!opts.poem) throw new Error(`没有《${opts.title}》的诗句：请用 --poem 传入原文`);
+    }
     switch (command) {
       case 'wallpaper':
         await handleWallpaper(origin, opts, outDir);

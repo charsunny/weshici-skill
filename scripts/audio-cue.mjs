@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { ASSETS_ROOT, STUDIO_ROOT } from './server-util.mjs';
+import { lookupPoem, poemFacts } from './poem-lookup.mjs';
 
 const args = process.argv.slice(2);
 const getArg = (k, def) => {
@@ -69,6 +70,9 @@ const timed = JSON.parse(fs.readFileSync(path.join(folder, 'timed_lyrics.json'),
 const mp3Path = path.join(folder, 'reading_voicebox_male.mp3');
 const dur = probeDuration(mp3Path);
 const poemId = matched.split('-').pop() || matched;
+// 朗读库只有诗题和作者；朝代从诗库查，查不到就留空，不写「唐宋」之类的占位。
+const facts = poemFacts(await lookupPoem({ title, author, poem: timed.map(item => item.text).join('，') }));
+if (!facts.dynasty) console.warn(`诗库未查到《${title}》（${author}）的朝代，配方中 dynasty 留空`);
 
 const couplets = timed.map((item, idx) => {
   const nextStart = timed[idx + 1] ? timed[idx + 1].start - 0.05 : dur;
@@ -86,7 +90,7 @@ const recipe = {
   id: slug,
   poemId,
   title,
-  dynasty: '唐宋',
+  dynasty: facts.dynasty,
   author,
   term: '时令',
   mood: '旷达',

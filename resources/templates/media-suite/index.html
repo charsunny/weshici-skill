@@ -330,7 +330,7 @@
 <script src="/vendor/zxart/zxart-compose.js"></script>
 <script src="/vendor/zxart/zxart-shanshui-v5.js"></script>
 <script type="module">
-  import { mountHuapingFooter } from '/resources/core/huaping-footer.js';
+  import { mountHuapingFooter, huapingCalendar, beijingDay } from '/resources/core/huaping-footer.js';
   import { huapingClauses, huapingPlan, mountHuaping } from '/resources/core/huaping-layout.js';
   import {
     resolvePalette,
@@ -343,11 +343,15 @@
   const mode = params.get('mode') || 'wallpaper';
   const subType = params.get('type') || '';
   const cardIndex = Number(params.get('card') || 1);
-  const title = params.get('title') || '山居秋暝';
-  const poemRaw = params.get('poem') || '空山新雨后，天气晚来秋。明月松间照，清泉石上流。';
-  const poemLines = poemRaw.split(/[，。？！；\n]/).filter(Boolean);
-  const author = params.get('author') || '王维';
-  const dynasty = params.get('dynasty') || '唐';
+  // 缺参数时才用示例诗；CLI 传来的空作者、空朝代保持为空，不能被示例顶替。
+  const title = params.get('title') ?? '山居秋暝';
+  const poemRaw = params.get('poem') ?? '空山新雨后，天气晚来秋。明月松间照，清泉石上流。';
+  const poemLines = poemRaw.split(/[，。？！；\n]/).map(line => line.trim()).filter(Boolean);
+  const author = params.get('author') ?? '王维';
+  const dynasty = params.get('dynasty') ?? '';
+  const note = (params.get('note') || '').trim();
+  const byline = (separator = ' · ') => [dynasty, author].filter(Boolean).join(separator);
+  const escapeHtml = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const matched = window.poetryScene(poemRaw, title);
   const scene = params.get('scene') || matched.scene;
   const paletteId = params.get('palette') || 'lanhui';
@@ -387,7 +391,8 @@
   if (!(mode === 'wechat-sticker' && subType === 'seal')) {
     art = await renderZXArt(artCanvas, {
       generator: 'shanshui@5', seed, scene,
-      ...(inscribed ? { params: recipe.params } : {}),
+      // 小红书四张共用同一份配方，第 3 张才能如实标注画里的构图与母题。
+      ...(inscribed || mode === 'xiaohongshu' ? { params: recipe.params } : {}),
       palette: { paper: palette.paper, ink: palette.ink }, width, height,
     });
     if (inscribed && !art.ok) throw new Error(`画屏渲染失败: ${art.error}`);
@@ -418,11 +423,11 @@
       card.innerHTML = `
         <div class="xhs-tag" style="color: ${palette.seal}; border: 1px solid ${palette.seal}33;">
           <span>✦</span>
-          <span>东方写意画境 · ${dynasty}·${author}</span>
+          <span>${escapeHtml(byline('·'))}</span>
         </div>
         <div class="xhs-title-group">
-          <div class="xhs-main-title">${title}</div>
-          <div class="xhs-hook-sub">「${poemLines[0] || '空山新雨后'}」一眼惊艳的宋元古韵，字字皆景，笔笔入禅。</div>
+          <div class="xhs-main-title">${escapeHtml(title)}</div>
+          <div class="xhs-hook-sub">「${escapeHtml(poemLines.slice(0, 2).join('，'))}」</div>
         </div>
         <div class="xhs-bottom-bar" style="border-color: ${palette.ink}22;">
           <div class="xhs-meta-text">微诗国风工作室 · 算法水墨壁纸系列</div>
@@ -437,41 +442,92 @@
       card.innerHTML = `
         <div class="xhs-tag" style="color: ${palette.seal};">诗境对览 · 原诗释义</div>
         <div class="xhs-poem-box">
-          ${poemLines.map((l) => `<div class="xhs-poem-line">${l}</div>`).join('')}
+          ${poemLines.map((l) => `<div class="xhs-poem-line">${escapeHtml(l)}</div>`).join('')}
         </div>
-        <div class="xhs-interpretation" style="border-left-color: ${palette.seal};">
-          <strong>【诗意品读】</strong><br/>
-          诗中幽静闲雅，描摹秋雨初霁、翠壑生烟之境。松风月照，山泉石鸣，竹喧浣女归，莲动下渔舟。虽有竹喧莲动之人语，反衬秋山深阔之虚明。
-        </div>
+        ${note ? `<div class="xhs-interpretation" style="border-left-color: ${palette.seal};">
+          <strong>题解</strong><br/>${escapeHtml(note)}
+        </div>` : ''}
         <div class="xhs-bottom-bar" style="border-color: ${palette.ink}22;">
-          <div class="xhs-meta-text">《${title}》· ${dynasty}·${author}</div>
+          <div class="xhs-meta-text">《${escapeHtml(title)}》${byline('·') ? ` · ${escapeHtml(byline('·'))}` : ''}</div>
           <div class="cinnabar-seal">${sealText}</div>
         </div>
       `;
       contentLayer.appendChild(card);
     } else if (cardIndex === 3) {
+      // 画理只标这张画里真实存在的东西：构图取自配方，母题取自引擎返回的 sceneElements 及其位置。
+      const COMPOSITION_NOTES = {
+        depth: ['深远', '自山前而窥山后，层层推远'],
+        oppositeBank: ['平远', '自近山而望远山，一水隔开两岸'],
+        corner: ['边角', '取一角半边之景，其余留白'],
+      };
+      const MOTIF_NOTES = {
+        pine: ['松', '岁寒不凋，山水里常作近景主树'], bamboo: ['竹', '修竹掩映，点出山居'],
+        willow: ['柳', '临水垂柳，多关送别与春水'], bareTree: ['寒林', '落叶枯枝，一望知是秋冬'],
+        oldTree: ['古木', '老干虬枝，压住近景'], blossom: ['花树', '一树繁花，点明春时'],
+        hut: ['茅屋', '山中有居，画可游亦可居'], house: ['屋舍', '人家临水，烟火在画中'],
+        pavilion: ['亭', '亭在路口水边，供人驻足'], pagoda: ['塔', '深山藏古寺，塔尖露于林表'],
+        templeGate: ['山门', '寺门半掩，引人入山'], bridge: ['桥', '路断处以桥相接'],
+        boat: ['舟', '江上一叶，平远中见人迹'], mooredBoat: ['泊舟', '系舟岸边，暗示行旅'],
+        angler: ['钓者', '点景人物，小而不可少'], traveler: ['行旅', '点景人物，路上有人方见远'],
+        reeds: ['芦苇', '水岸芦荻，见秋江'], lotus: ['荷', '荷叶田田，点出夏塘'],
+        stream: ['溪泉', '山间流泉，画中有声'], moon: ['月', '一轮明月，定下夜色'],
+      };
+      const scheme = recipe.params?.scene || {};
+      const breakdown = [];
+      if (COMPOSITION_NOTES[scheme.composition]) {
+        const [label, text] = COMPOSITION_NOTES[scheme.composition];
+        breakdown.push({ label: `构图 · ${label}`, text });
+      }
+      const seen = new Set();
+      const drawn = (art?.sceneElements || [])
+        .filter(el => MOTIF_NOTES[el.motif] && el.bounds && !seen.has(el.motif) && seen.add(el.motif))
+        .sort((a, b) => b.bounds.width * b.bounds.height - a.bounds.width * a.bounds.height)
+        .slice(0, 2);
       const card = document.createElement('div');
       card.className = 'xhs-card3';
       card.innerHTML = `
-        <div class="xhs-tag" style="color: ${palette.seal};">宋元画理 · 笔墨解构</div>
-        <div class="xhs-callout" style="top: 240px; right: 90px;">
-          <strong>高远法透视</strong><br/>
-          <span style="font-size: 16px; opacity: 0.8;">自山下而仰山巅，谓之高远，峭拔凌云</span>
-        </div>
-        <div class="xhs-callout" style="top: 540px; left: 80px;">
-          <strong>腰云锁翠</strong><br/>
-          <span style="font-size: 16px; opacity: 0.8;">山腰白云横断，虚实相生，引人神游</span>
-        </div>
-        <div class="xhs-callout" style="bottom: 220px; right: 100px;">
-          <strong>溪石皴法</strong><br/>
-          <span style="font-size: 16px; opacity: 0.8;">枯笔擦破，墨分五色，清泉出石而润</span>
-        </div>
+        <div class="xhs-tag" style="color: ${palette.seal};">画理 · 这张画里的笔墨</div>
+        ${breakdown.length ? `<div class="xhs-callout" style="top: 170px; left: 80px;">
+          <strong>${breakdown[0].label}</strong><br/>
+          <span style="font-size: 16px; opacity: 0.8;">${breakdown[0].text}</span>
+        </div>` : ''}
         <div class="xhs-bottom-bar" style="border-color: ${palette.ink}22;">
           <div class="xhs-meta-text">ZixiaoArt ShanShui@5 算法山水生成</div>
           <div class="cinnabar-seal">${sealText}</div>
         </div>
       `;
+      const leaders = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      leaders.setAttribute('width', width);
+      leaders.setAttribute('height', height);
+      leaders.style.cssText = 'position:absolute;inset:0;pointer-events:none';
+      const placed = [];
+      drawn.forEach(el => {
+        const [label, text] = MOTIF_NOTES[el.motif];
+        const cx = (el.bounds.x + el.bounds.width / 2) * width;
+        const cy = (el.bounds.y + el.bounds.height / 2) * height;
+        const boxW = 300, boxH = 76;
+        const right = cx < width / 2;
+        const x = Math.min(Math.max(right ? cx + 70 : cx - 70 - boxW, 60), width - 60 - boxW);
+        const top = 300, bottom = height - 220 - boxH;
+        let y = Math.min(Math.max(cy - boxH / 2, top), bottom);
+        // 至多两条标注：撞上已放的那条就挪到它下方，下方放不下改到上方。
+        const clash = placed.find(other => Math.abs(other - y) < boxH + 16);
+        if (clash !== undefined) y = clash + boxH + 16 <= bottom ? clash + boxH + 16 : Math.max(top, clash - boxH - 16);
+        placed.push(y);
+        const callout = document.createElement('div');
+        callout.className = 'xhs-callout';
+        callout.style.cssText = `left:${x}px;top:${y}px;width:${boxW}px`;
+        callout.innerHTML = `<strong>${label}</strong><br/><span style="font-size: 16px; opacity: 0.8;">${text}</span>`;
+        card.appendChild(callout);
+        const edgeX = right ? x : x + boxW;
+        leaders.insertAdjacentHTML('beforeend',
+          `<line x1="${edgeX}" y1="${y + boxH / 2}" x2="${cx}" y2="${cy}" stroke="${palette.ink}" stroke-opacity="0.45" stroke-width="1.2"/>` +
+          `<circle cx="${cx}" cy="${cy}" r="7" fill="none" stroke="${palette.seal}" stroke-width="1.6"/>`);
+        breakdown.push({ label, text });
+      });
+      card.prepend(leaders);
       contentLayer.appendChild(card);
+      window.__exports = { breakdown, art: { ok: Boolean(art?.ok), fallback: Boolean(art?.fallback), error: art?.error || null, elements: (art?.sceneElements || []).length } };
     } else {
       const card = document.createElement('div');
       card.className = 'xhs-card4';
@@ -484,6 +540,9 @@
     }
   } else if (mode === 'wechat-sticker') {
     if (subType === 'seal') {
+      // 透明底贴图：页面自带的深色底也要清掉，配合截图 omitBackground 才是真透明。
+      document.documentElement.style.background = 'transparent';
+      document.body.style.background = 'transparent';
       const box = document.createElement('div');
       box.className = 'wechat-sticker-seal';
       const seal = document.createElement('div');
@@ -502,35 +561,37 @@
   } else if (mode === 'wechat-card') {
     const card = document.createElement('div');
     card.className = 'wechat-daily-card';
-    const now = new Date();
-    const day = String(now.getDate()).padStart(2, '0');
-    const month = now.toLocaleDateString('zh-CN', { month: 'short' });
+    // 日期由 CLI 固定传入（缺省北京时间当天），节气与候按同一日期计算，可复现。
+    const cal = huapingCalendar(params.get('date') || beijingDay());
+    const [, monthNumber, dayNumber] = cal.day.split('-');
+    const day = dayNumber;
+    const month = `${Number(monthNumber)}月`;
     card.innerHTML = `
       <div class="wc-header">
         <div>
           <div class="wc-date-huge">${day}</div>
           <div class="wc-color-swatch">
             <span class="wc-dot" style="background: ${palette.seal};"></span>
-            <span style="font-size: 18px; letter-spacing: 0.12em;">传统色 · ${palette.name || '秋香'}</span>
+            ${palette.name ? `<span style="font-size: 18px; letter-spacing: 0.12em;">传统色 · ${palette.name}</span>` : ''}
           </div>
         </div>
         <div class="wc-lunar-block">
-          <div>${month} · 节气雅叙</div>
-          <div>${dynasty} · ${author}</div>
+          <div>${month} · ${cal.term} · ${cal.hou}</div>
+          ${byline() ? `<div>${escapeHtml(byline())}</div>` : ''}
           <div class="cinnabar-seal" style="margin-top: 6px;">${sealText}</div>
         </div>
       </div>
       <div style="margin-top: 60px;">
         <div style="font-family: 'SongSemi', serif; font-size: 48px; letter-spacing: 0.18em; line-height: 1.45;">
-          ${poemLines[0] || '空山新雨后'}
+          ${escapeHtml(poemLines[0] || '')}
         </div>
         <div style="font-size: 26px; letter-spacing: 0.14em; opacity: 0.85; margin-top: 14px;">
-          ${poemLines[1] || '天气晚来秋'}
+          ${escapeHtml(poemLines[1] || '')}
         </div>
       </div>
       <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid ${palette.ink}22; padding-top: 20px;">
         <div style="font-size: 18px; opacity: 0.65; letter-spacing: 0.12em;">微诗 · 每日一首古诗词</div>
-        <div style="font-size: 18px; opacity: 0.85;">《${title}》</div>
+        <div style="font-size: 18px; opacity: 0.85;">《${escapeHtml(title)}》</div>
       </div>
     `;
     contentLayer.appendChild(card);
