@@ -11,7 +11,7 @@
   .lyric { position: absolute; left: 0; right: 0; text-align: center; white-space: nowrap; letter-spacing: .12em;
     transform-origin: 50% 50%; }
   .lyric span { display: inline-block; }
-  .lyric .gap { width: .6em; }
+  .lyric .gap { width: .8em; }
   .credit { position: absolute; left: 0; right: 0; display: flex; justify-content: center; align-items: center;
     gap: .9em; color: var(--muted); letter-spacing: .14em; white-space: nowrap; }
   .credit .author { color: var(--accent); }
@@ -47,51 +47,56 @@
   const lengths = lyrics.map(l => l.clauses.join('').length + (l.clauses.length - 1) * 0.6);
 
   const painting = planPainting({ poem, title, procedural: recipe.procedural, params, verseSide: 'top',
-    verseColumns: 1, verseChars: Math.min(10, Math.ceil(Math.max(...lengths))) });
+    verseColumns: 2, verseChars: Math.min(10, Math.ceil(Math.max(...lengths))) });
   const palette = applyPalette(palettes, recipe, params, painting);
   await document.fonts.load('100px SongReg');
   await document.fonts.ready;
   const frame = await paintFrame(document.getElementById('art'), painting, palette, { width: W, height: H });
-  painting.verseTop = frame.place.rect(frame.verse.engineRect).y * H;
 
-  // The lyric box is the engine's verse box; one size for every sung line, sized to the longest.
+  // The lyric box is the engine's verse box. The sung line is the one large thing: each clause on its
+  // own row, all lines at one size, the largest the longest clause allows. The line before it comes
+  // back as a single small pale row above; the credit sits under the sung line's rows.
   const r = frame.verse.rect;
   const box = { x: (r.x + r.width * 0.04) * W, y: (r.y + r.height * 0.03) * H, width: r.width * 0.92 * W, height: r.height * 0.94 * H };
-  const large = Math.floor(Math.min(88, box.width / (Math.max(...lengths) * 1.12)));
-  const small = Math.max(TYPE_FLOOR.body, Math.round(large * 0.5));
-  const creditSize = TYPE_FLOOR.small;
-  // Lines are laid out at the large size and scaled about their centre, so the previous line's
-  // slot is placed by where its small glyphs land. The block (previous line, sung line, credit)
-  // sits just above the painting's first stroke, so poem and painting read as one leaf; the bare
-  // paper above it is sky. It never climbs above the lifted verse box or below the engine's own.
-  const blockHeight = 1.3 * small + 0.4 * small + 1.3 * large + 0.3 * TYPE_FLOOR.small + 1.6 * TYPE_FLOOR.small;
-  const blockTop = frame.contentTop == null ? box.y
-    : Math.max(box.y, Math.min(painting.verseTop ?? Infinity, frame.contentTop - 0.06 * H - blockHeight));
-  const prevY = blockTop - 0.65 * (large - small);
-  const currentY = prevY + 0.5 * large + 1.05 * small;
-  const creditY = currentY + 1.3 * large + 0.3 * TYPE_FLOOR.small;
-  window.WARNINGS = large < TYPE_FLOOR.body ? [`歌词字号 ${large}px 小于 ${TYPE_FLOOR.body}px`] : [];
+  const longestClause = Math.max(...lyrics.flatMap(l => l.clauses.map(c => Array.from(c).length)));
+  const rowsMax = Math.max(...lyrics.map(l => l.clauses.length));
+  const large = Math.floor(Math.min(112, box.width / (longestClause * 1.12)));
+  const small = Math.max(36, Math.round(large * 0.4));
+  const creditSize = 30;
+  const area = rowsMax * large * 1.25;
+  // The block fills the verse box from its top: the box was lifted through bare paper, and the
+  // engine painted nothing in it.
+  const blockTop = box.y;
+  const prevTop = blockTop;
+  const currentTop = prevTop + small * 1.8;
+  const creditTop = currentTop + area + creditSize * 0.35;
+  window.WARNINGS = [large < 64 && `当前句字号 ${large}px 小于 64px`, small < 36 && `上一句字号 ${small}px 小于 36px`,
+    small * 1.8 + area + creditSize * 1.95 > box.height && '歌词块高于诗句框'].filter(Boolean);
 
   const typeLayer = document.getElementById('type');
   const lyricBox = document.createElement('div');
   lyricBox.style.cssText = `position:absolute;left:${box.x}px;top:0;width:${box.width}px;height:${H}px`;
   typeLayer.appendChild(lyricBox);
+  const span = (parent, text, className) => parent.appendChild(Object.assign(document.createElement('span'), { textContent: text, className: className || '' }));
   const lines = lyrics.map(l => {
-    const el = document.createElement('div');
-    el.className = 'lyric';
-    el.style.fontSize = `${large}px`;
-    el.style.lineHeight = `${large * 1.3}px`;
+    const big = document.createElement('div');
+    big.className = 'lyric';
+    big.style.cssText = `font-size:${large}px;line-height:${large * 1.25}px;top:${currentTop + (area - l.clauses.length * large * 1.25) / 2}px`;
     const glyphs = [];
-    l.clauses.forEach((clause, i) => {
-      if (i) el.appendChild(Object.assign(document.createElement('span'), { className: 'gap' }));
-      for (const ch of clause) glyphs.push(el.appendChild(Object.assign(document.createElement('span'), { textContent: ch })));
-    });
-    lyricBox.appendChild(el);
-    return { el, glyphs };
+    for (const clause of l.clauses) {
+      const row = big.appendChild(document.createElement('div'));
+      for (const ch of clause) glyphs.push(span(row, ch));
+    }
+    const back = document.createElement('div');
+    back.className = 'lyric';
+    back.style.cssText = `font-size:${small}px;line-height:${small * 1.3}px;top:${prevTop}px;color:var(--muted)`;
+    l.clauses.forEach((clause, i) => { if (i) span(back, '', 'gap'); span(back, clause); });
+    lyricBox.append(big, back);
+    return { big, back, glyphs };
   });
   const credit = document.createElement('div');
   credit.className = 'credit';
-  credit.style.cssText = `top:${creditY}px;font-size:${creditSize}px;line-height:${creditSize * 1.6}px`;
+  credit.style.cssText = `top:${creditTop}px;font-size:${creditSize}px;line-height:${creditSize * 1.6}px`;
   credit.innerHTML = '<span class="title"></span><span class="author"></span>';
   credit.querySelector('.title').textContent = title;
   credit.querySelector('.author').textContent = byline(dynasty, author);
@@ -117,7 +122,7 @@
 
   const bpm = Number(recipe.bpm) || 0;
   const scene = afterglowScene(frame, palette, { poem, title, term: recipe.term, motifs: painting.motifs,
-    avoid: { x: box.x, y: blockTop, width: box.width, height: creditY + creditSize * 2 - blockTop },
+    avoid: { x: box.x, y: blockTop, width: box.width, height: creditTop + creditSize * 2 - blockTop },
     seed: painting.art.seed, duration: window.DUR });
   // The beat drives the water: each ring opens on a beat (no beat given: free-running ripples).
   if (bpm > 0) scene.beat = 60 / bpm;
@@ -134,20 +139,18 @@
     drawAfterglow(weatherCtx, t, scene);
     lines.forEach((line, i) => {
       const timing = song.lines[i];
-      // Current → previous when the next line starts; previous → gone when the one after starts.
-      // The last line stays; a line steps back just before the next one is sung, and the line that
-      // was already back fades as soon as another starts stepping back over it.
+      // The last line stays. Just before the next line is sung, this one dissolves upward and comes
+      // back small and pale above; that small copy fades once another line steps back over it.
       const next = song.lines[i + 1];
       const back = next ? easeOut((t - (timing.end - 0.35)) / STEP) : 0;
       const gone = next && song.lines[i + 2] ? clamp((t - (next.end - 0.6)) / 0.3) : 0;
-      const scale = 1 - (1 - small / large) * back;
-      const y = currentY + (prevY - currentY) * back;
-      const visible = t >= timing.times[0] && gone < 1;
-      line.el.style.visibility = visible ? 'visible' : 'hidden';
-      line.el.style.top = `${y.toFixed(1)}px`;
-      line.el.style.transform = `scale(${scale.toFixed(4)})`;
-      line.el.style.opacity = ((1 - 0.62 * back) * (1 - gone)).toFixed(3);
-      line.el.style.color = back > 0.5 ? 'var(--muted)' : 'var(--ink)';
+      line.big.style.visibility = t >= timing.times[0] && back < 1 ? 'visible' : 'hidden';
+      line.big.style.opacity = (1 - back).toFixed(3);
+      line.big.style.filter = back > 0.01 ? `blur(${(back * 10).toFixed(2)}px)` : 'none';
+      line.big.style.transform = `translateY(${(-back * large * 0.3).toFixed(1)}px)`;
+      const shown = clamp((back - 0.3) / 0.7) * (1 - gone);
+      line.back.style.visibility = shown > 0 ? 'visible' : 'hidden';
+      line.back.style.opacity = (shown * 0.62).toFixed(3);
       line.glyphs.forEach((g, j) => {
         const s = inkGlyphState(t, timing.times[j], 0.25, pt);
         g.style.opacity = s.opacity.toFixed(3);

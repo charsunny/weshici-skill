@@ -13,7 +13,15 @@
   "voiceSeek": 14,
   "procedural": {
     "generator": "shanshui@5",
-    "seed": "sumuzhe-1019"
+    "seed": "sumuzhe-1022",
+    "scene": "fishing",
+    "composition": "depth",
+    "motifs": [
+      "mist",
+      "sunset"
+    ],
+    "artHeight": 1920,
+    "note": "词写「秋色连波，波上寒烟翠，山映斜阳天接水」：江面平远与斜阳。按词句匹配的默认场景（山居林泉）只画出石岸，没有水，所以指定江行渔隐（fishing）场景、depth 构图，只保留词里有的寒烟（mist）与斜阳（sunset），不加舟与渔翁；原 seed -1019 在此场景下构图偏散，换 -1022（远水、层山、斜阳、近岸都清楚）。横排诗句框在顶部，画用全高画布（artHeight 1920）从诗句下方铺到近底。"
   },
   "lyrics": [
     {

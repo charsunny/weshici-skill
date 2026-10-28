@@ -5,11 +5,11 @@ import { renderZXArt } from './weishi-video-core.js';
 import { huapingClauses } from './huaping-layout.js';
 import {
   resolveVideoPalette, artPlacement, paintingStats, placeOffset, liftRect, clipVerseRect,
-  pickWeather, geeseCount, afterglowPlan, knockOutSun, deepenInk, seeded,
+  pickWeather, geeseCount, afterglowPlan, knockOutSun, deepenInk, seeded, clearRect,
 } from './huaping-video.js';
 import { drawCinnabarSun } from './cinnabar-sun.js';
 
-const OVERRIDES = ['seed', 'scene', 'composition', 'artHeight', 'quietTop', 'verseSide'];
+const OVERRIDES = ['seed', 'scene', 'composition', 'artHeight', 'quietTop', 'verseSide', 'motifs'];
 const SKY = ['moon', 'crescent', 'sunrise', 'sunset', 'stars', 'snow', 'rain', 'afterRain', 'mist'];
 
 export async function loadRecipe(fallback) {
@@ -38,7 +38,11 @@ export function planPainting({ poem, title, procedural, params, verseColumns, ve
     verseColumns,
     verseChars,
   });
-  if (scene !== matched.scene) {
+  if (proc.motifs) {
+    // An explicit list (recipe or URL, comma-separated) replaces the scene's defaults entirely.
+    const list = Array.isArray(proc.motifs) ? proc.motifs : String(proc.motifs).split(',').filter(Boolean);
+    art.params.scene.motifs = window.canonicalMotifs(list);
+  } else if (scene !== matched.scene) {
     // Another scene brings its own motifs; the poem's weather and sky come along.
     art.params.scene.motifs = window.canonicalMotifs([...window.defaultMotifsForScene(scene),
       ...art.params.scene.motifs.filter(m => SKY.includes(m))]);
@@ -67,7 +71,7 @@ export function applyPalette(palettes, recipe, params, plan) {
  * instead of floating in an upper band; nothing is stretched. The engine recomposes for each height,
  * so unless the recipe pins one, the height whose painting carries the most ink wins.
  */
-export async function paintFrame(target, plan, palette, { width: W, height: H }) {
+export async function paintFrame(target, plan, palette, { width: W, height: H, clearVerse = true }) {
   const heights = (plan.proc.artHeight ? [Number(plan.proc.artHeight)] : [1440, 1560, 1680]).map(h => Math.round(h * W / 1080));
   let best = null;
   for (const artHeight of heights) {
@@ -129,25 +133,38 @@ export async function paintFrame(target, plan, palette, { width: W, height: H })
     ctx.fillStyle = fade;
     ctx.fillRect(0, place.offset, W, 0.06 * H);
   }
-  const pixels = ctx.getImageData(0, 0, W, H).data;
+  // Room for text: at most 2% of the box inked. A few hairline far-water strokes pass (they are
+  // cleared below); a moon, a peak or a tree does not. Every other row, since a stroke can be one
+  // pixel high.
+  const regionClearAt = (data, rect) => {
+    let ink = 0, total = 0;
+    for (let y = Math.round(rect.y * H); y < (rect.y + rect.height) * H; y += 2) {
+      for (let x = Math.round(rect.x * W); x < (rect.x + rect.width) * W; x += 4) {
+        const i = (y * W + x) * 4;
+        total++;
+        if (Math.hypot(data[i] - paper[0], data[i + 1] - paper[1], data[i + 2] - paper[2]) > 28) ink++;
+      }
+    }
+    return total > 0 && ink / total <= 0.02;
+  };
+  const image = ctx.getImageData(0, 0, W, H);
+  const pixels = image.data;
+  // Text keeps the engine's verse box, lifted through bare paper towards the top of the frame (poem
+  // above, painting below), then clipped out of the platform's right and bottom controls.
+  const lift = rect => clipVerseRect(liftRect(place.rect(rect), { top: 0.11, clear: r => regionClearAt(pixels, r) }), { width: W, height: H });
+  const verseRect = lift(best.result.verse.rect);
+  // The verse box should be bare paper; stray hairlines that run through it fade out.
+  if (clearVerse) {
+    clearRect(pixels, W, H, paper, { x: verseRect.x * W, y: verseRect.y * H, width: verseRect.width * W, height: verseRect.height * H });
+    ctx.putImageData(image, 0, 0);
+  }
   const inked = (x, y, threshold) => {
     const i = (y * W + x) * 4;
     return Math.hypot(pixels[i] - paper[0], pixels[i + 1] - paper[1], pixels[i + 2] - paper[2]) > threshold;
   };
-  const regionClear = rect => {
-    for (let y = Math.round(rect.y * H); y < (rect.y + rect.height) * H; y += 4) {
-      for (let x = Math.round(rect.x * W); x < (rect.x + rect.width) * W; x += 4) if (inked(x, y, 28)) return false;
-    }
-    return true;
-  };
-  // Text keeps the engine's verse box, lifted through bare paper towards the top of the frame (poem
-  // above, painting below), then clipped out of the platform's right and bottom controls.
-  const lift = rect => clipVerseRect(liftRect(place.rect(rect), { top: 0.11, clear: regionClear }), { width: W, height: H });
   return {
     width: W, height: H, place, inked, lift, artHeight: best.artHeight,
-    // First row of the painting's ink in the frame (px), for text that sits just above it.
-    contentTop: best.stats.top == null ? null : place.offset + best.stats.top,
-    verse: { ...best.result.verse, rect: lift(best.result.verse.rect), engineRect: best.result.verse.rect },
+    verse: { ...best.result.verse, rect: verseRect },
     anchors: place.anchors(best.result.anchors),
     reference: (params) => {
       const reference = window.ZXArtCompose.verseLayoutFor('shanshui@5', params, W, place.height);
@@ -186,8 +203,34 @@ async function finishPainting(best, plan, palette, W) {
     ctx.putImageData(image, 0, 0);
   }
   if (sun) {
-    drawCinnabarSun(ctx, { cx: sun.x, cy: sun.y, width: W, ...palette.cinnabar, ink: palette.colors.ink,
+    // Drawn apart, then clipped to where the engine's own sun showed, so hills in front still cover it.
+    const layer = document.createElement('canvas');
+    layer.width = W;
+    layer.height = best.artHeight;
+    const g = layer.getContext('2d');
+    drawCinnabarSun(g, { cx: sun.x, cy: sun.y, width: W, ...palette.cinnabar, ink: palette.colors.ink,
       paper: palette.colors.paper, dark: palette.appearance === 'dark', rand: seeded(`${plan.art.seed}-sun`) });
+    const mask = g.createImageData(sun.box.width, sun.box.height);
+    // Grow the window by two pixels so the sun's soft edge is not cut.
+    for (let y = 0; y < sun.box.height; y++) {
+      for (let x = 0; x < sun.box.width; x++) {
+        let on = 0;
+        for (let dy = -2; dy <= 2 && !on; dy++) {
+          for (let dx = -2; dx <= 2 && !on; dx++) {
+            const yy = y + dy, xx = x + dx;
+            if (yy >= 0 && xx >= 0 && yy < sun.box.height && xx < sun.box.width) on = sun.visible[yy * sun.box.width + xx];
+          }
+        }
+        mask.data[(y * sun.box.width + x) * 4 + 3] = on ? 255 : 0;
+      }
+    }
+    const clip = document.createElement('canvas');
+    clip.width = W;
+    clip.height = best.artHeight;
+    clip.getContext('2d').putImageData(mask, sun.box.x, sun.box.y);
+    g.globalCompositeOperation = 'destination-in';
+    g.drawImage(clip, 0, 0);
+    ctx.drawImage(layer, 0, 0);
   }
 }
 

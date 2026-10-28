@@ -170,14 +170,19 @@ export function knockOutSun(data, width, height, paper, { warmth = 24, edge = 8 
     }
   }
   const fill = m ? around.map(v => Math.round(v / m)) : paper;
+  // `visible` marks where the engine's sun showed (hills in front of it hide part of it), so the
+  // replacement sun can be clipped to the same window.
+  const box = { x: xs[0], y: ys[0], width: xs[1] - xs[0] + 1, height: ys[1] - ys[0] + 1 };
+  const visible = new Uint8Array(box.width * box.height);
   for (let y = ys[0]; y <= ys[1]; y++) {
     for (let x = xs[0]; x <= xs[1]; x++) {
       const i = (y * width + x) * 4;
-      if (warm(i, edge)) data.set(fill, i);
+      if (!warm(i, edge)) continue;
+      data.set(fill, i);
+      visible[(y - ys[0]) * box.width + (x - xs[0])] = 1;
     }
   }
-  const cx = sx / n, cy = sy / n;
-  return { x: cx, y: cy, count: n };
+  return { x: sx / n, y: sy / n, count: n, box, visible };
 }
 
 /**
@@ -192,6 +197,29 @@ export function deepenInk(data, paper, { gain = 2.4, grain = 8, ramp = 20 } = {}
     if (d <= grain) continue;
     const f = 1 + (gain - 1) * clamp((d - grain) / ramp);
     for (let k = 0; k < 3; k++) data[i + k] = Math.max(0, Math.min(255, Math.round(paper[k] + (data[i + k] - paper[k]) * f)));
+  }
+  return data;
+}
+
+/**
+ * The verse box should be bare paper; some compositions run faint strokes (far water) through it.
+ * Inside `rect` (px) every stroke fades back to the paper, ramping over `feather` px outside the box
+ * so no stroke ends abruptly; deviations within the paper grain are kept, so the grain stays.
+ */
+export function clearRect(data, width, height, paper, rect, { feather = 48, grain = 8 } = {}) {
+  const x0 = Math.max(0, Math.floor(rect.x - feather)), x1 = Math.min(width - 1, Math.ceil(rect.x + rect.width + feather));
+  const y0 = Math.max(0, Math.floor(rect.y - feather)), y1 = Math.min(height - 1, Math.ceil(rect.y + rect.height + feather));
+  for (let y = y0; y <= y1; y++) {
+    const dy = Math.max(rect.y - y, y - (rect.y + rect.height), 0);
+    for (let x = x0; x <= x1; x++) {
+      const dx = Math.max(rect.x - x, x - (rect.x + rect.width), 0);
+      const keep = clamp(Math.hypot(dx, dy) / feather);
+      if (keep >= 1) continue;
+      const i = (y * width + x) * 4;
+      const d = Math.max(...[0, 1, 2].map(k => Math.abs(data[i + k] - paper[k])));
+      if (d <= grain) continue;
+      for (let k = 0; k < 3; k++) data[i + k] = Math.round(paper[k] + (data[i + k] - paper[k]) * keep);
+    }
   }
   return data;
 }
