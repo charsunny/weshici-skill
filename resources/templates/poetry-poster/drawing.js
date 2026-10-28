@@ -527,34 +527,82 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
       left.push([px - (y2 - y1) / len * w, py + (x2 - x1) / len * w]);
       right.push([px + (y2 - y1) / len * w, py - (x2 - x1) / len * w]);
     });
-    const bark = dark ? mix(paper, ink, 0.2) : mix(paper, paint.body, 0.26);
-    const edge = dark ? (card.palette === 'qingdai' ? paint.line : mix(paper, paint.line, 0.7)) : paint.line;
-    g.save();
-    g.fillStyle = bark;
-    polyline([...left, ...right.slice().reverse()]);
-    g.closePath();
-    g.fill();
-    g.restore();
-    brush(left, t => 2.4 * (0.6 + 0.4 * Math.sin(Math.PI * t)) + 0.4, edge, dark ? 0.6 : 0.9);
-    brush(right, t => 1.8 * (0.6 + 0.4 * Math.sin(Math.PI * t)) + 0.4, edge, dark ? 0.5 : 0.85);
-    // Shade one side of the trunk, then scatter 鳞皴 scales: small open ovals, not a pattern.
-    const shade = right.map(([rx, ry], i) => [rx + (left[i][0] - rx) * 0.3, ry + (left[i][1] - ry) * 0.3]);
-    brush(shade, t => width(t) * 0.45, dark ? mix(paper, ink, 0.1) : mix(paper, paint.body, 0.5), dark ? 0.6 : 0.45);
-    for (let k = 0; k < Math.floor(h / 9); k++) {
-      const i = Math.floor(r(0.04, 0.85) * (left.length - 1));
-      const [lx, ly] = left[i], [rx, ry] = right[i];
-      const u = r(0.25, 0.75), w = Math.hypot(rx - lx, ry - ly);
-      const angle = Math.atan2(ry - ly, rx - lx);
+    // Night: a pale-ink trunk reads as moonlit. Day: the trunk is mid-to-deep ink with a little ochre,
+    // never lighter than its branches, scaled in overlapping crescents that follow its curve.
+    const barkInk = mix(paint.line, paint.body, 0.2);
+    if (dark) {
+      const bark = mix(paper, ink, 0.2);
+      const edge = card.palette === 'qingdai' ? paint.line : mix(paper, paint.line, 0.7);
       g.save();
-      g.strokeStyle = rgba(edge, dark ? 0.4 : 0.55);
-      g.lineWidth = r(0.8, 1.3);
-      g.beginPath();
-      g.ellipse(lx + (rx - lx) * u, ly + (ry - ly) * u, w * r(0.12, 0.2), w * r(0.06, 0.1), angle + r(-0.3, 0.3), r(0, 1), Math.PI * r(1.2, 1.9));
-      g.stroke();
+      g.fillStyle = bark;
+      polyline([...left, ...right.slice().reverse()]);
+      g.closePath();
+      g.fill();
       g.restore();
+      brush(left, t => 2.4 * (0.6 + 0.4 * Math.sin(Math.PI * t)) + 0.4, edge, 0.6);
+      brush(right, t => 1.8 * (0.6 + 0.4 * Math.sin(Math.PI * t)) + 0.4, edge, 0.5);
+      // Shade one side of the trunk, then scatter faint scales.
+      const shade = right.map(([rx, ry], i) => [rx + (left[i][0] - rx) * 0.3, ry + (left[i][1] - ry) * 0.3]);
+      brush(shade, t => width(t) * 0.45, mix(paper, ink, 0.1), 0.6);
+      for (let k = 0; k < Math.floor(h / 9); k++) {
+        const i = Math.floor(r(0.04, 0.85) * (left.length - 1));
+        const [lx, ly] = left[i], [rx, ry] = right[i];
+        const u = r(0.25, 0.75), w = Math.hypot(rx - lx, ry - ly);
+        const angle = Math.atan2(ry - ly, rx - lx);
+        g.save();
+        g.strokeStyle = rgba(edge, 0.4);
+        g.lineWidth = r(0.8, 1.3);
+        g.beginPath();
+        g.ellipse(lx + (rx - lx) * u, ly + (ry - ly) * u, w * r(0.12, 0.2), w * r(0.06, 0.1), angle + r(-0.3, 0.3), r(0, 1), Math.PI * r(1.2, 1.9));
+        g.stroke();
+        g.restore();
+      }
+    } else {
+      g.save();
+      g.fillStyle = mix(paper, barkInk, 0.66);
+      polyline([...left, ...right.slice().reverse()]);
+      g.closePath();
+      g.fill();
+      g.restore();
+      const inset = (side, k) => side.map(([sx, sy], i) => [sx + ((side === left ? right : left)[i][0] - sx) * k, sy + ((side === left ? right : left)[i][1] - sy) * k]);
+      brush(inset(left, 0.28), t => width(t) * 0.26, mix(paper, barkInk, 0.4), 0.7);
+      brush(inset(right, 0.26), t => width(t) * 0.42, mix(paper, barkInk, 0.92), 0.75);
+      brush(left, t => 2.4 * (0.6 + 0.4 * Math.sin(Math.PI * t)) + 0.4, paint.line, 0.92);
+      brush(right, t => 2.2 * (0.6 + 0.4 * Math.sin(Math.PI * t)) + 0.5, paint.line, 0.92);
+      // 鳞皴: rows of fish-scale arcs, alternate rows offset by half a scale.
+      const lengths = [0];
+      for (let i = 1; i < trunk.length; i++) lengths.push(lengths[i - 1] + Math.hypot(trunk[i][0] - trunk[i - 1][0], trunk[i][1] - trunk[i - 1][1]));
+      const total = lengths.at(-1);
+      let row = 0;
+      for (let d = total * 0.03; d < total * 0.86; row++) {
+        let i = 1;
+        while (i < lengths.length - 1 && lengths[i] < d) i++;
+        const [lx, ly] = left[i], [rx, ry] = right[i];
+        const w = Math.hypot(rx - lx, ry - ly);
+        const [ax, ay] = trunk[i - 1], [bx, by] = trunk[i];
+        const tl = Math.hypot(bx - ax, by - ay) || 1;
+        const up = [(bx - ax) / tl, (by - ay) / tl];
+        const cols = w > 16 ? 3 : 2;
+        const rad = w / cols / 2 * 0.92;
+        for (let c = 0; c < cols; c++) {
+          if (rand() < 0.12) continue;
+          const u = (c + 0.5 + (row % 2 ? 0.5 : 0)) / cols;
+          if (u > 0.92) continue;
+          const cx = lx + (rx - lx) * u, cy = ly + (ry - ly) * u;
+          const across = [(rx - lx) / w, (ry - ly) / w];
+          const arc = [];
+          for (let k = 0; k <= 8; k++) {
+            const a = Math.PI * k / 8;
+            arc.push([cx + across[0] * Math.cos(a) * rad - up[0] * Math.sin(a) * rad * 0.75,
+              cy + across[1] * Math.cos(a) * rad - up[1] * Math.sin(a) * rad * 0.75]);
+          }
+          brush(arc, t => 1.5 * Math.sin(Math.PI * t) + 0.3, paint.line, r(0.55, 0.8));
+        }
+        d += Math.max(5, w * 0.48);
+      }
     }
     const needles = dark ? mix(paint.top, ink, 0.45) : mix(paint.top, paint.line, 0.6);
-    const limb = dark ? mix(paper, ink, 0.38) : stroke;
+    const limb = dark ? mix(paper, ink, 0.38) : mix(paper, barkInk, 0.88);
     const branches = 4 + Math.floor(rand() * 3);
     for (let k = 0; k < branches; k++) {
       const at = 0.46 + (k / branches) * 0.44 + r(-0.03, 0.03);
@@ -564,8 +612,10 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
       // Out and slightly down, then a turn upward (蟹爪).
       const elbow = [bx + dir * len * r(0.45, 0.6), by + h * r(0.01, 0.04)];
       const end = [elbow[0] + dir * len * r(0.4, 0.55), elbow[1] - h * r(0.03, 0.07)];
-      brush([[bx, by], [(bx + elbow[0]) / 2, (by + elbow[1]) / 2 + 2], elbow], taper(h * 0.017, h * 0.011), limb, 0.9);
-      brush([elbow, [(elbow[0] + end[0]) / 2, (elbow[1] + end[1]) / 2 - 1], end], taper(h * 0.011, h * 0.004), limb, 0.9);
+      // Branches taper from the trunk's own width at that height to the tip.
+      const w0 = dark ? h * 0.017 : width(at) * 0.55, w1 = dark ? h * 0.011 : w0 * 0.6;
+      brush([[bx, by], [(bx + elbow[0]) / 2, (by + elbow[1]) / 2 + 2], elbow], taper(w0, w1), limb, 0.9);
+      brush([elbow, [(elbow[0] + end[0]) / 2, (elbow[1] + end[1]) / 2 - 1], end], taper(w1, h * 0.004), limb, 0.9);
       needleClump(end[0] - dir * len * 0.08, end[1] - h * 0.01, len * r(0.75, 1.0), needles);
       if (rand() < 0.6) needleClump(elbow[0], elbow[1] - h * 0.02, len * r(0.45, 0.6), needles);
     }
