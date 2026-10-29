@@ -2904,37 +2904,55 @@ Object.assign(ShanShuiEngineV5.prototype, {
       }
       for(const run of runs) {
         if(run.length<2)continue;
-        const points=b._densify(run,1);
-        for(let start=0;start<points.length-2;) {
-          const count=35+Math.floor(b.r()*90);
-          stroke(points.slice(start,start+count),width*(.8+b.r()*.4),ink,moisture,pressure);
-          start+=count+2+Math.floor(b.r()*8);
-        }
+        // Keep the pressure gesture continuous; paper contact supplies the dry gaps.
+        // Restarting pressure every few pixels made each segment a separate leaf shape.
+        stroke(run,width,ink,moisture,pressure);
       }
     };
     const curve=(u0,u1,v,shift=0)=>Array.from({length:16},(_,i)=>at(u0+(u1-u0)*i/15,v+shift*Math.sin(i/15*Math.PI)));
-    for(let i=2;i<118;) {
+    if(bank) for(let i=2;i<118;) {
       const length=5+Math.floor(b.r()*10);
-      if(b.r()>.18)stroke(ridge.slice(i,i+length),bank?.9+b.r()*1.2:2.4+b.r()*2.8,bank?.42+b.r()*.24:.62+b.r()*.20,bank?.24:.56,bank?[.1,.8,.6,.15,.01]:[.1,.65,1,.70,.12]);
+      if(b.r()>.18)stroke(ridge.slice(i,i+length),.9+b.r()*1.2,.42+b.r()*.24,.24);
       i+=length+2+Math.floor(b.r()*7);
+    } else {
+      // Do not carry one loaded curved gesture across two summits: it reads as a bird.
+      for(let i=2;i<118;) {
+        const length=3+Math.floor(b.r()*4),path=ridge.slice(i,i+length);
+        if(b.r()>.20)c.push(...b.paintingBrushStroke(path,{width:1.0+b.r()*1.5,ink:.48+b.r()*.22,
+          moisture:.47,pressure:[.18,.75,1,.45,.08],angular:true}));
+        i+=length+2+Math.floor(b.r()*4);
+      }
+      let last=-12;
+      for(let i=5;i<115;i++)if(i-last>10 && ridge[i].y<ridge[i-3].y && ridge[i].y<ridge[i+3].y) {
+        const p=ridge[i];last=i;
+        for(const side of [-1,1])c.push(...b.paintingBrushStroke([P(p.x+side*2,p.y+3),P(p.x+side*4,p.y+5),P(p.x+side*3,p.y+10)],
+          {width:.8+b.r()*.7,ink:.45+b.r()*.2,moisture:.38,pressure:[.1,.7,1,.1],angular:true}));
+      }
     }
+    const foldU=(peak,v,offset)=>ridgeX(peak,v)+light*peak.width*(offset+.08*Math.sin(v*12+phase+peak.x*7)+.14*(b.n(v*7+phase,peak.x*13)-.5));
     if(!bank) for(const peak of peaks.filter(p=>!p.cap)) {
-      // Three adjoining tonal depths share the ridge and its downhill turn.
-      // The broad light wash carries volume; successive narrower faces load the fold.
+      // Wash margins and hemp bundles turn on the same irregular rock face.
       for(let pass=0;pass<3;pass++) {
-        const inner=[],outer=[];
-        for(let j=0;j<=28;j++) {
-          const v=.012+j/28*.88,center=ridgeX(peak,v),bend=.012*Math.sin(v*8+phase+peak.x*7);
-          const root=center+light*peak.width*.07+bend;
+        const inner=[],outer=[],ends=[];
+        for(let j=0;j<=48;j++) {
+          const v=.010+j/48*.89,root=foldU(peak,v,.06);
+          const spread=(1.24-pass*.36)*(1-.40*v)*Math.min(1,Math.max(0,(.92-v)/.24));
+          const broken=.74+.44*b.n(v*10+phase,peak.x*21+pass*.7)+.09*Math.sin(v*23+peak.x*11);
+          const edge=root+light*peak.width*spread*broken;
           inner.push(at(root,v));
-          outer.push(at(root+light*peak.width*(1.24-pass*.36)*(1-.40*v)*Math.min(1,Math.max(0,(.92-v)/.24)),v));
+          outer.push(at(edge,v+.012*Math.sin(j/48*Math.PI)));
+          if(j===0||j===48)ends.push({root,edge,v});
         }
-        washes.push({...b.poly([...inner,...outer.reverse()],{fil:C.gray(0,[.085,.13,.17][pass]),str:null}),
-          wetInk:{bleed:2.0+pass*.35,rim:.06}});
+        const top=at(foldU(peak,.1,.2),.1),foot=at(foldU(peak,.7,.2),.7);
+        const cap=(end,reverse=false)=>Array.from({length:18},(_,j)=>{
+          const t=reverse?1-j/17:j/17;return at(end.root+(end.edge-end.root)*t,end.v+.006*Math.sin(t*Math.PI));
+        });
+        washes.push({...b.poly([...inner,...cap(ends[1]),...outer.reverse(),...cap(ends[0],true)],{fil:C.gray(0,[.085,.13,.17][pass]),str:null}),
+          wetInk:{bleed:5.6+pass*.6,rim:.45,terrain:{flow:[foot.x-top.x,foot.y-top.y]}}});
       }
     }
     const roots=[];
-    for(let trial=0;trial<1300&&roots.length<(bank?45:method==='hemp'?180:210);trial++) {
+    for(let trial=0;trial<1300&&roots.length<(bank?45:method==='hemp'?120:210);trial++) {
       const u=.035+b.r()*.93,v=(bank?.18:0)+Math.pow(b.r(),bank?.5:1)*(bank?.73:.91);
       const a=at(u-.008,v),z=at(u+.008,v),slope=(z.y-a.y)/(z.x-a.x);
       const facing=slope*light;
@@ -2962,38 +2980,38 @@ Object.assign(ShanShuiEngineV5.prototype, {
       } else {
         // Follow a shared downhill field. Adjacent roots diverge around shoulders and
         // converge into the same folds, rather than repeating shifted contour curves.
-        const trace=[at(u,v)],steps=4+Math.floor(b.r()*12*(1-v*.7));
+        const trace=[at(u,v)],steps=16+Math.floor(b.r()*30*(1-v*.65));
         let tu=u,tv=v;
         for(let k=0;k<steps;k++) {
           const a=at(tu-.006,tv),z=at(tu+.006,tv),slope=(z.y-a.y)/(z.x-a.x||.01);
-          const drift=.006*Math.tanh(slope*.55)+.004*(b.n(tu*9,tv*7+phase)-.5);
-          tu+=drift;tv+=.012;
+          tu+=.004*Math.tanh(slope*.55)+.0012*Math.sin(k*.33+u*17)+.003*(b.n(tu*9,tv*7+phase)-.5);
+          tv+=.010;
           if(tu<.015||tu>.985||tv>.97)break;
           trace.push(at(tu,tv));
         }
-        cunStroke(trace,3.8+b.r()*6.5,Math.min(.88,tone*1.25),.34+b.r()*.22,[.2,.8,1,.6,.1]);
-        if(b.r()<.28)stroke(trace,7+b.r()*8,.12+b.r()*.12,.20,[.1,.7,.9,.3,.05]);
+        const distance=trace.slice(1).reduce((n,p,j)=>n+Math.hypot(p.x-trace[j].x,p.y-trace[j].y),0);
+        if(distance<24 && v<.78)continue;
+        cunStroke(trace,2.5+b.r()*4.0,Math.min(.88,tone*1.25),.20+b.r()*.20,[.22,.85,.55,.78,.45,.07]);
+        if(distance>45 && b.r()<.30)stroke(trace,5+b.r()*6,.12+b.r()*.12,.22,[.25,.7,.5,.8,.4,.1]);
       }
     }
     if(!bank && method==='hemp') {
       // A bundle turns over a shoulder, then runs down its shaded face. Its length,
       // curvature and contact vary independently; it is not a translated contour ring.
       for(const peak of peaks.filter(p=>p.level<=1)) for(let group=0;group<7;group++) {
-        const v0=.015+group*.105+b.r()*.04,count=3+Math.floor(b.r()*3);
-        const shoulder=peak.x+light*peak.width*(.18+b.r()*.20);
+        const v0=.015+b.r()*.64,count=3+Math.floor(b.r()*3);
+        const offset=.14+b.r()*.28;
         for(let k=0;k<count;k++) {
-          const v=v0+k*(.009+b.r()*.016),root=shoulder+light*k*.013;
-          const length=(k===0?.14:.045)+b.r()*(k===0?.15:.12)*(1-v),reach=peak.width*(.08+b.r()*.25);
+          const v=v0+k*(.006+b.r()*.012);
+          const length=((k===0?.24:.12)+b.r()*.24)*(1-v),reach=peak.width*(.08+b.r()*.25);
           const path=[],outer=[];
           for(let j=0;j<=24;j++) {
             const t=j/24,down=v+length*t;
-            const u=root+ridgeX(peak,down)-peak.x+light*(reach*Math.sin(t*Math.PI*.5)+.007*Math.sin(t*8+k));
-            const facing=(at(u+.006,down).y-at(u-.006,down).y)*light;
-            if(facing<=0)break;
+            const u=foldU(peak,down,offset)+light*(k*.012+reach*Math.sin(t*Math.PI*.5)+.007*Math.sin(t*9+k));
             path.push(at(u,down));outer.push(at(u+light*(.008+.016*Math.sin(t*Math.PI)),down));
           }
-          if(path.length<3)continue;
-          cunStroke(path,3.2+b.r()*6,.48+b.r()*.35,.31+b.r()*.25,[.1,.7,1,.72,.4,.05]);
+          if(path.length<8)continue;
+          cunStroke(path,2.4+b.r()*3.8,.48+b.r()*.35,.20+b.r()*.22,[.15,.85,.55,.8,.45,.06]);
           if(k===count-1)washes.push({...b.poly([...path,...outer.reverse()],{fil:C.gray(0,.12),str:null}),wetInk:{bleed:1.1,rim:.10}});
         }
       }

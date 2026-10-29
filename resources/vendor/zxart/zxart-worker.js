@@ -72,7 +72,7 @@ function drawRun(ctx, shapes, from, to) {
     const t=ctx.getTransform(),shape={...first,overprint:false,wetInk:false};
     ZXArtInk.draw(ctx,{shapes:[shape],opacity:ctx.globalAlpha,blend:ctx.globalCompositeOperation,ink:{
       seed:ZXArtCompose.Brush.hash(Math.round(first.points[0]*97),Math.round(first.points[1]*131)),
-      color:first.fill.slice(0,3),bleed:profile.bleed,rim:profile.rim
+      color:first.fill.slice(0,3),bleed:profile.bleed,rim:profile.rim,terrain:profile.terrain
     }},{paper:{seed:inkPaperSeed}},ctx.canvas.width,ctx.canvas.height,Math.hypot(t.a,t.b),t.e,t.f,drawShapes);
     return;
   }

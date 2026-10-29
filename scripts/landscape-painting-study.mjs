@@ -55,6 +55,15 @@ try {
   const bytes=Buffer.from(result,'base64');fs.writeFileSync(path.join(out,item.name+'.png'),bytes);
   item.sha256=createHash('sha256').update(bytes).digest('hex');
   if(item.name.startsWith('painting')) {
+    const mountainCrop={x:160,y:100,width:520,height:500,renderWidth:width,renderHeight:height};
+    const mountain=await page.evaluate(async({png,crop})=>{
+      const img=new Image();img.src='data:image/png;base64,'+png;await img.decode();
+      const c=document.createElement('canvas');c.width=crop.width;c.height=crop.height;
+      c.getContext('2d').drawImage(img,-crop.x,-crop.y);return c.toDataURL('image/png').split(',')[1];
+    },{png:result,crop:mountainCrop});
+    const mountainBytes=Buffer.from(mountain,'base64');
+    fs.writeFileSync(path.join(out,item.name+'-mountain.png'),mountainBytes);
+    item.mountainDetail={...mountainCrop,sha256:createHash('sha256').update(mountainBytes).digest('hex')};
     const bank=item.scene.sceneElements.filter(e=>e.motif==='groundBank').at(-1);
     const crop={x:bank.bounds.x+bank.bounds.width*.5<.5?30:445,y:480,width:485,height:765,renderWidth:960,renderHeight:1440};
     const detail=await page.evaluate(({scene,crop})=>{

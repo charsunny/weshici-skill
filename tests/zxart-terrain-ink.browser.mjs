@@ -28,6 +28,18 @@ try {
     const sideShift=centroid(tilt(1))-centroid(tilt(-1));
     const plainWash={points:[40,20,150,20,150,70,40,70],fill:[0,0,0,.4],closed:true,wetInk:{bleed:0,rim:0}};
     const singleWash=paint([plainWash]),doubleWash=paint([plainWash,plainWash]);
+    const terrainProfile={bleed:3.6,rim:.16,terrain:{flow:[0,1]}};
+    const terrainWash=paint([{...plainWash,wetInk:terrainProfile}]);
+    const terrainAgain=paint([{...plainWash,wetInk:terrainProfile}]);
+    const acrossWash=paint([{...plainWash,wetInk:{...terrainProfile,terrain:{flow:[1,0]}}}]);
+    const ordinaryWash=paint([{...plainWash,wetInk:{bleed:3.6,rim:.16}}]);
+    const deviation=p=>{
+      const values=[];for(let y=30;y<60;y++)for(let x=50;x<140;x++)values.push(p[(y*200+x)*4+3]);
+      const mean=values.reduce((a,b)=>a+b,0)/values.length;
+      return Math.sqrt(values.reduce((n,v)=>n+(v-mean)**2,0)/values.length);
+    };
+    const terrainChecks={repeat:terrainWash.every((v,i)=>v===terrainAgain[i]),
+      directional:terrainWash.some((v,i)=>v!==acrossWash[i]),variation:deviation(terrainWash),ordinaryVariation:deviation(ordinaryWash)};
     let zeroBleed=0;
     for(let y=0;y<100;y++)for(let x=0;x<200;x++)if(x<40||x>=150||y<20||y>=70)zeroBleed+=singleWash[(y*200+x)*4+3];
     let gaps=0;
@@ -45,8 +57,11 @@ try {
     const multiplyDelta=normal[(40*200+80)*4]-multiplied[(40*200+80)*4];
     let maskDifferences=0;
     for(let y=22;y<78;y++)for(let x=22;x<178;x++)for(let k=0;k<3;k++)if(paper[(y*200+x)*4+k]!==mask[(y*200+x)*4+k])maskDifferences++;
-    return {opacityRatio,multiplyDelta,layerInvariant,repeat:dry.every((v,i)=>v===repeat[i]),changed:dry.some((v,i)=>v!==other[i]),dryInk:sum(dry),wetInk:sum(wet),gaps,bleed,maskDifferences,sideShift,zeroBleed,accumulation:sum(doubleWash)/sum(singleWash)};
+    return {terrainChecks,opacityRatio,multiplyDelta,layerInvariant,repeat:dry.every((v,i)=>v===repeat[i]),changed:dry.some((v,i)=>v!==other[i]),dryInk:sum(dry),wetInk:sum(wet),gaps,bleed,maskDifferences,sideShift,zeroBleed,accumulation:sum(doubleWash)/sum(singleWash)};
   },source('zxart-worker.js'));
+  assert.ok(result.terrainChecks.repeat,'mountain wet profiles replay deterministically');
+  assert.ok(result.terrainChecks.directional,'wash loading follows the supplied slope direction');
+  assert.ok(result.terrainChecks.variation>result.terrainChecks.ordinaryVariation,'mountain faces contain more than uniform grey');
   assert.ok(Math.abs(result.opacityRatio-.5)<.025,'distance opacity stays separate from brush pigment loading');
   assert.ok(result.multiplyDelta>0,'wet primitives inherit their containing layer blend mode');
   assert.ok(result.layerInvariant,'paper contact stays fixed when an offscreen layer translates its canvas');

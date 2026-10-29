@@ -23,11 +23,14 @@
     x1=Math.min(pw,Math.ceil(x1*scale+ox+pad));y1=Math.min(ph,Math.ceil(y1*scale+oy+pad));
     var w=x1-x0,h=y1-y0;if(w<=0||h<=0)return;
     var n=w*h,density=new Float32Array(n),paper=new Float32Array(n),noise=ZXArtCompose.WashNoise;
+    const wetness=spec.terrain?new Float32Array(n):null;
+    const flow=spec.terrain?.flow||[0,1],flowLength=Math.hypot(...flow)||1,fx=flow[0]/flowLength,fy=flow[1]/flowLength;
     var seed=spec.seed>>>0,paperSeed=(drawing.paper?.seed||0)>>>0;
     for(var y=0;y<h;y++)for(var x=0;x<w;x++) {
       var lx=(x+x0-ox)/scale,ly=(y+y0-oy)/scale;
       // Fine fibre relief plus broader paper undulations; used only where ink actually lands.
       paper[y*w+x]=paperHeight(lx,ly,paperSeed);
+      if(wetness)wetness[y*w+x]=.08+.92*Math.pow(noise.value(lx*.026,ly*.032,seed^0x83A91),1.7);
     }
     function stamp(cx,cy,r,amount,contact) {
       var left=Math.max(0,Math.floor(cx-r)),right=Math.min(w-1,Math.ceil(cx+r));
@@ -101,15 +104,17 @@
       function sample(x,y){return x<0||y<0||x>=w||y>=h?0:pixels[(y*w+x)*4+3]/255;}
       for(var i=0;i<n;i++) {
         var lx=(i%w+x0-ox)/scale,ly=(Math.floor(i/w)+y0-oy)/scale;
-        var loading=.65+.6*noise.value(lx*.055,ly*.065,seed^0xB5297A4D);
+        var loading=spec.terrain
+          ?.15+1.4*noise.value((-lx*fy+ly*fx)*.045,(lx*fx+ly*fy)*.012,paperSeed^0xB5297A4D)+.20*noise.value(lx*.009,ly*.014,paperSeed)
+          :.65+.6*noise.value(lx*.055,ly*.065,seed^0xB5297A4D);
         var alpha=pixels[i*4+3]/255;
         if(spec.bleed>0) {
           // A sub-texel displacement breaks a wet polygon's mechanically clean boundary.
           // It belongs to the paper, so overlapping washes encounter the same relief.
           var px=i%w+(noise.value(lx*.65,ly*.65,paperSeed^0x171A)-.5)*1.3*scale;
           var py=Math.floor(i/w)+(noise.value(lx*.65,ly*.65,paperSeed^0x1A71)-.5)*1.3*scale;
-          var ix=Math.floor(px),iy=Math.floor(py),fx=px-ix,fy=py-iy;
-          alpha=(sample(ix,iy)*(1-fx)+sample(ix+1,iy)*fx)*(1-fy)+(sample(ix,iy+1)*(1-fx)+sample(ix+1,iy+1)*fx)*fy;
+          var ix=Math.floor(px),iy=Math.floor(py),tx=px-ix,ty=py-iy;
+          alpha=(sample(ix,iy)*(1-tx)+sample(ix+1,iy)*tx)*(1-ty)+(sample(ix,iy+1)*(1-tx)+sample(ix+1,iy+1)*tx)*ty;
         }
         density[i]+=-Math.log(Math.max(.002,1-alpha))*loading;
       }
@@ -124,13 +129,13 @@
           // Symmetric flux conserves ink while the paper height changes local diffusion speed.
           for(var axis=0;axis<4;axis++) {
             var q=axis===0?(x>0?i-1:i):axis===1?(x<w-1?i+1:i):axis===2?(y>0?i-w:i):(y<h-1?i+w:i);
-            sum+=(density[q]-value)*(.45+.55*(1-(paper[i]+paper[q])*.5));
+            sum+=(density[q]-value)*(.45+.55*(1-(paper[i]+paper[q])*.5))*(wetness?(wetness[i]+wetness[q])*.5:1);
           }
           next[i]=Math.max(0,value+.20*sum);
         }
         var swap=density;density=next;next=swap;
       }
-      for(var i=0;i<n;i++)density[i]+=Math.max(0,initial[i]-density[i])*(spec.rim||0)*(.6+paper[i]);
+      for(var i=0;i<n;i++)density[i]+=Math.max(0,initial[i]-density[i])*(spec.rim||0)*(.6+paper[i])*(wetness?.2+1.8*(1-wetness[i]):1);
     }
     var output=new OffscreenCanvas(w,h),outctx=output.getContext('2d'),image=outctx.createImageData(w,h);
     var color=spec.color||[.10,.12,.10];
@@ -207,5 +212,5 @@
     }
     cc.putImageData(image,0,0);ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(canvas,x0,y0);ctx.restore();canvas.width=canvas.height=1;
   }
-  global.ZXArtInk={version:'terrain-ink-7',draw:draw,texturedShape:texturedShape};
+  global.ZXArtInk={version:'terrain-ink-8',draw:draw,texturedShape:texturedShape};
 })(typeof self!=='undefined'?self:globalThis);
