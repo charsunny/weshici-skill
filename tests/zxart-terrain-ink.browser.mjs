@@ -50,6 +50,13 @@ try {
     const background=[.95,.94,.89,1],shade=Array.from({length:512*512},(_,i)=>(i*17+Math.floor(i/512)*11)%256);
     const scene={width:200,height:100,background,paper:{shade,tint:[.4,.35,.25],strength:.15,texel:1},layers:[]};
     const render=d=>{const bitmap=api.render(d,200,100),c=new OffscreenCanvas(200,100),ctx=c.getContext('2d');ctx.drawImage(bitmap,0,0);bitmap.close();return ctx.getImageData(0,0,200,100).data;};
+    const tallWash={...plainWash,lineWidth:0,points:[40,5,150,5,150,95,40,95],wetInk:{...terrainProfile,bleed:5.6,rim:.45}};
+    const fullWash=render({...scene,paper:null,layers:[{shapes:[tallWash]}]});
+    const tiledWash=render({...scene,paper:null,layers:[{shapes:[tallWash],fade:{top:1000,bottom:2000,seed:42}}]});
+    let tileDifference=0;
+    for(let y=15;y<85;y++)for(let x=50;x<140;x++)for(let k=0;k<3;k++) {
+      const i=(y*200+x)*4+k;tileDifference=Math.max(tileDifference,Math.abs(fullWash[i]-tiledWash[i]));
+    }
     const paper=render(scene),mask=render({...scene,layers:[{shapes:[{points:[20,20,180,20,180,80,20,80],fill:background,closed:true,paperMask:true}]}]});
     const colored={width:200,height:100,background:[.45,.7,.8,1],layers:[]};
     const normal=render({...colored,layers:[{shapes:[{...plainWash,fill:[.3,.25,.2,.4]}]}]});
@@ -57,8 +64,9 @@ try {
     const multiplyDelta=normal[(40*200+80)*4]-multiplied[(40*200+80)*4];
     let maskDifferences=0;
     for(let y=22;y<78;y++)for(let x=22;x<178;x++)for(let k=0;k<3;k++)if(paper[(y*200+x)*4+k]!==mask[(y*200+x)*4+k])maskDifferences++;
-    return {terrainChecks,opacityRatio,multiplyDelta,layerInvariant,repeat:dry.every((v,i)=>v===repeat[i]),changed:dry.some((v,i)=>v!==other[i]),dryInk:sum(dry),wetInk:sum(wet),gaps,bleed,maskDifferences,sideShift,zeroBleed,accumulation:sum(doubleWash)/sum(singleWash)};
+    return {tileDifference,terrainChecks,opacityRatio,multiplyDelta,layerInvariant,repeat:dry.every((v,i)=>v===repeat[i]),changed:dry.some((v,i)=>v!==other[i]),dryInk:sum(dry),wetInk:sum(wet),gaps,bleed,maskDifferences,sideShift,zeroBleed,accumulation:sum(doubleWash)/sum(singleWash)};
   },source('zxart-worker.js'));
+  assert.ok(result.tileDifference<=2,`difference ${result.tileDifference}: inactive fade must not introduce horizontal tile boundaries into a wet primitive`);
   assert.ok(result.terrainChecks.repeat,'mountain wet profiles replay deterministically');
   assert.ok(result.terrainChecks.directional,'wash loading follows the supplied slope direction');
   assert.ok(result.terrainChecks.variation>result.terrainChecks.ordinaryVariation,'mountain faces contain more than uniform grey');

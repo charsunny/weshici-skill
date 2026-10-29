@@ -427,7 +427,11 @@ function drawWashed(ctx, layer, drawing, pw, ph, s, ox, oy) {
   var grain = unitClamp(wash ? wash.grain : 0), unit = wash && !wash.fullResolution ? 2 : 1, logicalUnit = unit / s;
   var support = 1.73 * bleed + 3 * logicalUnit, strokePad = 0;
   layer.shapes.forEach(function (shape) { strokePad = Math.max(strokePad, shape.lineWidth * 5); });
-  var pad = (support + strokePad) * s;
+  var wetPad = 0;
+  layer.shapes.forEach(function (shape) {
+    if (shape.wetInk && shape.wetInk.terrain) wetPad = Math.max(wetPad, (shape.wetInk.bleed || 0) * 3 + 4 / s);
+  });
+  var pad = Math.max(support + strokePad, wetPad) * s;
   var minX = Math.max(bb.minX * s + ox - pad, -2 * unit), minY = Math.max(bb.minY * s + oy - pad, -2 * unit);
   var maxX = Math.min(bb.maxX * s + ox + pad, pw + 2 * unit), maxY = Math.min(bb.maxY * s + oy + pad, ph + 2 * unit);
   if (!(maxX > minX && maxY > minY)) return;
@@ -452,11 +456,16 @@ function drawWashed(ctx, layer, drawing, pw, ph, s, ox, oy) {
     pixels = null;
     alphaSample = washSamples(alpha, sw, sh, 1, sx0, sy0);
   }
+  // Wet primitives must see their complete footprint when computing diffusion and
+  // pigment recession. Rasterising them inside 64-row strips invents wet edges
+  // at each strip boundary, even when the enclosing fade is fully opaque.
+  var fullColors = layer.shapes.some(function (shape) { return shape.wetInk && shape.wetInk.terrain; })
+    ? washSamples(raster(sx0, sy0, sw, sh), sw, sh, 4, sx0, sy0) : null;
   var width = x1 - x0;
   for (var start = y0; start < y1; start += 64) {
     var end = Math.min(start + 64, y1), top = start - 2, rows = end + 2 - top;
     var colorTop = top - halo, colorRows = rows + 2 * halo;
-    var colors = washSamples(raster(sx0, colorTop, sw, colorRows), sw, colorRows, 4, sx0, colorTop);
+    var colors = fullColors || washSamples(raster(sx0, colorTop, sw, colorRows), sw, colorRows, 4, sx0, colorTop);
     var output = new OffscreenCanvas(width, rows), outctx = output.getContext('2d'), image = outctx.createImageData(width, rows);
     for (var row = 0; row < rows; row++) {
       var gy = top + row, ly = ((gy + 0.5) * unit - oy) / s;

@@ -3010,8 +3010,14 @@ Object.assign(ShanShuiEngineV5.prototype, {
             const u=foldU(peak,down,offset)+light*(k*.012+reach*Math.sin(t*Math.PI*.5)+.007*Math.sin(t*9+k));
             path.push(at(u,down));outer.push(at(u+light*(.008+.016*Math.sin(t*Math.PI)),down));
           }
+          const distance=path.slice(1).reduce((n,p,j)=>n+Math.hypot(p.x-path[j].x,p.y-path[j].y),0);
+          const chord=Math.hypot(path.at(-1).x-path[0].x,path.at(-1).y-path[0].y);
+          const curled=chord<25 && distance>chord*1.35,start=c.length;
           cunStroke(path,2.4+b.r()*3.8,.48+b.r()*.35,.20+b.r()*.22,[.15,.85,.55,.8,.45,.06]);
-          if(k===count-1)washes.push({...b.poly([...path,...outer.reverse()],{fil:C.gray(0,.12),str:null}),wetInk:{bleed:1.1,rim:.10}});
+          // A compressed fold can turn a short bundle back on itself into an isolated S.
+          // Consume its brush seed before omitting it so surrounding marks stay fixed.
+          if(curled)c.length=start;
+          else if(k===count-1)washes.push({...b.poly([...path,...outer.reverse()],{fil:C.gray(0,.12),str:null}),wetInk:{bleed:1.1,rim:.10}});
         }
       }
     }
