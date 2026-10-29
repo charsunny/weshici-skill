@@ -102,10 +102,24 @@
       sc.setTransform(scale,0,0,scale,ox-x0,oy-y0);drawShapes(sc,shapes);
       var pixels=sc.getImageData(0,0,w,h).data;
       function sample(x,y){return x<0||y<0||x>=w||y>=h?0:pixels[(y*w+x)*4+3]/255;}
+      // Distance inside the actual wash footprint: local water content controls
+      // how much of its edge loses pigment, without feathering every margin equally.
+      var edge=spec.terrain?new Float32Array(n):null;
+      if(edge) {
+        for(var i=0;i<n;i++)edge[i]=pixels[i*4+3]>0?1e6:0;
+        for(var y=0;y<h;y++)for(var x=0;x<w;x++) {
+          var i=y*w+x;
+          edge[i]=Math.min(edge[i],x?edge[i-1]+1:0,y?edge[i-w]+1:0,x&&y?edge[i-w-1]+1.414:1e6);
+        }
+        for(var y=h-1;y>=0;y--)for(var x=w-1;x>=0;x--) {
+          var i=y*w+x;
+          edge[i]=Math.min(edge[i],x<w-1?edge[i+1]+1:0,y<h-1?edge[i+w]+1:0,x<w-1&&y<h-1?edge[i+w+1]+1.414:1e6);
+        }
+      }
       for(var i=0;i<n;i++) {
         var lx=(i%w+x0-ox)/scale,ly=(Math.floor(i/w)+y0-oy)/scale;
         var loading=spec.terrain
-          ?.15+1.4*noise.value((-lx*fy+ly*fx)*.045,(lx*fx+ly*fy)*.012,paperSeed^0xB5297A4D)+.20*noise.value(lx*.009,ly*.014,paperSeed)
+          ?.12+2.0*Math.pow(noise.value((-lx*fy+ly*fx)*.055,(lx*fx+ly*fy)*.018,paperSeed^0xB5297A4D),1.5)+.22*noise.value(lx*.014,ly*.019,paperSeed)
           :.65+.6*noise.value(lx*.055,ly*.065,seed^0xB5297A4D);
         var alpha=pixels[i*4+3]/255;
         if(spec.bleed>0) {
@@ -115,6 +129,10 @@
           var py=Math.floor(i/w)+(noise.value(lx*.65,ly*.65,paperSeed^0x1A71)-.5)*1.3*scale;
           var ix=Math.floor(px),iy=Math.floor(py),tx=px-ix,ty=py-iy;
           alpha=(sample(ix,iy)*(1-tx)+sample(ix+1,iy)*tx)*(1-ty)+(sample(ix,iy+1)*(1-tx)+sample(ix+1,iy+1)*tx)*ty;
+        }
+        if(edge) {
+          var reach=(2+14*wetness[i])*scale,t=Math.min(1,edge[i]/reach);
+          alpha*=.18+.82*t*t*(3-2*t);
         }
         density[i]+=-Math.log(Math.max(.002,1-alpha))*loading;
       }
@@ -212,5 +230,5 @@
     }
     cc.putImageData(image,0,0);ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(canvas,x0,y0);ctx.restore();canvas.width=canvas.height=1;
   }
-  global.ZXArtInk={version:'terrain-ink-8',draw:draw,texturedShape:texturedShape};
+  global.ZXArtInk={version:'terrain-ink-9',draw:draw,texturedShape:texturedShape};
 })(typeof self!=='undefined'?self:globalThis);

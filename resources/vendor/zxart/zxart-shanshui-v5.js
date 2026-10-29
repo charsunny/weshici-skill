@@ -2929,7 +2929,7 @@ Object.assign(ShanShuiEngineV5.prototype, {
           {width:.8+b.r()*.7,ink:.45+b.r()*.2,moisture:.38,pressure:[.1,.7,1,.1],angular:true}));
       }
     }
-    const foldU=(peak,v,offset)=>ridgeX(peak,v)+light*peak.width*(offset+.08*Math.sin(v*12+phase+peak.x*7)+.14*(b.n(v*7+phase,peak.x*13)-.5));
+    const foldU=(peak,v,offset)=>ridgeX(peak,v)+light*peak.width*(offset+.06*Math.sin(v*12+phase+peak.x*7)+.30*(b.n(v*11+phase,peak.x*13)-.5));
     if(!bank) for(const peak of peaks.filter(p=>!p.cap)) {
       // Wash margins and hemp bundles turn on the same irregular rock face.
       for(let pass=0;pass<3;pass++) {
@@ -2937,7 +2937,7 @@ Object.assign(ShanShuiEngineV5.prototype, {
         for(let j=0;j<=48;j++) {
           const v=.010+j/48*.89,root=foldU(peak,v,.06);
           const spread=(1.24-pass*.36)*(1-.40*v)*Math.min(1,Math.max(0,(.92-v)/.24));
-          const broken=.74+.44*b.n(v*10+phase,peak.x*21+pass*.7)+.09*Math.sin(v*23+peak.x*11);
+          const broken=.58+.70*b.n(v*13+phase,peak.x*21+pass*.7)+.12*(b.n(v*31,peak.x*17)-.5);
           const edge=root+light*peak.width*spread*broken;
           inner.push(at(root,v));
           outer.push(at(edge,v+.012*Math.sin(j/48*Math.PI)));
@@ -2984,7 +2984,7 @@ Object.assign(ShanShuiEngineV5.prototype, {
         let tu=u,tv=v;
         for(let k=0;k<steps;k++) {
           const a=at(tu-.006,tv),z=at(tu+.006,tv),slope=(z.y-a.y)/(z.x-a.x||.01);
-          tu+=.004*Math.tanh(slope*.55)+.0012*Math.sin(k*.33+u*17)+.003*(b.n(tu*9,tv*7+phase)-.5);
+          tu+=.004*Math.tanh(slope*.55)+.0012*Math.sin(k*.33+u*17)+.007*(b.n(tu*19,tv*12+phase)-.5);
           tv+=.010;
           if(tu<.015||tu>.985||tv>.97)break;
           trace.push(at(tu,tv));
@@ -3010,7 +3010,6 @@ Object.assign(ShanShuiEngineV5.prototype, {
             const u=foldU(peak,down,offset)+light*(k*.012+reach*Math.sin(t*Math.PI*.5)+.007*Math.sin(t*9+k));
             path.push(at(u,down));outer.push(at(u+light*(.008+.016*Math.sin(t*Math.PI)),down));
           }
-          if(path.length<8)continue;
           cunStroke(path,2.4+b.r()*3.8,.48+b.r()*.35,.20+b.r()*.22,[.15,.85,.55,.8,.45,.06]);
           if(k===count-1)washes.push({...b.poly([...path,...outer.reverse()],{fil:C.gray(0,.12),str:null}),wetInk:{bleed:1.1,rim:.10}});
         }
