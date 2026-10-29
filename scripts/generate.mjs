@@ -10,7 +10,7 @@
  * 高级社媒成片生成 (Platform-Ready Suites):
  *   - xiaohongshu: 小红书 3:4 (1080×1440) 4联卡片（封面/诗境/笔墨拆解/纯壁纸）+ 爆款文案
  *   - wechat-sticker: 微信透明底朱红闲章贴图、墨色微物贴图、宣纸微画与朋友圈日签卡
- *   - douyin: 抖音 9:16 (1080×1920) 短视频（安全区避让、黄金 1.5s Hook、-14 LUFS 混音与发布文案）
+ *   - douyin / video: 抖音 9:16 (1080×1920) 动态画屏短视频（经 produce.mjs，安全区避让、App 墨洇入场、-14 LUFS 混音与据实的发布文案）
  */
 
 import fs from 'node:fs';
@@ -370,7 +370,7 @@ async function handleDouyin(opts, outDir) {
   const slug = slugify(`${opts.title}-douyin`);
   console.log(`\n🎵 正在通过 produce.mjs 调度全流程生成抖音 9:16 (1080×1920) 短视频...`);
   console.log(`   · 诗词: ${byline(opts.dynasty, opts.author, '·')}《${opts.title}》`);
-  console.log(`   · 包含黄金 1.5s 开场 Hook、UI 安全区避让与 -14 LUFS Mastering`);
+  console.log(`   · 首帧成画、0.3s 起逐字墨洇，文字避开平台控件区，-14 LUFS 混音`);
 
   execFileSync(
     process.execPath,
@@ -407,8 +407,8 @@ async function main() {
                   选项: --title --poem --device (iphone|ipad|mac-4k|desktop) --pure
   image           生成静止意境诗画 (支持 1:1, 3:4, 16:9, 9:16 画幅)
                   选项: --title --poem --ratio (1:1|3:4|16:9|9:16)
-  video           生成基础动态画屏短视频素材 (1080×1920, 动态墨韵流转)
-                  选项: --title --poem --duration 10
+  video           同 douyin：动态画屏短视频 (1080×1920，需朗读库中有这首诗)
+                  选项: --title
 
 高级社媒命令:
   poster         诗词海报：App 主题色、留白与山水，1080×1440 PNG
@@ -420,7 +420,7 @@ async function main() {
                   选项: --title --poem --author
   wechat-sticker  生成微信透明印章贴图、微水墨贴图与朋友圈日签卡
                   选项: --title --poem
-  douyin          生成抖音 9:16 爆款短视频 (安全区布局、黄金 1.5s Hook、-14 LUFS 混音)
+  douyin          生成抖音 9:16 动态画屏短视频 (经 produce.mjs；安全区布局、-14 LUFS 混音)
                   选项: --title --workers 4
 
 通用选项:
