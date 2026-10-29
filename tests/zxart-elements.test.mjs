@@ -106,7 +106,7 @@ test('structural landscape is seeded, preserves the verse and required subjects,
   assert.ok(legacy.layers.every(layer=>layer.shapes.every(shape=>!shape.overprint)), 'legacy batching is unchanged');
   assert.ok(['hemp','axe'].includes(next.brushwork.technique));
   assert.ok(next.anchors.trees.length>0 && next.anchors.buildings.length>0,'anchors follow the placed trees and houses');
-  for (const motif of ['mainMountain','pine','hut']) assert.ok(next.sceneElements.some(e=>e.motif===motif),motif);
+  for (const motif of ['mainMountain','pine','hut','stream','moon']) assert.ok(next.sceneElements.some(e=>e.motif===motif),motif);
   for (const layer of next.layers) for (const shape of layer.shapes) {
     assert.ok([...shape.points].every(Number.isFinite));
     for (const color of [shape.fill,shape.stroke]) if(color) assert.ok(color.every(v=>Number.isFinite(v)&&v>=0&&v<=1));

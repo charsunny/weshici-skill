@@ -19,8 +19,9 @@ const serial=value=>JSON.parse(JSON.stringify(value,(_,v)=>ArrayBuffer.isView(v)
 const palette={paper:[.95,.94,.89,1],ink:[.14,.16,.13,1],isDark:false};
 const scenes=[];
 for(const seed of (process.argv[3]?[process.argv[3]]:['study-山居秋暝','ridge-01','ridge-02'])) {
- const req={seed,width:720,height:1080,quietTop:.02,elementTreatment:'landscape-v3',scene:'retreat',options:{cun:'hemp'},verse:null};
+ const req={seed,width:720,height:1080,quietTop:.02,elementTreatment:'landscape-v3',scene:'retreat',options:{cun:'hemp',motifs:['pine','bamboo','hut','stream','moon']},verse:null};
  const generated=context.generatePoetryPaintingV5(req,palette).drawing;
+ for(const motif of req.options.motifs)assert.ok(generated.sceneElements.some(e=>e.motif===motif),seed+': '+motif);
  for(const layer of generated.layers)for(const shape of layer.shapes)
    assert.ok(Array.from(shape.points).every(Number.isFinite),seed+': finite terrain and brush geometry');
  const scene=serial(generated);
@@ -44,7 +45,12 @@ try {
  for(const item of scenes) {
   const width=720,height=item.name.startsWith('painting')?1080:Math.round(width*item.scene.height/item.scene.width);
   const render=()=>page.evaluate(({scene,width,height})=>{const bitmap=paint(scene,width,height),c=document.createElement('canvas');c.width=width;c.height=height;c.getContext('2d').drawImage(bitmap,0,0);bitmap.close();return c.toDataURL('image/png').split(',')[1];},{scene:item.scene,width,height});
-  const result=await render();assert.equal(await render(),result,item.name+': exact PNG replay');
+  const result=await render(),repeated=await render();
+  if(result!==repeated) {
+    fs.writeFileSync(path.join(out,item.name+'-first.png'),Buffer.from(result,'base64'));
+    fs.writeFileSync(path.join(out,item.name+'-repeat.png'),Buffer.from(repeated,'base64'));
+  }
+  assert.equal(createHash('sha256').update(repeated).digest('hex'),createHash('sha256').update(result).digest('hex'),item.name+': exact PNG replay');
   item.output={width,height};
   const bytes=Buffer.from(result,'base64');fs.writeFileSync(path.join(out,item.name+'.png'),bytes);
   item.sha256=createHash('sha256').update(bytes).digest('hex');
