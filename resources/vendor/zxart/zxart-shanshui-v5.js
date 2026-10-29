@@ -2915,21 +2915,26 @@ Object.assign(ShanShuiEngineV5.prototype, {
     const curve=(u0,u1,v,shift=0)=>Array.from({length:16},(_,i)=>at(u0+(u1-u0)*i/15,v+shift*Math.sin(i/15*Math.PI)));
     for(let i=2;i<118;) {
       const length=5+Math.floor(b.r()*10);
-      if(b.r()>.18)stroke(ridge.slice(i,i+length),bank?.9+b.r()*1.2:1.5+b.r()*1.8,.42+b.r()*.24,.24);
+      if(b.r()>.18)stroke(ridge.slice(i,i+length),bank?.9+b.r()*1.2:2.4+b.r()*2.8,bank?.42+b.r()*.24:.62+b.r()*.20,bank?.24:.56,bank?[.1,.8,.6,.15,.01]:[.1,.65,1,.70,.12]);
       i+=length+2+Math.floor(b.r()*7);
     }
     if(!bank) for(const peak of peaks.filter(p=>!p.cap)) {
-      const inner=[],outer=[];
-      for(let j=0;j<=24;j++) {
-        const v=.025+j/24*.76,center=ridgeX(peak,v);
-        const bend=.025*Math.sin(v*11+phase+peak.x*7);
-        inner.push(at(center+light*peak.width*.16+bend,v));
-        outer.push(at(center+light*peak.width*(.72-.50*j/24)+bend,v));
+      // Three adjoining tonal depths share the ridge and its downhill turn.
+      // The broad light wash carries volume; successive narrower faces load the fold.
+      for(let pass=0;pass<3;pass++) {
+        const inner=[],outer=[];
+        for(let j=0;j<=28;j++) {
+          const v=.012+j/28*.88,center=ridgeX(peak,v),bend=.012*Math.sin(v*8+phase+peak.x*7);
+          const root=center+light*peak.width*.07+bend;
+          inner.push(at(root,v));
+          outer.push(at(root+light*peak.width*(1.24-pass*.36)*(1-.40*v)*Math.min(1,Math.max(0,(.92-v)/.24)),v));
+        }
+        washes.push({...b.poly([...inner,...outer.reverse()],{fil:C.gray(0,[.085,.13,.17][pass]),str:null}),
+          wetInk:{bleed:2.0+pass*.35,rim:.06}});
       }
-      washes.push({...b.poly([...inner,...outer.reverse()],{fil:C.gray(0,.095),str:null}),wetInk:{bleed:1.4,rim:.08}});
     }
     const roots=[];
-    for(let trial=0;trial<1300&&roots.length<(bank?45:method==='hemp'?120:180);trial++) {
+    for(let trial=0;trial<1300&&roots.length<(bank?45:method==='hemp'?180:210);trial++) {
       const u=.035+b.r()*.93,v=(bank?.18:0)+Math.pow(b.r(),bank?.5:1)*(bank?.73:.91);
       const a=at(u-.008,v),z=at(u+.008,v),slope=(z.y-a.y)/(z.x-a.x);
       const facing=slope*light;
@@ -2966,7 +2971,7 @@ Object.assign(ShanShuiEngineV5.prototype, {
           if(tu<.015||tu>.985||tv>.97)break;
           trace.push(at(tu,tv));
         }
-        cunStroke(trace,2.5+b.r()*3.5,tone,.22+b.r()*.15,[.2,.8,1,.6,.1]);
+        cunStroke(trace,3.8+b.r()*6.5,Math.min(.88,tone*1.25),.34+b.r()*.22,[.2,.8,1,.6,.1]);
         if(b.r()<.28)stroke(trace,7+b.r()*8,.12+b.r()*.12,.20,[.1,.7,.9,.3,.05]);
       }
     }
@@ -2988,7 +2993,7 @@ Object.assign(ShanShuiEngineV5.prototype, {
             path.push(at(u,down));outer.push(at(u+light*(.008+.016*Math.sin(t*Math.PI)),down));
           }
           if(path.length<3)continue;
-          cunStroke(path,2.2+b.r()*3.8,.40+b.r()*.35,.19+b.r()*.19,[.1,.7,1,.72,.4,.05]);
+          cunStroke(path,3.2+b.r()*6,.48+b.r()*.35,.31+b.r()*.25,[.1,.7,1,.72,.4,.05]);
           if(k===count-1)washes.push({...b.poly([...path,...outer.reverse()],{fil:C.gray(0,.12),str:null}),wetInk:{bleed:1.1,rim:.10}});
         }
       }
@@ -2997,7 +3002,7 @@ Object.assign(ShanShuiEngineV5.prototype, {
       const v=.12+level*.30+b.r()*.08;
       const path=[at(ridgeX(peak,v)-light*peak.width*.15,v),at(ridgeX(peak,v+.015)+light*peak.width*.25,v+.015),
         at(ridgeX(peak,v+.045)+light*peak.width*.55,v+.045),at(ridgeX(peak,v+.12)+light*peak.width*.67,v+.12)];
-      cunStroke(path,3.0+b.r()*1.7,.78,.38,[.1,.4,1,.55,.08]);
+      cunStroke(path,4.0+b.r()*2.8,.82,.58,[.1,.4,1,.55,.08]);
     }
     // Sparse firm turns break the long slopes into overlapping shoulders, not vertical columns.
     for(let j=0;j<12;j++) {
@@ -3040,48 +3045,47 @@ Object.assign(ShanShuiEngineV5.prototype, {
   paintingLandscapePine(bare=false,young=null) {
     const b=landscapeBrushEngineV5('pine-structure:'+this.landscapeSeed+':'+this.inkSeed()),c=[];
     if(!bare) {
-      const root=P(66,178),lean=(b.r()<.5?-1:1)*(8+b.r()*24),bend=(b.r()-.5)*24;
-      const offsets=[0,bend*.65,bend,bend*.35,0];
+      const direction=b.r()<.5?-1:1,lean=direction*(12+b.r()*30),bend=(b.r()-.5)*36;
+      const offsets=[0,bend*.35,bend,bend*.30,0];
       const axis=t=>{const f=Math.min(.99999,t)*4,j=Math.floor(f);
-        return P(root.x+lean*t+offsets[j]+(offsets[j+1]-offsets[j])*(f-j),root.y-164*t);};
-      const girth=young?1.8+b.r()*1.3:3.4+b.r()*1.8;
-      c.push(...b.paintingBrushStroke([axis(0),axis(.23),axis(.51),axis(.76),axis(1)],
-        {width:girth,ink:.92,moisture:.34,pressure:[1,.82,.67,.38,.02],angular:true}));
-      // A crown is a small number of separated horizontal branch tiers. Each tier
-      // carries several fans of needles, with a loaded heart and open pale tips.
-      const tiers=7+Math.floor(b.r()*6),bottom=.30+b.r()*.14;
-      for(let k=0;k<tiers;k++) {
-        const t=bottom+(1-bottom)*(k+.25+b.r()*.35)/tiers,p=axis(t);
-        const span=(18+b.r()*15)*Math.pow(1-t,.55)+3,tilt=(b.r()-.5)*.28;
-        for(const side of [-1,1]) {
-          if(k!==tiers-1 && b.r()<.18)continue;
-          const reach=span*(.65+b.r()*.55),tip=P(p.x+side*reach,p.y-2+side*reach*tilt);
-          c.push(...b.paintingBrushStroke([p,P(p.x+side*reach*.40,p.y+2),tip],
-            {width:girth*(.32+.28*(1-t)),ink:.75,moisture:.32,pressure:[1,.85,.45,.05]}));
-          const clusters=2+Math.floor(b.r()*3);
-          for(let g=0;g<clusters;g++) {
-            const u=.32+(g+b.r()*.35)/clusters*.68;
-            const cx=p.x+side*reach*u,cy=p.y+(tip.y-p.y)*u;
-            const size=(3.5+b.r()*3.8)*(.65+.65*(1-t));
-            const rotation=(b.r()-.5)*.35;
-            c.push(...b.paintingBrushStroke([P(cx-size*.45,cy-.4),P(cx,cy-1),P(cx+size*.40,cy)],
-              {width:1.2+b.r()*1.6,ink:.68+b.r()*.25,moisture:.30,pressure:[.15,1,.8,.05]}));
-            for(let pass=0;pass<2;pass++) {
-              const count=pass?7:5,tone=pass?.76+b.r()*.18:.30+b.r()*.20;
-              for(let n=0;n<count;n++) {
-                const angle=-Math.PI*.96+(n+b.r()*.55)/count*Math.PI*.94+rotation;
-                const length=size*(pass?.55+b.r()*.45:1+b.r()*.45);
-                const start=P(cx+(b.r()-.5)*size*.5,cy+(b.r()-.5)*1.6);
-                const end=P(start.x+Math.cos(angle)*length*1.25,start.y+Math.sin(angle)*length*.65);
-                c.push(...b.paintingBrushStroke([start,P((start.x+end.x)*.5,(start.y+end.y)*.5-.4),end],
-                  {width:pass?.65+b.r()*.55:.45+b.r()*.35,ink:tone,moisture:.32+b.r()*.14,pressure:[.9,1,.45,.01]}));
-              }
-            }
+        return P(66+lean*t+offsets[j]+(offsets[j+1]-offsets[j])*(f-j),178-164*t);};
+      const girth=young?4+b.r()*3:7+b.r()*4;
+      const spine=Array.from({length:33},(_,j)=>axis(j/32));
+      const left=spine.map((p,j)=>P(p.x-girth*.5*Math.pow(1-j/33,.75),p.y));
+      const right=spine.map((p,j)=>P(p.x+girth*.5*Math.pow(1-j/33,.75),p.y));
+      c.push(b.poly([...left,...right.slice().reverse()],{fil:C.white,str:null}));
+      c.push(...b.paintingBrushStroke(spine,{width:girth,ink:.43,moisture:.43,pressure:[1,.9,.7,.4,.04],oblique:direction}));
+      for(const [edge,tone] of [[left,.88],[right,.64]])
+        c.push(...b.paintingBrushStroke(edge,{width:girth*.27,ink:tone,moisture:.45,pressure:[.8,1,.65,.35,.02]}));
+      // Small broken rhomboids follow the changing trunk width: pine bark, not a pole.
+      for(let k=0;k<26;k++) {
+        const t=.025+b.r()*.84,p=axis(t),radius=girth*.42*Math.pow(1-t,.75),x=p.x+(b.r()-.5)*radius*1.3;
+        const length=2+b.r()*4;
+        c.push(...b.paintingBrushStroke([P(x,p.y),P(x-radius*.45,p.y-length*.4),P(x,p.y-length),P(x+radius*.40,p.y-length*.6)],
+          {width:.6+b.r()*.8,ink:.55+b.r()*.35,moisture:.30,pressure:[.25,1,.65,.10],angular:true}));
+      }
+      const limbs=[.30+b.r()*.09,.47+b.r()*.10,...Array.from({length:9+Math.floor(b.r()*5)},()=>.63+b.r()*.35)].sort((a,z)=>a-z);
+      for(let k=0;k<limbs.length;k++) {
+        const t=limbs[k],p=axis(t),side=b.r()<.68?direction:-direction;
+        const reach=(12+b.r()*29)*(t>.90?.55:1),rise=(b.r()-.30)*18;
+        const elbow=P(p.x+side*reach*.48,p.y-1-b.r()*4),tip=P(p.x+side*reach,p.y-rise);
+        c.push(...b.paintingBrushStroke([p,elbow,tip],{width:girth*(.18+.22*(1-t)),ink:.79,moisture:.43,pressure:[1,.8,.35,.02],angular:true}));
+        const groups=3+Math.floor(b.r()*4);
+        for(let g=0;g<groups;g++) {
+          const u=.25+b.r()*.8,cx=p.x+(tip.x-p.x)*u,cy=p.y+(tip.y-p.y)*u+(b.r()-.5)*7;
+          const size=(6+b.r()*7)*(t>.8?1.0:.8),tone=t>.8?.86:.52+b.r()*.30;
+          c.push(...b.paintingBrushStroke([P(cx-size*.6,cy),P(cx,cy-1),P(cx+size*.45,cy)],
+            {width:2.5+b.r()*2.5,ink:tone,moisture:.44,pressure:[.1,1,.85,.03]}));
+          for(let needle=0;needle<12;needle++) {
+            const angle=-Math.PI*.95+b.r()*Math.PI*1.1,length=size*(.40+b.r()*.75);
+            const start=P(cx+(b.r()-.5)*size*.5,cy+(b.r()-.5)*2),end=P(start.x+Math.cos(angle)*length,start.y+Math.sin(angle)*length*.7);
+            c.push(...b.paintingBrushStroke([start,end],{width:.7+b.r()*.8,ink:needle%3? tone:.32+b.r()*.20,
+              moisture:.38,pressure:[.8,1,.35,.01]}));
           }
         }
       }
-      for(const side of [-1,1])c.push(...b.paintingBrushStroke([axis(.04),P(66+side*3,178),P(66+side*(6+b.r()*4),180)],
-        {width:girth*.6,ink:.85,moisture:.27,pressure:[.7,1,.15]}));
+      for(const side of [-1,1])c.push(...b.paintingBrushStroke([axis(.06),P(66+side*4,178),P(66+side*(8+b.r()*5),180)],
+        {width:girth*.45,ink:.91,moisture:.40,pressure:[.6,1,.12]}));
       return c;
     }
     const direction=b.r()<.5?-1:1,root=P(66,178);
@@ -3157,6 +3161,28 @@ Object.assign(ShanShuiEngineV5.prototype, {
     }
     for(const dx of [-13,-5,12]) branch([P(root.x,root.y-10),P(root.x+dx*.5,root.y),P(root.x+dx,root.y+3)],bare?3.5:2.6,.8);
     for(const poly of c){poly.p=poly.p.map(p=>P(root.x+(p.x-root.x)*(bare?.48:.46),root.y+(p.y-root.y)*1.16));poly.pts=poly.p;if(bare&&poly.fil&&!C.isWhite(poly.fil))poly.fil=C.gray(0,poly.fil.a*.70);}
+    return c;
+  },
+
+  paintingLandscapeBroadleaf(outlined=false) {
+    const b=landscapeBrushEngineV5('broadleaf:'+this.landscapeSeed+':'+this.inkSeed()),c=[];
+    const lean=(b.r()-.5)*40,axis=t=>P(66+lean*t+8*Math.sin(t*5),178-145*t);
+    const stroke=(path,width,ink)=>c.push(...b.paintingBrushStroke(path,{width,ink,moisture:.42,pressure:[.8,1,.5,.02]}));
+    stroke([axis(0),axis(.35),axis(.65),axis(1)],3+b.r()*2,.74);
+    for(let limb=0;limb<7;limb++) {
+      const t=.38+b.r()*.56,p=axis(t),side=b.r()<.5?-1:1;
+      const tip=P(p.x+side*(15+b.r()*25),p.y-10-b.r()*23);
+      stroke([p,P(p.x+side*8,p.y-4),tip],1.2+b.r(),.65);
+      for(let twig=0;twig<3;twig++) {
+        const end=P(tip.x+(b.r()-.5)*28,tip.y-4-b.r()*16);
+        stroke([tip,end],.65,.55);
+        for(let leaf=0;leaf<8;leaf++) {
+          const x=end.x+(b.r()-.5)*20,y=end.y+(b.r()-.5)*13,size=3+b.r()*4,tilt=(b.r()-.5)*5;
+          if(outlined)stroke([P(x,y),P(x-size*.5,y-size*.5),P(x+tilt,y-size),P(x+size*.5,y-size*.4),P(x,y)],.55+b.r()*.35,.45+b.r()*.25);
+          else c.push(...b.paintingBrushStroke([P(x,y),P(x+tilt,y-size)],{width:2+b.r()*2,ink:.40+b.r()*.43,moisture:.52,pressure:[.05,1,.8,.01]}));
+        }
+      }
+    }
     return c;
   },
 
@@ -10114,8 +10140,13 @@ class PaintingStageV5 {
     this.currentScene=scene;
     const b=this.engine,a=this.art,W=a.width,H=a.height;
     const r=landscapeBrushEngineV5('dragon-vein:'+this.seed),phase=(r.r()-.5)*1.2,flowSign=r.r()<.5?1:-1;
-    const water=t=>P(a.minX+W*(.5+flowSign*(.18+.12*Math.sin(t*Math.PI*2+phase))),a.minY+H*(.55+.41*t-.12*Math.pow(Math.max(0,1-t/.45),1.2)));
-    const breadth=t=>W*(.004+.11*Math.pow(t,1.6))*Math.min(1,t/.08);
+    const water=t=>{
+      const bend=.18+.12*Math.sin(t*Math.PI*2+phase);
+      const mix=Math.max(0,Math.min(1,(t-.21)/.29));
+      const upper=.035+.035*Math.min(1,t/.21);
+      return P(a.minX+W*(.5+flowSign*(upper*(1-mix)+bend*mix)+.004*Math.sin(t*42+phase)*Math.sin(Math.PI*Math.min(1,t/.5))),a.minY+H*(.55+.41*t-.12*Math.pow(Math.max(0,1-t/.45),1.2)));
+    };
+    const breadth=t=>W*(.004+.11*Math.pow(t,1.6)+.012*Math.sin(Math.PI*Math.min(1,t/.5)))*Math.min(1,t/.04);
     const chosen=new Set(options.motifs||defaultMotifsForScene(scene));
     const bounds=raw=>{
       let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
@@ -10144,9 +10175,9 @@ class PaintingStageV5 {
     const guestBox=new CRect(a.minX+W*.43,a.minY+H*(.06+r.r()*.04),W*.56,H*.40);
     add(b.paintingMountain('folded',false,guestBox.height/guestBox.width),guestBox,'guestMountain',.45,true);
     const mainBox=new CRect(a.minX,a.minY+H*.025,W*(.90+r.r()*.05),H*.48);
-    add(b.paintingMountain('leaning',false,mainBox.height/mainBox.width),mainBox,'mainMountain',.68,true);
+    add(b.paintingMountain('leaning',false,mainBox.height/mainBox.width),mainBox,'mainMountain',.84,true);
     const middleBox=new CRect(a.minX+W*(flowSign>0?.06:.42),a.minY+H*.26,W*.58,H*.42);
-    add(b.paintingMountain('folded',false,middleBox.height/middleBox.width),middleBox,'middleMountain',.72,true);
+    add(b.paintingMountain('folded',false,middleBox.height/middleBox.width),middleBox,'middleMountain',.90,true);
     // The same winding watercourse determines the open valley and the ends of both banks.
     const left=[],right=[];
     for(let i=0;i<=60;i++){const t=i/60,p=water(t),width=breadth(t);left.push(P(p.x-width,p.y));right.push(P(p.x+width,p.y));}
@@ -10198,23 +10229,23 @@ class PaintingStageV5 {
       for(let j=0;j<=40;j++) {
         const t=.008+j/40*.37,p=water(t),width=breadth(t);
         inner.push(P(p.x+side*width,p.y));
-        outer.push(P(p.x+side*(width+W*(.003+.007*Math.sin(j/40*Math.PI))+(r.r()-.5)*2),p.y-H*.003));
+        outer.push(P(p.x+side*(width+W*(.013+.025*Math.sin(j/40*Math.PI))+(r.r()-.5)*2),p.y-H*.003));
       }
-      this.parts.push(Part.near([{...b.poly([...inner,...outer.reverse()],{fil:C.gray(0,side===-flowSign?.11:.06),str:null}),
+      this.parts.push(Part.near([{...b.poly([...inner,...outer.reverse()],{fil:C.gray(0,side===-flowSign?.22:.12),str:null}),
         wetInk:{bleed:1.1,rim:.10}}]));
       for(let j=0;j<35;j+=9) {
         this.parts.push(Part.near(b.paintingBrushStroke(inner.slice(j,j+8),
-          {width:.7+r.r()*.5,ink:side===-flowSign?.48:.34,moisture:.38,pressure:[.1,.8,1,.6,.05]})));
+          {width:1.6+r.r()*1.3,ink:side===-flowSign?.70:.48,moisture:.38,pressure:[.1,.8,1,.6,.05]})));
       }
     }
     // Exposed ledges interrupt the narrow upper course. The paper-white water
     // falls between them, then opens into the quiet lower pool along the same route.
     for(let step=0;step<3;step++) {
-      const t=.045+step*.105,p=water(t),gap=breadth(t);
+      const t=.025+step*.135;
       for(const side of [-1,1]) {
-        const width=W*(.021+r.r()*.018),x=p.x+side*(gap+width*.35);
-        const raw=b.paintingLandscapeStone([P(x-width*.5,p.y),P(x+width*.5,p.y-H*.002)],p.y+H*(.012+r.r()*.006),1);
-        this.parts.push(Part.near(raw));
+        const u=t+(side===flowSign?.022:0),q=water(u),width=W*(.030+r.r()*.025),x=q.x+side*(breadth(u)+width*.52);
+        const raw=b.paintingLandscapeStone([P(x-width*.5,q.y),P(x+width*.5,q.y-H*.002)],q.y+H*(.023+r.r()*.013),1);
+        this.parts.push(Part.near(raw.filter(poly=>!C.isWhite(poly.fil))));
       }
       for(let line=0;line<3;line++) {
         const offset=(line-1)*.40,path=[];
@@ -10260,19 +10291,32 @@ class PaintingStageV5 {
         }
       }
       for(let tree=0;tree<treeCount;tree++) {
-        const fraction=[.15,.29,.82,.70,.92,.20][tree]+(layout.r()-.5)*.05,x=z.minX+z.width*fraction;
+        const fraction=[.15,.29,.82,.70,.92,.20][tree]+(layout.r()-.5)*.05;
+        let x=z.minX+z.width*fraction;
         const behindHouse=bank.t>.5&&tree>=2;
-        const y=landY(bank,x)+1+(bank.t>.5?H*scale*(behindHouse?-.14:.08):0);
+        let y=landY(bank,x)+1+(bank.t>.5?H*scale*(behindHouse?-.14:.08):0);
         const treeEngine=landscapeBrushEngineV5('tree:'+this.seed+':'+index+':'+tree);treeEngine.landscapeSeed=this.seed;
-        const raw=treeEngine.paintingLandscapePine(tree===1 && bank.t>.5,tree>=2),rawBounds=bounds(raw),height=H*(tree===1?.67:tree===0?.53:tree===2?.34+layout.r()*.03:tree===3?.25+layout.r()*.05:tree===4?.20+layout.r()*.04:.23+layout.r()*.07)*scale;
-        const s=Math.min(height/rawBounds.height,z.width*(tree===1?.38:.27)/rawBounds.width);
+        const raw=tree===3||tree===4?treeEngine.paintingLandscapeBroadleaf(tree===4):treeEngine.paintingLandscapePine(tree===1 && bank.t>.5,tree>=2),rawBounds=bounds(raw),height=H*(tree===1?.67:tree===0?.53:tree===2?.34+layout.r()*.03:tree===3?.25+layout.r()*.05:tree===4?.20+layout.r()*.04:.23+layout.r()*.07)*scale;
+        const s=Math.min(height/rawBounds.height,z.width*(tree===1?.38:tree===0?.38:.30)/rawBounds.width);
+        // Keep a visible opening around the falling water; move the planting point
+        // along its own bank instead of drawing water over a foreground trunk.
+        const spring=Array.from({length:16},(_,j)=>water(.015+j/15*.35));
+        const sx0=Math.min(...spring.map(p=>p.x))-W*.025,sx1=Math.max(...spring.map(p=>p.x))+W*.025;
+        const sy0=spring[0].y,sy1=spring.at(-1).y;
+        if(y+(rawBounds.minY-178)*s<sy1 && y+(rawBounds.maxY-178)*s>sy0
+          && x+(rawBounds.minX-66)*s<sx1 && x+(rawBounds.maxX-66)*s>sx0) {
+          const target=bank.side<0?sx0-(rawBounds.maxX-66)*s-W*(.008+tree*.006):sx1-(rawBounds.minX-66)*s+W*(.008+tree*.006);
+          x=Math.max(z.minX+z.width*.06,Math.min(z.maxX-z.width*.06,target));
+          y=landY(bank,x)+1+(bank.t>.5?H*scale*(behindHouse?-.14:.08):0);
+        }
         const placed=raw.map(poly=>{const q=clonePoly(poly);q.p=q.pts=q.p.map(p=>P(x+(p.x-66)*s,y+(p.y-178)*s));q.wid*=s;if(q.fil&&!C.isWhite(q.fil))q.fil=C(q.fil.r,q.fil.g,q.fil.b,q.fil.a*(.32+.68*bank.t));return q;});
         const box=bounds(placed);
         if(box.maxX<a.minX||box.minX>a.maxX||box.intersects(this.verse))continue;
-        const part=Part.near(placed);part.detail={motif:'pine',bounds:box};
+        const treeMotif=tree===3||tree===4?'broadleaf':'pine';
+        const part=Part.near(placed);part.detail={motif:treeMotif,bounds:box};
         if(behindHouse)this.parts.splice(rearTreeLayer++,0,part);else this.parts.push(part);
-        b.noted({type:'tree',role:tree===1?'bareTree':'pine'},placed);
-        this.elements.push({motif:'pine',bounds:{x:box.minX/this.w,y:box.minY/this.h,width:box.width/this.w,height:box.height/this.h}});
+        b.noted({type:'tree',role:tree===1?'bareTree':tree===3?'pointLeaf':tree===4?'outlinedLeaf':'pine'},placed);
+        this.elements.push({motif:treeMotif,bounds:{x:box.minX/this.w,y:box.minY/this.h,width:box.width/this.w,height:box.height/this.h}});
       }
 
     }
