@@ -7,7 +7,7 @@
 
 **微诗词（WeShici Skill，快捷指令 `/weshici`）** 是以 **Agent Skill 为主体** 封装的中国古典诗词、二十四节气画屏与东方水墨美学确定性视觉与短视频制片引擎。
 
-本技能遵循标准 Agent Skill 规范（包含 [`SKILL.md`](./SKILL.md)、[`references/`](./references/)、[`scripts/`](./scripts/)、[`resources/`](./resources/) 与 [`examples/`](./examples/)），借鉴并深化了 [`lemomo-ai/lemo-opuscar`](https://github.com/lemomo-ai/lemo-opuscar) 的「将视频视为时间 $t$ 的纯函数 `window.render(t)` + 三层导演知识库」理念，深度结合 [子晓套件 `ZixiaoKit`](https://github.com/charsunny/zixiao-kit) 的 **ShanShui@5 Web 渲染快照**、中国传统色配色体系、真实人声词级对齐（Audio-First Cue Grid）和程序化东方拟音（古琴泛音、落墨、朱印闷响、宣纸翻页），彻底攻克通用生成式 AI 视频在汉字书法乱码、水墨留白失真与声画脱节上的痛点。
+本技能遵循标准 Agent Skill 规范（包含 [`SKILL.md`](./SKILL.md)、[`references/`](./references/)、[`scripts/`](./scripts/)、[`resources/`](./resources/) 与 [`examples/`](./examples/)），借鉴并深化了 [`lemomo-ai/lemo-opuscar`](https://github.com/lemomo-ai/lemo-opuscar) 的「将视频视为时间 $t$ 的纯函数 `window.render(t)` + 三层导演知识库」理念，深度结合 [子晓套件 `ZixiaoKit`](https://github.com/charsunny/zixiao-kit) 的 **ShanShui@5 Web 渲染快照**、中国传统色配色体系、真实人声逐行时间对齐（Audio-First Cue Grid）和程序化东方拟音（古琴泛音、落墨、朱印闷响、宣纸翻页），彻底攻克通用生成式 AI 视频在汉字书法乱码、水墨留白失真与声画脱节上的痛点。
 
 ---
 
@@ -63,7 +63,7 @@ graph TD
 
     C --> C1["📕 小红书 3:4 四联深度卡片套系 + 爆款文案"]
     C --> C2["💬 微信透明印章 / 宣纸贴图 / 朋友圈日签"]
-    C --> C3["🎵 抖音 9:16 短视频 (黄金1.5s Hook / 安全区 / -14 LUFS)"]
+    C --> C3["🎵 抖音 9:16 短视频 (首帧成画 / 安全区 / -14 LUFS)"]
     C --> C4["诗词海报 poster：App 主题色 / 单张与主题组图 / 3:4 PNG"]
 ```
 
@@ -124,9 +124,9 @@ npm run weshici -- image --title "春夜喜雨" --poem "随风潜入夜，润物
 ```
 
 #### 🎬 动态画屏短片素材 (`video`)
-输出确定性动态渲染的 `1080×1920` MP4 视频素材，内置墨韵微流动、水波涟漪、松涛微澜与烟云流动：
+输出 `1080×1920` 的动态画屏（`huaping-motion`）：与静态画屏同一幅 ShanShui@5 画、同一套竖排题款，App 的逐字墨洇与落印，落定后背景缓推，涟漪、淡雾、雁等余韵只用画里实有的锚点。经 `produce.mjs` 制片，需要朗读库里有这首诗：
 ```bash
-npm run weshici -- video --title "山居秋暝" --duration 10
+npm run weshici -- video --title "山居秋暝"
 ```
 
 ---
@@ -158,9 +158,9 @@ npm run weshici -- wechat-sticker --title "寒江独钓" --poem "孤舟蓑笠翁
 #### 🎵 抖音 9:16 短视频成片 (`douyin`)
 遵循抖音平台发布规则的高水准国风短视频：
 - **布局安全区**：避开右侧头像/点赞/评论/分享侧边栏（右边距 $\ge 140\text{px}$）与底部标题描述区（底边距 $\ge 380\text{px}$）。
-- **黄金 1.5 秒开场 Hook**：首帧墨洇入画破纸、古琴泛音破空抓耳、悬念标题。
-- **三轨专业音频 Mastering**：真人声朗读旁白 + 东方古典配乐（人声区间自动 -8dB Ducking 闪避）+ 拟音环境音（风声/水流/夜雨/古钟），综合响度严格标准化至 **`-14 LUFS`**。
-- **配套发布文案**：抖音短视频文案、互动提问与热门标签。
+- **开场**：首帧即是完整的画，0.3s 起逐字墨洇，诗句与落印 3.0s 内落定；开场有古琴泛音。
+- **声音**：有朗读时为朗读人声 + 配乐（整体压低，不做动态闪避）+ 程序化拟音；无朗读时为配乐 + 拟音。综合响度标准化至 **`-14 LUFS`**。
+- **配套发布文案**：只写成片里真有的画面与声音（`scripts/caption.mjs`）：有朗读才写朗读，朗读库只有逐行时间，不写词级时间戳。
 
 ```bash
 npm run weshici -- douyin --title "使至塞上" --workers 4
@@ -170,17 +170,17 @@ npm run weshici -- douyin --title "使至塞上" --workers 4
 
 ## 三、五大东方美学母版与实拍接触表 (`examples/`)
 
-每套母版均遵循 `window.render(t)` 确定性契约，支持 `9:16` (`1080×1920`)、`3:4`、`1:1`、`16:9` (`1920×1080`) 多画幅导出与 `readcheck` 字幕停留时长质检：
+四个视频模板遵循 `window.render(t)` 确定性契约，输出 `9:16`（`1080×1920`），用 `readcheck` 质检字幕停留时长。原则同诗词海报：主角是诗和画，App 主题色、底近中性，朱只在印与落日；没有页眉、提示框、唱片或声波。以下是各配方的 9 帧接触表：
 
-| 01 动态画屏 (`huaping-motion`)<br>寒露 · 杜甫《月夜忆舍弟》 | 01 动态画屏 (`huaping-motion`)<br>清明 · 杜牧《清明》 |
+| 01 动态画屏 (`huaping-motion`)<br>寒露 · 杜甫《月夜忆舍弟》· 月白深色 | 01 动态画屏 (`huaping-motion`)<br>清明 · 杜牧《清明》· 苍筤浅色 |
 | :---: | :---: |
 | ![寒露接触表](./examples/huaping-motion-hanlu-dufu.sheet.jpg) | ![清明接触表](./examples/huaping-motion-qingming-dumu.sheet.jpg) |
 
-| 02 写意水墨 (`ink-story`)<br>苏轼《渔父》· 人声词级同步 + 书法题跋 | 02 写意水墨 (`ink-story`)<br>杜甫《晚晴》· 暖宣五墨 + 夕照江岸 |
+| 02 写意水墨 (`ink-story`)<br>苏轼《渔父》· 按朗读逐联题跋 | 02 写意水墨 (`ink-story`)<br>杜甫《晚晴》· 朱砂落日 + 墨晕转场 |
 | :---: | :---: |
 | ![苏轼渔父接触表](./examples/sushi-yufu.sheet.jpg) | ![杜甫晚晴接触表](./examples/ink-story-wanqing-dufu-story.sheet.jpg) |
 
-| 03 诗人行迹 (`poet-footprint`)<br>苏轼黄州·惠州·儋州三万里贬谪舆图 | 04 一曲诗词 (`poem-song-mv`)<br>范仲淹《苏幕遮·碧云天》· 唱盘与声波律动 |
+| 03 诗人行迹 (`poet-footprint`)<br>苏轼 黄州 · 惠州 · 儋州 · 淡墨舆图与印色行迹 | 04 一曲诗词 (`poem-song-mv`)<br>范仲淹《苏幕遮》· 当前唱句 + 节拍涟漪 |
 | :---: | :---: |
 | ![苏轼行迹接触表](./examples/poet-footprint.sheet.jpg) | ![苏幕遮接触表](./examples/poem-song-mv-sumuzhe-fanzhongyan-mv.sheet.jpg) |
 
@@ -189,7 +189,7 @@ npm run weshici -- douyin --title "使至塞上" --workers 4
 ## 四、全流程导演制片工具链
 
 ### 1. 一键端到端全自动出片 (`scripts/produce.mjs`)
-自动检索人声朗读与词级时间戳 → 生成配方 JSON、[`TREATMENT.md`](./examples/sushi-yufu.treatment.md) 与社区文案 → 执行 `readcheck` 质检 → 4 进程并行渲染 `1080×1920` MP4 + 九宫格接触表 `.sheet.jpg` + 封面图 `.cover.jpg`：
+自动检索人声朗读与逐行时间戳 → 生成配方 JSON、[`TREATMENT.md`](./examples/sushi-yufu.treatment.md) 与社区文案 → 执行 `readcheck` 质检 → 4 进程并行渲染 `1080×1920` MP4 + 九宫格接触表 `.sheet.jpg` + 封面图 `.cover.jpg`：
 ```bash
 npm run produce -- --query "苏轼 渔父" --style ink-story --slug sushi-yufu
 npm run produce -- --query "杜甫 晚晴" --style ink-story --slug wanqing-dufu
@@ -205,7 +205,7 @@ npm run preview
 ```bash
 npm run readcheck -- --scene huaping-motion --recipe hanlu-dufu
 npm run readcheck -- --scene ink-story --recipe sushi-yufu
-npm run readcheck -- --scene poet-footprint
+npm run readcheck -- --scene poet-footprint --recipe sushi-footprint
 ```
 
 ### 4. 秒级生成九宫格关键帧接触表 (`--sheet-only`)
@@ -213,12 +213,13 @@ npm run readcheck -- --scene poet-footprint
 npm run render -- --scene huaping-motion --recipe hanlu-dufu --sheet-only
 ```
 
-### 5. 多进程并行导出高清 MP4 + 三轨自动闪避 `-14 LUFS` 混音
+### 5. 多进程并行导出高清 MP4 + `-14 LUFS` 三轨混音
 ```bash
 npm run render -- --scene huaping-motion --recipe hanlu-dufu --workers 4 --sheet
 npm run render -- --scene huaping-motion --recipe qingming-dumu --workers 4 --sheet
 npm run render -- --scene ink-story --recipe sushi-yufu --workers 4 --sheet
-npm run render -- --scene poet-footprint --workers 4 --sheet
+npm run render -- --scene poet-footprint --recipe sushi-footprint --workers 4 --sheet
+npm run render -- --scene poem-song-mv --recipe sumuzhe-fanzhongyan-mv --workers 4 --sheet
 ```
 
 ---
@@ -259,30 +260,30 @@ weshici-skill/
 │   ├── TECHNIQUE.md                 # 确定性渲染契约 (window.render(t) / EV / TEXTS(t))
 │   └── styles/                      # 五大东方美学风格手册 (STYLE.md)
 │       ├── huaping-motion/STYLE.md  # 01 动态画屏 · 节气与每日一诗
-│       ├── ink-story/STYLE.md       # 02 写意水墨 · 诗境故事与题跋赏析
-│       ├── poet-footprint/STYLE.md  # 03 诗人行迹 · 舆图考据纪实
-│       ├── poem-song-mv/STYLE.md    # 04 一曲诗词 · 诗音律动 MV
-│       └── living-promo/STYLE.md    # 05 活体实机 · 产品与专题宣发
+│       ├── ink-story/STYLE.md       # 02 写意水墨 · 诗题页与逐联题跋
+│       ├── poet-footprint/STYLE.md  # 03 诗人行迹 · 淡墨舆图与站点题跋
+│       ├── poem-song-mv/STYLE.md    # 04 一曲诗词 · 当前唱句与节拍涟漪
+│       └── living-promo/STYLE.md    # 05 活体实机 · 产品与专题宣发（只有风格文档，无模板）
 ├── scripts/                         # 技能可执行自动化脚本
 │   ├── generate.mjs                 # 统一素材与社媒成片生成 CLI (wallpaper/image/xiaohongshu/wechat/douyin)
 │   ├── produce.mjs                  # 一键端到端制片总控台 (检索->配方/TREATMENT->质检->渲染->发布)
-│   ├── audio-cue.mjs                # 扫描朗读库自动生成人声词级对齐 Recipe
+│   ├── audio-cue.mjs                # 扫描朗读库，按逐行时间戳生成 Recipe
+│   ├── caption.mjs                  # 分镜企划单与发布文案（只写成片里真有的画面与声音）
 │   ├── readcheck.mjs                # 自动审计字幕停留时长 (>=0.22s/字) 与音效触发点
 │   ├── render.mjs                   # 多进程并行截帧、接触表生成与 3 轨 -14 LUFS 混音导出
 │   ├── preview.mjs                  # 启动交互式浏览器工作台 (http://127.0.0.1:4180)
 │   └── server-util.mjs              # 纯 Web 场景本地资源伺服与 Puppeteer 探针
 ├── resources/                       # 模板、核心组件、引擎与配方
-│   ├── core/                        # 确定性 PRNG、传统色、逐字墨洇与 48kHz 东方拟音合成器
+│   ├── core/                        # 视频共用核（App 配色、入场与落印、@5 画面管线、余韵、朱砂落日、行迹舆图）与拟音合成器
 │   ├── templates/                   # 纯 Web 场景模板 (HTML + Canvas + SVG)
 │   │   ├── huaping-motion/          # 动态画屏模板
 │   │   ├── ink-story/               # 写意水墨模板
 │   │   ├── poet-footprint/          # 诗人行迹模板
-│   │   ├── poem-song-mv/            # 诗音律动 MV 模板
-│   │   ├── living-promo/            # 活体宣发模板
+│   │   ├── poem-song-mv/            # 一曲诗词 MV 模板
 │   │   └── media-suite/             # 社媒套系与素材模板 (小红书/微信贴图/壁纸/诗画)
 │   ├── recipes/                     # 经典剧目导演配方 JSON
 │   ├── vendor/zxart/                # 内置 ZixiaoArt Web Worker 程序化山水模型 (ShanShui@5 / @4)
-│   ├── assets/                      # 内置示例朗读人声、词级时间戳与环境配乐
+│   ├── assets/                      # 内置示例朗读人声、逐行时间戳与配乐
 │   └── workbench.html               # 交互式浏览器导演工作台 UI
 ├── examples/                        # 实拍九宫格接触表 (.sheet.jpg) 与分镜企划单示例
 └── LICENSE                          # MIT 开源许可证

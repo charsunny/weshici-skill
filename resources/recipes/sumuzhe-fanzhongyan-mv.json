@@ -13,16 +13,16 @@
   "voiceSeek": 14,
   "procedural": {
     "generator": "shanshui@5",
-    "seed": "sumuzhe-1019",
+    "seed": "sumuzhe-1022",
     "scene": "fishing",
-    "composition": "oppositeBank",
+    "composition": "depth",
     "motifs": [
-      "sunset",
-      "mist"
+      "mist",
+      "sunset"
     ],
-    "note": "秋色连波、天接水：用平远江面与远岸山影，不取山居近峰；只保留落日和寒烟，不添加渔舟与屋舍。近岸尺度为默认的 35%，留出大幅水面；画高固定以保证浅深同构。",
-    "bankScale": 0.35,
-    "artHeight": 1440
+    "artHeight": 1920,
+    "note": "词写「秋色连波，波上寒烟翠，山映斜阳天接水」：江面平远与斜阳。按词句匹配的默认场景（山居林泉）只画出石岸，没有水，所以指定江行渔隐（fishing）场景、depth 构图，只保留词里有的寒烟（mist）与斜阳（sunset），不加舟与渔翁；原 seed -1019 在此场景下构图偏散，换 -1022（远水、层山、斜阳、近岸都清楚）。横排诗句框在顶部，画用全高画布（artHeight 1920）从诗句下方铺到近底。 landscape-v3 将近岸尺度限制为默认的 35%，不改变其他配方的主峰与石岸默认值。",
+    "bankScale": 0.35
   },
   "lyrics": [
     {

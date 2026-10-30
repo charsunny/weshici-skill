@@ -41,52 +41,49 @@ window.TEXTS = function (t) {
 
 ---
 
-## 2. 微诗核心动效原语（`@weishi/video-core`）
+## 2. 微诗核心动效原语
 
-引入 `/resources/core/weishi-video-core.js` 使用本仓库的 Web 原语。以下描述当前 JS 实现；iOS 的准确值与各输出类别规则见 [iOS 画屏实现基准](IOS-HUAPING.md)，两者不能混称逐参数一致。
+四个视频模板（`huaping-motion`、`ink-story`、`poem-song-mv`、`poet-footprint`）共用 `resources/core/` 下的模块。纯函数都可在 Node 下单测（`tests/huaping-video.test.mjs`、`tests/footprint.test.mjs`）；iOS 的准确值与各输出类别规则见 [iOS 画屏实现基准](IOS-HUAPING.md)。
 
-### 2.1 诗句墨洇入场与落印（`HuapingInkReveal`）
-当前 `resources/core/weishi-video-core.js`：
-- **单字/单行墨洇（`inkUnitState(t, startTime, index, totalUnits, options)`）**：
-  - 单单元时长：`0.25s`，缓动 `easeOut`（三次方）
-  - 模糊：`blur(6px → 0px)`
-  - 缩放：`scale(1.06 → 1.0)`
-  - 不透明度：`opacity(0 → 1)`
-  - 单元错开默认 `0.12s`，`maxSpan` 默认 `2.2s`，错开下限 `0.03s`；因此很长文本不保证满足跨度预算。默认还带 `6px` 的 y 位移。原生视频的压缩上限不可仅靠这些默认值实现。
-- **朱印落下（`sealStampState(t, stampStartTime)`）**：
-  - 触发点由模板传入；Web 默认时长 `0.22s`
-  - Web 缩放：`scale(1.18 → 1.0)`，`easeOutBack` 回弹；iOS 是 `0.20s`、`1.15 → 1.0`、三次 ease-out 无回弹。严格同款任务应先修正此差异
-  - 同步在 `window.EV` 登记 `{ t: stampStartTime, sfx: 'seal-stamp', gain: -4 }`。
-- **视频总时长公式（`computeHuapingDuration(charCount, entryEnd)`）**：
-  $$\text{DUR} = \lceil \text{entryEnd} + \text{clamp}(\text{charCount} \times 0.3,\ 6,\ 20) \rceil$$
+| 模块 | 内容 |
+|---|---|
+| `huaping-video.js` | 纯函数：App 配色解析、署名、字号下限、安全区、入场与落印、时长、天气与余韵计划、画面放置与像素处理、叙事与歌词时间线 |
+| `huaping-scene.js` | 浏览器端画面管线：载入配方、生成 @5 画、9:16 放置、诗句框上提与清线、余韵取样 |
+| `huaping-afterglow.js` | 天气与余韵的画布绘制（只用墨、纸色与朱砂落日） |
+| `cinnabar-sun.js` | 海报 v2 的朱砂落日，海报与视频共用 |
+| `footprint.js` | 诗人行迹：经纬度投影、行迹线、纪年刻度布局 |
+| `huaping-video.css` | 视频模板共用的纸、画层与 huaping 排字样式 |
+| `weishi-video-core.js` | 旧的公共原语（缓动、PRNG、`renderZXArt` 桥接等） |
 
-### 2.2 程序化山水与花鸟接入（`renderZXArt`）
-使用仓库内 Web Worker（`/vendor/zxart/zxart-worker.js`）。这是旧 @2 配方的调用示例；新山水/荷塘需要完整 @5 场景配方，见 [选画与复现规则](IOS-HUAPING.md#2-当前选画用途与复现输入)。Web 快照未包含原生五画风笔法，不保证与最新 iOS 逐形状一致：
+### 2.1 诗句墨洇入场与落印（HuapingInkReveal）
+
+- `inkRevealPlan({ count })`：0.3s 起，每字 0.25s、错开 0.12s；题款 0.18s；最后一字后 0.3s 落印，持续 0.2s。分享视频最晚 3.0s 落定，长诗压缩错开（下限 0.03s）。
+- `inkGlyphState(t, t0, unit, pt)`：三次 ease-out，模糊 6pt→0（`pt` 把 pt 换成像素）、scale 1.06→1、透明度 0→1，无位移。
+- `sealState(t, t0)`：0.2s、scale 1.15→1、三次 ease-out，无回弹。旧 `sealStampState` 已改为同一数值。
+- `videoDuration(字数, 入场结束)`：$\text{DUR} = \lceil \text{入场结束} + \text{clamp}(\text{字数} \times 0.3,\ 6,\ 20) \rceil$；有朗读时模板另取录音时长的较大者。
+- `pushScale(t, DUR)`：背景 1→1.02 线性缓推，文字层不缩放。
+- 叙事与歌词：`storyTimeline`（ink-story，按朗读的逐行起始时间）与 `songTimeline`（poem-song-mv，按歌词时间戳）。朗读库只有逐行时间，没有词级时间。
+
+### 2.2 程序化山水接入（ShanShui@5）
+
 ```js
-import { renderZXArt } from '/resources/core/weishi-video-core.js';
+import { planPainting, applyPalette, paintFrame } from '/resources/core/huaping-scene.js';
 
-const result = await renderZXArt(bgCanvas, {
-  generator: 'shanshui@2', // 或 'shanshui@1' | 'nonflowers@1' | 'nonflowers@2'
-  seed: 'hanlu-dufu-2026',
-  variant: 'distant',
-  params: { density: 0.95, quiet_top: 0.32, verse_side: 'left', verse_columns: 4, verse_chars: 10 },
-  palette: { paper: '#14181F', ink: '#D2D8E5' },
-  width: 1080,
-  height: 1920,
-});
-if (!result.ok) throw new Error('程序化画屏未成功渲染，不能将简化回退图作为成品');
+const painting = planPainting({ poem, title, procedural: recipe.procedural, params, verseColumns, verseChars });
+const palette = applyPalette(palettes, recipe, params, painting);
+const frame = await paintFrame(canvas, painting, palette, { width: 1080, height: 1920 });
+// frame.verse：上提并裁出安全区的诗句框；frame.anchors：映射到画面坐标的锚点
 ```
-- **镜头缓推规范**：全文视频的背景画布随时间缓慢推进 `scale = 1 + 0.02 * (t / DUR)`（最大不超过 `2%`），**文字层与左上角水印保持绝对静止**，避免阅读眩晕。金句视频仅在有余韵或天气时推镜，使用 smooth 曲线；不能把此线性公式套给 Live Photo。
 
-### 2.3 七种时令天气与语义锚点动效（`WeatherStage`）
-以下为 Web 模板的天气设计；原生的数量、周期和母题去重见 [天气层规则](IOS-HUAPING.md#4-天气层场景母题与动效预算)。接入时必须用真实 anchors 判断天空、水面与船，不能硬写 `hasBoat: true`。天气取当前纸墨色系，不使用彩色发光粒子：
-1. `rain`（细雨）：细斜淡墨线（长 `14–26px`，不透明度 `≤ 0.25`），落入水面区激起椭圆涟漪。
-2. `snow`（飞雪）：纸白圆点（半径 `1.5–3.5px`），随正弦微风慢落，触水即融。
-3. `mist`（山岚）：贴合远山腰部的多层横向柔雾带，随 `t` 缓慢横移。
-4. `geese`（雁阵）：天空带 `5–9` 只「人」字形水墨剪影，双帧振翅，约 8–12 秒横穿天际。
-5. `moon`（明月）：天空带一轮淡月带柔和光晕，水面区同步绘制被涟漪打碎的月影。
-6. `sunset`（落日）：与朱印同色（`#9B382B` / `#B04A3A`）的半透明圆日（`opacity ≤ 0.48`），缓慢下沉（与 `moon` 互斥）。
-7. `lantern`（渔灯）：深色外观下孤舟锚点处的一点暖橘微光，随水波轻晃并带呼吸闪烁。
+- `planPainting` 调用 `poetryScene(诗, 题).paintingProcedural(seed, …)` 得到完整 @5 配方；配方可写 `scene` / `composition` / `motifs` 覆盖并在 `procedural.note` 说明理由。
+- `paintFrame` 内部调用 `renderZXArt`，`ok: false`（降级画）直接抛错。画在较矮画布上生成（候选高度取墨量最大者，或配方 `artHeight`），不缩放地下置；诗句框经空白纸面上提到约 11%，框内残留发丝线淡回纸色。浅色画墨色加实；引擎的粉色落日换成朱砂落日，并按引擎原落日露出的范围裁剪。
+- 不改 `resources/vendor/zxart/` 下的引擎。
+
+### 2.3 天气与余韵
+
+- `pickWeather({ text, title, term, motifs })`：先按诗文与诗题、再按节气补一种，最多两种，雨雪互斥、日月互斥；再按画里实有的母题过滤（雨要有雨母题，雪要有雪，画里有月不叠月、有日不叠日，@5 不另加雾）。
+- `afterglowPlan`：涟漪只落在空白水面与船边（按画面像素取样确认，不进天空、不压船身，近小远大），一带淡雾放在山最密的那几行；`poem-song-mv` 的涟漪在拍点上开出。
+- 天气取纸墨色，不用彩色发光粒子；渔灯不做（朱只在印与落日）。
 
 ---
 

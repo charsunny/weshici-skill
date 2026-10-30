@@ -152,10 +152,10 @@ v1.3.1 已将静态图和壁纸的排字落到运行时：按返回的诗句框�
 | `resources/vendor/zxart/zxart-shanshui-v5.js` | 尚未移植上述五画风的材质、点金与没骨笔法；传入画风字段或换 palette 不等于实现该画风 |
 | `scripts/generate.mjs` | 固定设备预设；模板补齐题诗用途、母题、构图和诗句列数/字数；不导出 iOS recipe、Widget 或 Live Photo。静态摘句超容量会报告未展示诗句 |
 | `resources/templates/media-suite/index.html` / `resources/core/huaping-layout.js` | `image` / `wallpaper` 已使用真实诗句框与原生排字比例；仍是 DOM 字形度量，仅提供内置宋体，不含 App 所有字体/简繁转换；`image` 已包含品牌、诗词查找入口码及两行日期/节气页脚，尚无夹注与解析页脚内容，也不宣称像素一致。其他社媒模板不沿用这套版式 |
-| `resources/templates/huaping-motion/index.html` | 自有 0.35s 起点及入场预算，detail/quote 尚未逐项实现第 5 节；现有示例多为 @2 |
-| `resources/core/weishi-video-core.js` | 实际函数叫 `inkUnitState`；默认还有 y 位移、最小错开与压缩；`sealStampState` 为 0.22s、1.18 起始缩放与回弹，不能称 iOS 等值实现 |
-| `WeatherStage` | Web 自有天气实现；生成严格同款前须接入真实 anchors 和 @5 母题去重，不能假设画里总有船 |
-| `renderZXArt` | 返回 `ok / fallback / verse / anchors`；fallback 是简化山水。必须检查结果，降级画不能算 @5 成功验收 |
+| `resources/templates/huaping-motion/index.html` | 只做金句分享（quote），没有全文详情（detail）版式。入场按第 5 节金句数值实现（`resources/core/huaping-video.js` 的 `inkRevealPlan` / `inkGlyphState` / `sealState`：0.3s 起、每字 0.25s、错开 0.12s、落印 0.2s 1.15→1 无回弹、3.0s 内落定）；示例配方都是 @5。为 9:16 把画在较矮画布上生成后下置、诗句框上提，这是 Web 的构图处理，不是原生行为 |
+| `resources/core/weishi-video-core.js` | 旧原语 `inkUnitState` 仍带 y 位移与默认压缩，新模板不再使用；`sealStampState` 已改为 0.2s、1.15→1、三次 ease-out、无回弹 |
+| 天气与余韵 | Web 自有实现（`huaping-video.js` 的 `pickWeather` / `afterglowPlan`，`huaping-afterglow.js` 绘制）：按诗文与 @5 母题去重，涟漪按画面像素确认落在空白水面与船边；数量与周期是 Web 取值，不等于第 4 节的 iOS 参数；不做渔灯 |
+| `renderZXArt` | 返回 `ok / fallback / verse / anchors`；fallback 是简化山水。视频模板经 `huaping-scene.js` 调用，`ok: false` 直接报错，降级画不能算 @5 成功验收 |
 
 执行顺序：确定输出类别和目标尺寸 → 保留/生成完整场景配方 → 依实际诗句框排字 → 按母题和几何选天气 → 使用该类别时间线 → 检查首帧、落定帧、尾帧与文字溢出。普通 Web 风格创作可继续使用现有 CLI；用户明确要求原生同款时，先修正涉及的模板差异或走 iOS 原生导出，并如实报告完成范围。
 

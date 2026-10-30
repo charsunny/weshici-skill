@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Audit all five video recipes in both appearances; keep original frames and refresh example sheets.
+// Audit the five painting recipes and the geography template in both appearances.
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -12,6 +12,7 @@ const jobs = [
   ['huaping-motion','daxue-liuzongyuan','moon-white'],
   ['ink-story','wanqing-dufu-story','yaqing'],
   ['poem-song-mv','sumuzhe-fanzhongyan-mv','moon-white'],
+  ['poet-footprint','sushi-footprint','yaqing'],
 ].flatMap(([template,recipe,palette])=>['light','dark'].map(appearance=>({template,recipe,palette,appearance})));
 
 fs.mkdirSync(out, {recursive:true});
@@ -29,8 +30,9 @@ try {
     await page.setViewport({width:1080,height:1920,deviceScaleFactor:1});
     await page.goto(`${server.baseUrl}/resources/templates/${job.template}/index.html?${new URLSearchParams({...job,capture:'1'})}`);
     await page.waitForFunction(() => window.READY, {timeout:180000});
-    const state = await page.evaluate(() => ({duration:window.DUR, scene:window.SCENE, warnings:window.WARNINGS || []}));
-    assert.equal(state.scene.brushwork?.version,'landscape-v3');
+    const state = await page.evaluate(() => ({duration:window.DUR, scene:window.SCENE, recipe:window.RECIPE?.id, warnings:window.WARNINGS || []}));
+    if(job.template==='poet-footprint')assert.equal(state.recipe,'sushi-footprint');
+    else assert.equal(state.scene.brushwork?.version,'landscape-v3');
     const duration = state.duration;
     assert.ok(duration > 3);
     const times = Array.from({length:9},(_,i)=>.35+i/8*(duration-.7));
@@ -39,9 +41,9 @@ try {
       await page.evaluate(t => window.render(t), time);
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       const problems = await page.evaluate(() => {
-        return [...document.querySelectorAll('.hp-verses .hp-glyph,.hp-line,.hp-credit,.hp-seal,.hp-colophon .hp-glyph,.lyric span:not(.gap),.credit .title,.credit .author')].filter(el => {
+        return [...document.querySelectorAll('.hp-verses .hp-glyph,.hp-line,.hp-credit,.hp-seal,.hp-colophon .hp-glyph,.lyric span:not(.gap),.credit .title,.credit .author,.leaf .verse span,.leaf .source,.leaf .context,.city,.tick')].filter(el => {
           let opacity = 1;
-          for (let p=el; p; p=p.parentElement) opacity *= Number(getComputedStyle(p).opacity);
+          for (let p=el; p; p=p.parentElement) { const style=getComputedStyle(p); if(style.visibility==='hidden')return false; opacity *= Number(style.opacity); }
           if (opacity < .5) return false;
           const r=el.getBoundingClientRect();
           return r.left < -1 || r.top < -1 || r.right > 941 || r.bottom > 1541;
@@ -69,7 +71,7 @@ try {
     await sheet.evaluate(()=>[...document.querySelectorAll('figure')].slice(9).forEach(el=>el.remove()));
     await sheet.setViewport({width:936,height:Math.ceil(frames.length/3)*568+16});
     const canonical=(job.recipe==='hanlu-dufu'?'dark':'light')===job.appearance;
-    if(canonical)await sheet.screenshot({path:`examples/${job.template}-${job.recipe}.sheet.jpg`,type:'jpeg',quality:92});
+    if(canonical)await sheet.screenshot({path:job.template==='poet-footprint'?'examples/poet-footprint.sheet.jpg':`examples/${job.template}-${job.recipe}.sheet.jpg`,type:'jpeg',quality:92});
     await sheet.close(); await page.close();
     records.push({...job,...state,frames,adjacent,seekDeterministic:true});
     console.log(`PASS ${name}; layout flags: ${frames.concat(adjacent).reduce((n,f)=>n+f.problems.length,0)}; warnings: ${state.warnings.length}`);

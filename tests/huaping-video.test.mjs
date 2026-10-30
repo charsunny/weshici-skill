@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import {
   resolveVideoPalette, byline, typeFloorIssues, clipVerseRect, VIDEO_SAFE, inkRevealPlan, inkGlyphState,
   sealState, videoDuration, pushScale, pickWeather, geeseCount, afterglowPlan,
-  artPlacement, paintingStats, placeOffset, liftRect, storyTimeline, leafGone, readableWindow, knockOutSun, deepenInk, songTimeline,
+  artPlacement, paintingStats, placeOffset, liftRect, storyTimeline, leafGone, readableWindow, knockOutSun, deepenInk, songTimeline, clearRect,
 } from '../resources/core/huaping-video.js';
 import { huapingClauses, huapingPlan } from '../resources/core/huaping-layout.js';
 import { sealStampState } from '../resources/core/weishi-video-core.js';
@@ -264,3 +264,17 @@ test('a sung line inks in across its sung time and the seal lands inside the son
   assert.ok(song.sealAt < r.duration);
 });
 
+
+test('clearing the verse box fades strokes inside it, feathers the edge and keeps the grain', () => {
+  const w = 100, h = 20, paper = [240, 240, 240];
+  const data = new Uint8ClampedArray(w * h * 4);
+  for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) data.set([240, 240, 240, 255], (y * w + x) * 4);
+  for (let x = 0; x < w; x++) data.set([120, 120, 120], (10 * w + x) * 4); // a far-water stroke across
+  data.set([245, 245, 245], (2 * w + 40) * 4); // grain inside the box
+  clearRect(data, w, h, paper, { x: 30, y: 0, width: 40, height: 20 }, { feather: 20 });
+  const at = x => data[(10 * w + x) * 4];
+  assert.equal(at(50), 240, 'gone inside the box');
+  assert.ok(at(80) > 120 && at(80) < 240, 'feathered just outside');
+  assert.equal(at(95), 120, 'untouched beyond the feather');
+  assert.equal(data[(2 * w + 40) * 4], 245, 'grain kept');
+});

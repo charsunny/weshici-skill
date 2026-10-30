@@ -4,7 +4,7 @@
  *
  * 自动从微诗 Voicebox 朗读音频库 (/Volumes/XiPass/literature/assets/wish/audio/poetryhub-voicebox-readings)
  * 检索诗作，读取 reading_voicebox_male.mp3 与 timed_lyrics.json，通过 ffprobe 测量音频总时长，
- * 自动生成可直接交给 render.mjs 渲染的声画同步 Recipe JSON。
+ * 自动生成可直接交给 render.mjs 渲染的 Recipe JSON（逐行时间戳，朗读库没有词级时间）。
  *
  * 用法：
  *   node tools/video-studio/bin/audio-cue.mjs --query "杜甫-晚晴" --out tools/video-studio/recipes/auto-wanqing.json

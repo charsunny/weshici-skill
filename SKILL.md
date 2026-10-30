@@ -29,7 +29,7 @@ metadata:
 传统生成式 AI（如 Midjourney、Sora、Runway）在汉字书法、宋元山水留白、画理构图与音画节拍咬合上经常出现文字乱码、透视崩塌与审美失真。微诗词基于 **「时间函数 $t$ 确定性渲染 `window.render(t)` + ZixiaoArt 算法水墨山水模型（ShanShui@5 / @4）+ 东方正统三远透视构图 + 词级音频节拍先行 + 纯前端零原生依赖」** 的工程架构，为用户提供两大层级的视觉产出：
 
 1. **基础素材生成 (Foundational Assets)**：超高清山水壁纸（iPhone / iPad / Mac 4K）、静止诗意画、基础动态水墨画屏。
-2. **高级社媒成片生成 (Platform-Ready Suites)**：小红书 3:4 四联深度卡片与爆款文案、微信透明底印章/水墨贴图与朋友圈日签、抖音 9:16 短视频（安全区避让、黄金 1.5s 开场 Hook、-14 LUFS 三轨混音与配套文案）。
+2. **高级社媒成片生成 (Platform-Ready Suites)**：小红书 3:4 四联深度卡片与爆款文案、微信透明底印章/水墨贴图与朋友圈日签、抖音 9:16 短视频（安全区避让、App 墨洇入场、-14 LUFS 混音与据实的配套文案）。
 
 ---
 
@@ -126,9 +126,9 @@ node scripts/generate.mjs image --title "春夜喜雨" --poem "随风潜入夜�
 ```
 
 #### 🎬 动态画屏短片素材 (`video`)
-输出确定性动态渲染的 1080×1920 MP4 视频素材，内置墨韵微流动、水波涟漪、松涛微澜与烟云流动：
+输出 `1080×1920` 的动态画屏（`huaping-motion`）：与静态画屏同一幅 ShanShui@5 画、同一套竖排题款，App 的逐字墨洇与落印，落定后背景缓推，涟漪、淡雾、雁等余韵只用画里实有的锚点。经 `produce.mjs` 制片，需要朗读库里有这首诗：
 ```bash
-node scripts/generate.mjs video --title "山居秋暝" --duration 10
+node scripts/generate.mjs video --title "山居秋暝"
 ```
 
 ---
@@ -172,9 +172,9 @@ node scripts/generate.mjs wechat-sticker --title "寒江独钓" --poem "孤舟�
 #### 🎵 抖音 9:16 短视频成片 (`douyin`)
 遵循抖音平台发布规则的高水准国风短视频：
 - **布局安全区**：避开右侧头像/点赞/评论/分享侧边栏（右边距 $\ge 140\text{px}$）与底部标题描述区（底边距 $\ge 380\text{px}$）。
-- **黄金 1.5 秒开场 Hook**：首帧墨洇入画破纸、古琴泛音破空抓耳、悬念标题。
-- **三轨专业音频 Mastering**：真人声朗读旁白 + 东方古典配乐（人声区间自动 -8dB Ducking 闪避）+ 拟音环境音（风声/水流/夜雨/古钟），综合响度严格标准化至 **`-14 LUFS`**。
-- **配套发布文案**：抖音短视频文案、互动提问与热门标签。
+- **开场**：首帧即是完整的画，0.3s 起逐字墨洇，诗句与落印 3.0s 内落定；开场有古琴泛音。
+- **声音**：有朗读时为朗读人声 + 配乐（整体压低，不做动态闪避）+ 程序化拟音；无朗读时为配乐 + 拟音。综合响度标准化至 **`-14 LUFS`**。
+- **配套发布文案**：只写成片里真有的画面与声音（`scripts/caption.mjs`）：有朗读才写朗读，朗读库只有逐行时间，不写词级时间戳。
 
 ```bash
 node scripts/generate.mjs douyin --title "使至塞上" --workers 4
@@ -227,7 +227,7 @@ node scripts/generate.mjs douyin --title "使至塞上" --workers 4
 
 ## 四、全流程导演制片指令 (`scripts/produce.mjs`)
 
-若需要从音频库直接端到端生成完整声画咬合的精品短视频：
+若需要从朗读库直接端到端生成短视频（朗读、配乐、拟音合成，诗句按逐行朗读时间出字）：
 ```bash
 # 检索王维诗作，全流程生成成片、九宫格接触表与封面
 node scripts/produce.mjs --query "王维 山居秋暝" --style huaping-motion

@@ -3,448 +3,294 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=1080,height=1920,initial-scale=1" />
-<title>微诗 · 诗人行迹舆图 (poet-footprint · 苏轼)</title>
+<link rel="icon" href="data:,">
+<title>微诗 · 诗人行迹 (poet-footprint)</title>
+<link rel="stylesheet" href="/resources/core/huaping-video.css">
 <style>
-  @font-face {
-    font-family: "SongSemi";
-    src: url("/fonts/SourceHanSerifSC-SemiBold.otf") format("opentype");
-    font-weight: 600;
-    font-display: block;
-  }
-  @font-face {
-    font-family: "SongReg";
-    src: url("/fonts/SourceHanSerifSC-Regular.otf") format("opentype");
-    font-weight: 400;
-    font-display: block;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: #14110e;
-    font-family: "SongReg", "Songti SC", serif;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  #stage {
-    position: relative;
-    width: 1080px;
-    height: 1920px;
-    overflow: hidden;
-    background: radial-gradient(ellipse at 50% 38%, #F7EFE0 0%, #EFE3CC 65%, #E4D4B7 100%);
-    color: #3E2019;
-    transform-origin: top left;
-    user-select: none;
-  }
-
-  /* 舆图经纬网格 */
-  .atlas-grid {
-    position: absolute;
-    inset: 56px;
-    border: 2px solid rgba(76, 34, 27, 0.24);
-    background-image:
-      linear-gradient(to right, rgba(76, 34, 27, 0.055) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(76, 34, 27, 0.055) 1px, transparent 1px);
-    background-size: 120px 120px;
-    pointer-events: none;
-  }
-  .atlas-grid::after {
-    content: "";
-    position: absolute;
-    inset: 8px;
-    border: 1px solid rgba(76, 34, 27, 0.16);
-  }
-
-  /* 顶部卷首栏 */
-  #header {
-    position: absolute;
-    top: 108px;
-    left: 108px;
-    right: 108px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    z-index: 10;
-  }
-  .h-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 22px;
-    letter-spacing: 0.26em;
-    color: #7D4E3D;
-    margin-bottom: 16px;
-  }
-  .h-tag::before {
-    content: "";
-    width: 9px;
-    height: 9px;
-    background: #9B382B;
-    border-radius: 2px;
-  }
-  .h-title {
-    font-family: "SongSemi", serif;
-    font-size: 62px;
-    letter-spacing: 0.14em;
-    color: #2E1610;
-    line-height: 1.2;
-  }
-  .h-sub {
-    margin-top: 14px;
-    font-size: 26px;
-    letter-spacing: 0.18em;
-    color: #6E4536;
-  }
-  .h-seal {
-    width: 68px;
-    height: 68px;
-    background: #9B382B;
-    color: #FAF3E8;
-    border-radius: 6px;
-    font-family: "SongSemi", serif;
-    font-size: 26px;
-    line-height: 1.1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 6px;
-    box-shadow: 0 4px 14px rgba(155, 56, 43, 0.25);
-  }
-
-  /* 舆图主画布 */
-  #map-svg {
-    position: absolute;
-    top: 310px;
-    left: 60px;
-    width: 960px;
-    height: 980px;
-    z-index: 4;
-  }
-
-  /* 节点诗笺手卷卡片 */
-  #poem-card {
-    position: absolute;
-    left: 104px;
-    right: 104px;
-    bottom: 330px;
-    background: rgba(251, 246, 236, 0.92);
-    border: 1.5px solid rgba(76, 34, 27, 0.22);
-    border-left: 6px solid #9B382B;
-    border-radius: 10px;
-    padding: 34px 40px;
-    box-shadow: 0 18px 44px rgba(46, 22, 16, 0.10);
-    z-index: 12;
-  }
-  .pc-head {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-    margin-bottom: 18px;
-  }
-  .pc-place {
-    font-family: "SongSemi", serif;
-    font-size: 32px;
-    letter-spacing: 0.12em;
-    color: #9B382B;
-  }
-  .pc-year {
-    font-size: 22px;
-    letter-spacing: 0.14em;
-    color: #7D4E3D;
-  }
-  .pc-verse {
-    font-family: "SongSemi", serif;
-    font-size: 40px;
-    line-height: 1.55;
-    letter-spacing: 0.1em;
-    color: #2B140E;
-    margin-bottom: 14px;
-  }
-  .pc-note {
-    font-size: 24px;
-    line-height: 1.6;
-    letter-spacing: 0.08em;
-    color: #694335;
-  }
-
-  /* 底部纪年刻度尺 (Timeline Ruler) */
-  #ruler-wrap {
-    position: absolute;
-    left: 60px;
-    right: 60px;
-    bottom: 140px;
-    height: 128px;
-    border-top: 1.5px solid rgba(76, 34, 27, 0.28);
-    border-bottom: 1.5px solid rgba(76, 34, 27, 0.28);
-    background: rgba(242, 231, 211, 0.78);
-    overflow: hidden;
-    z-index: 10;
-  }
-  #ruler-track {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    will-change: transform;
-  }
-  .r-tick {
-    width: 260px;
-    flex-shrink: 0;
-    padding-left: 24px;
-    border-left: 1.5px solid rgba(76, 34, 27, 0.25);
-    height: 76px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-  .r-tick.active {
-    border-left: 3px solid #9B382B;
-  }
-  .r-year {
-    font-family: "SongSemi", serif;
-    font-size: 26px;
-    letter-spacing: 0.12em;
-    color: #3E2019;
-  }
-  .r-era {
-    font-size: 21px;
-    letter-spacing: 0.14em;
-    color: #7D4E3D;
-    margin-top: 6px;
-  }
-  #ruler-pointer {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 3px;
-    height: 100%;
-    background: #9B382B;
-    z-index: 3;
-  }
+  /* A map on paper, the route in seal colour (the only colour), and an inscription per station. */
+  .leaf { position: absolute; left: 110px; right: 140px; text-align: center; }
+  .verse div { white-space: nowrap; letter-spacing: .12em; }
+  .verse span { display: inline-block; }
+  .source, .context { white-space: nowrap; letter-spacing: .12em; color: var(--muted); }
+  .source .author { color: var(--accent); }
+  .city { position: absolute; white-space: nowrap; letter-spacing: .14em; transform: translateY(-50%); }
+  .tick { position: absolute; text-align: center; white-space: nowrap; transform: translateX(-50%); line-height: 1.35; }
+  .tick .year { letter-spacing: .04em; }
+  .tick .event { color: var(--muted); letter-spacing: .1em; }
 </style>
 </head>
 <body>
   <div id="stage">
-    <div class="atlas-grid"></div>
-
-    <div id="header">
-      <div>
-        <div class="h-tag">诗人行迹 · 舆图考据</div>
-        <div class="h-title">苏轼 · 问汝平生功业</div>
-        <div class="h-sub">黄州 · 惠州 · 儋州 三万里贬谪诗路</div>
-      </div>
-      <div class="h-seal">东坡<br/>行迹</div>
+    <div id="art-wrap">
+      <canvas id="map" width="1080" height="1920"></canvas>
+      <canvas id="route" width="1080" height="1920"></canvas>
     </div>
-
-    <!-- 古风山川与行迹 SVG 舆图 -->
-    <svg id="map-svg" viewBox="0 0 960 980" fill="none">
-      <!-- 淡墨江河水系与南海海岸线 -->
-      <path d="M 60 290 Q 260 320, 440 270 T 860 220" stroke="rgba(76,34,27,0.16)" stroke-width="5" stroke-linecap="round"/>
-      <path d="M 80 302 Q 260 332, 440 282 T 860 232" stroke="rgba(76,34,27,0.08)" stroke-width="12" stroke-linecap="round"/>
-      <text x="120" y="272" fill="rgba(76,34,27,0.35)" font-size="22" letter-spacing="8">大江东去 · 长江水系</text>
-
-      <!-- 岭南山脉写意折线 -->
-      <path d="M 240 530 L 295 485 L 350 530 M 320 535 L 385 472 L 450 535 M 420 530 L 475 492 L 530 530" stroke="rgba(76,34,27,0.22)" stroke-width="2.5" fill="rgba(76,34,27,0.05)"/>
-      <text x="555" y="520" fill="rgba(76,34,27,0.35)" font-size="20" letter-spacing="6">五岭山脉</text>
-
-      <!-- 琼州海峡与海南岛轮廓 -->
-      <path d="M 180 735 Q 480 705, 840 650" stroke="rgba(76,34,27,0.22)" stroke-width="3" stroke-dasharray="8 8"/>
-      <path d="M 330 835 Q 410 785, 515 805 Q 565 835, 520 895 Q 430 930, 340 895 Z" fill="rgba(76,34,27,0.07)" stroke="rgba(76,34,27,0.32)" stroke-width="2.5"/>
-      <text x="580" y="865" fill="rgba(76,34,27,0.35)" font-size="22" letter-spacing="8">琼州 · 沧海</text>
-
-      <!-- 朱砂行迹总虚线底 -->
-      <path id="route-bg" d="M 410 110 C 460 190, 520 235, 510 310 C 498 410, 560 510, 610 620 C 565 715, 470 770, 415 845" stroke="rgba(155,56,43,0.22)" stroke-width="4" stroke-dasharray="10 10" stroke-linecap="round"/>
-
-      <!-- 朱砂行迹动态生长实线 -->
-      <path id="route-active" d="M 410 110 C 460 190, 520 235, 510 310 C 498 410, 560 510, 610 620 C 565 715, 470 770, 415 845" stroke="#9B382B" stroke-width="6" stroke-linecap="round"/>
-
-      <!-- 起点：汴京 -->
-      <g id="node-0" transform="translate(410, 110)">
-        <circle r="9" fill="#4C221B"/>
-        <text x="22" y="8" fill="#4C221B" font-size="26" font-family="SongSemi" letter-spacing="4">汴京 · 乌台诗案</text>
-      </g>
-
-      <!-- 第一站：黄州 (510, 310) -->
-      <g id="node-1" transform="translate(510, 310)">
-        <circle id="ring-1" r="28" stroke="#9B382B" stroke-width="2.5" fill="rgba(155,56,43,0.12)"/>
-        <circle r="11" fill="#9B382B"/>
-        <text x="36" y="-4" fill="#9B382B" font-size="34" font-family="SongSemi" letter-spacing="6">黄州</text>
-        <text x="36" y="28" fill="#6E4536" font-size="22" letter-spacing="3">元丰三年 · 45岁 · 东坡居士</text>
-      </g>
-
-      <!-- 第二站：惠州 (610, 620) -->
-      <g id="node-2" transform="translate(610, 620)">
-        <circle id="ring-2" r="28" stroke="#9B382B" stroke-width="2.5" fill="rgba(155,56,43,0.12)"/>
-        <circle r="11" fill="#9B382B"/>
-        <text x="36" y="-4" fill="#9B382B" font-size="34" font-family="SongSemi" letter-spacing="6">惠州</text>
-        <text x="36" y="28" fill="#6E4536" font-size="22" letter-spacing="3">绍圣元年 · 59岁 · 岭南风物</text>
-      </g>
-
-      <!-- 第三站：儋州 (415, 845) -->
-      <g id="node-3" transform="translate(415, 845)">
-        <circle id="ring-3" r="28" stroke="#9B382B" stroke-width="2.5" fill="rgba(155,56,43,0.12)"/>
-        <circle r="11" fill="#9B382B"/>
-        <text x="-210" y="-4" fill="#9B382B" font-size="34" font-family="SongSemi" letter-spacing="6">儋州</text>
-        <text x="-260" y="28" fill="#6E4536" font-size="22" letter-spacing="3">绍圣四年 · 62岁 · 天涯万里</text>
-      </g>
-    </svg>
-
-    <!-- 节点诗作手卷卡片 -->
-    <div id="poem-card">
-      <div class="pc-head">
-        <span class="pc-place" id="pc-place">黄州 · 定风波</span>
-        <span class="pc-year" id="pc-year">公元 1082 · 元丰五年</span>
-      </div>
-      <div class="pc-verse" id="pc-verse">莫听穿林打叶声，何妨吟啸且徐行。</div>
-      <div class="pc-note" id="pc-note">竹杖芒鞋轻胜马，谁怕？一蓑烟雨任平生。</div>
-    </div>
-
-    <!-- 底部滑动纪年标尺 -->
-    <div id="ruler-wrap">
-      <div id="ruler-pointer"></div>
-      <div id="ruler-track"></div>
-    </div>
+    <div id="type"></div>
   </div>
 
 <script type="module">
-  import { clamp, lerp, inv, easeOut, easeInOut } from '/tools/video-studio/core/weishi-video-core.js';
+  import { huapingClauses } from '/resources/core/huaping-layout.js';
+  import { easeInOut } from '/resources/core/weishi-video-core.js';
+  import { resolveVideoPalette, byline, inkGlyphState, pushScale, easeOut, clamp, leafGone } from '/resources/core/huaping-video.js';
+  import { fitMap, routePath, routeUpTo, rulerLayout, GEOGRAPHY } from '/resources/core/footprint.js';
+  import { loadRecipe, previewLoop } from '/resources/core/huaping-scene.js';
 
-  window.DUR = 20;
-  window.READY = false;
+  const W = 1080, H = 1920;
+  const { params, recipe, palettes } = await loadRecipe('sushi-footprint');
+  window.RECIPE = recipe;
+  const palette = resolveVideoPalette(palettes, { palette: params.get('palette') || recipe.palette,
+    appearance: params.get('appearance') || recipe.appearance, term: recipe.term, date: recipe.date });
+  for (const [slot, value] of Object.entries(palette.colors)) document.documentElement.style.setProperty(`--${slot}`, value);
+  // The route is the seal's colour from the light palette, in both appearances.
+  const vermilion = palettes.palettes[palette.id].light.seal;
+  const { colors } = palette;
+  const stations = recipe.stations;
+  const events = recipe.events || [];
+  window.DUR = Number(params.get('dur')) || Number(recipe.duration) || 20;
+  await document.fonts.load('100px SongReg');
+  await document.fonts.ready;
 
-  const STOPS = [
-    {
-      t0: 0.8,
-      t1: 7.2,
-      routeEnd: 0.34,
-      year: 1080,
-      era: '元丰三年 · 45岁',
-      place: '第一站 · 黄州《定风波》',
-      yearLabel: '公元 1082 · 元丰五年 · 赤壁躬耕',
-      verse: '莫听穿林打叶声，何妨吟啸且徐行。',
-      note: '竹杖芒鞋轻胜马，谁怕？一蓑烟雨任平生。苏轼自此号「东坡居士」。',
-    },
-    {
-      t0: 7.2,
-      t1: 13.6,
-      routeEnd: 0.72,
-      year: 1094,
-      era: '绍圣元年 · 59岁',
-      place: '第二站 · 惠州《食荔枝》',
-      yearLabel: '公元 1096 · 绍圣三年 · 嘉祐寺松风亭',
-      verse: '日啖荔枝三百颗，不辞长作岭南人。',
-      note: '年近花甲再贬岭南，于山水风物间化苦旅为清欢。',
-    },
-    {
-      t0: 13.6,
-      t1: 20.0,
-      routeEnd: 1.0,
-      year: 1097,
-      era: '绍圣四年 · 62岁',
-      place: '第三站 · 儋州《六月二十日夜渡海》',
-      yearLabel: '公元 1100 · 元符三年 · 渡海北归',
-      verse: '九死南荒吾不恨，兹游奇绝冠平生。',
-      note: '问汝平生功业，黄州惠州儋州。胸中浩然之气，终成千古绝唱。',
-    },
-  ];
+  // ---- layout (1080×1920; text stays clear of the platform's right 140px and bottom 380px)
+  const MAP = { x: 130, y: 120, width: 780, height: 860 };
+  const LEAF_TOP = 1030;
+  // The ruler line sits between its two label rows: row 0 below it, row 1 above it.
+  const RULER = { x0: 120, x1: 920, y: 1428 };
+  const VERSE = 66, SMALL = 30, CITY = 40, TICK = 28;
 
-  // 构建底部纪年刻度尺
-  const rulerTrack = document.getElementById('ruler-track');
-  const YEARS = [
-    { y: '1079 年', e: '元丰二年 · 乌台诗案' },
-    { y: '1080 年', e: '元丰三年 · 初到黄州' },
-    { y: '1082 年', e: '元丰五年 · 前后赤壁赋' },
-    { y: '1094 年', e: '绍圣元年 · 南迁惠州' },
-    { y: '1097 年', e: '绍圣四年 · 渡海贬儋州' },
-    { y: '1100 年', e: '元符三年 · 遇赦北归' },
-  ];
-  YEARS.forEach((item) => {
-    const d = document.createElement('div');
-    d.className = 'r-tick';
-    d.innerHTML = `<div class="r-year">${item.y}</div><div class="r-era">${item.e}</div>`;
-    rulerTrack.appendChild(d);
+  // ---- map: sketch geography in faint ink, stations, and the route
+  const layers = (recipe.map || []).map(name => GEOGRAPHY[name]).filter(Boolean);
+  const project = fitMap([...layers.flat(), ...stations.map(s => s.lonlat)], MAP);
+  const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
+  const mapCtx = document.getElementById('map').getContext('2d');
+  mapCtx.lineCap = mapCtx.lineJoin = 'round';
+  const geo = name => (recipe.map || []).includes(name) ? GEOGRAPHY[name] : null;
+  // Lines run as smooth curves through the traced points (midpoint quadratics), not as a polyline.
+  const path = (ctx, line) => {
+    const pts = line.map(project);
+    ctx.beginPath();
+    ctx.moveTo(...pts[0]);
+    for (let i = 1; i < pts.length - 1; i++) {
+      ctx.quadraticCurveTo(pts[i][0], pts[i][1], (pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2);
+    }
+    ctx.lineTo(...pts.at(-1));
+  };
+  // Land in a faint wash, the sea left as paper; the wash fades out toward the map's edges, so the
+  // map has no frame.
+  if (geo('coast')) {
+    const wash = document.createElement('canvas');
+    wash.width = W;
+    wash.height = H;
+    const g = wash.getContext('2d');
+    const coast = geo('coast');
+    const [w0, e0] = [coast[0], coast.at(-1)];
+    path(g, [...coast, [e0[0] + 3, e0[1]], [e0[0] + 3, 40], [w0[0] - 3, 40], [w0[0] - 3, w0[1]]]);
+    g.fillStyle = rgba(colors.ink, 0.05);
+    g.fill();
+    if (geo('hainan')) { path(g, geo('hainan')); g.fill(); }
+    // An ellipse spanning the coast's two ends: the wash is gone by the time the traced coast ends.
+    const xw = project(w0)[0], xe = project(e0)[0];
+    const cx = (xw + xe) / 2, cy = MAP.y + MAP.height * 0.45, rx = (xe - xw) / 2, ry = MAP.height * 0.62;
+    g.globalCompositeOperation = 'destination-in';
+    g.save();
+    g.translate(cx, cy);
+    g.scale(rx / ry, 1);
+    const fade = g.createRadialGradient(0, 0, 0, 0, 0, ry);
+    fade.addColorStop(0, 'rgba(0,0,0,1)');
+    fade.addColorStop(0.6, 'rgba(0,0,0,1)');
+    fade.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = fade;
+    g.fillRect(-ry * 2, -ry * 2, ry * 4, ry * 4);
+    g.restore();
+    mapCtx.drawImage(wash, 0, 0);
+  }
+  const strokes = { yangtze: [3, 0.42], gan: [2.2, 0.32], beijiang: [2.2, 0.32], coast: [2.4, 0.36], hainan: [2, 0.36] };
+  for (const [name, [width, alpha]] of Object.entries(strokes)) {
+    if (!geo(name)) continue;
+    path(mapCtx, geo(name));
+    mapCtx.strokeStyle = rgba(colors.ink, alpha);
+    mapCtx.lineWidth = width;
+    mapCtx.stroke();
+  }
+  // Peaks as old-map glyphs: a pair of brush arcs with a light wash inside.
+  for (const peak of geo('peaks') || []) {
+    const [x, y] = project(peak);
+    for (const [dx, size] of [[-9, 0.7], [5, 1]]) {
+      const s = 17 * size;
+      mapCtx.beginPath();
+      mapCtx.moveTo(x + dx - s, y + 5);
+      mapCtx.quadraticCurveTo(x + dx - s * 0.35, y - s * 0.3, x + dx, y - s * 0.9);
+      mapCtx.quadraticCurveTo(x + dx + s * 0.35, y - s * 0.3, x + dx + s, y + 5);
+      mapCtx.fillStyle = rgba(colors.ink, 0.06);
+      mapCtx.fill();
+      mapCtx.strokeStyle = rgba(colors.ink, 0.48);
+      mapCtx.lineWidth = 2;
+      mapCtx.stroke();
+    }
+  }
+  const route = routePath(stations.map(s => s.lonlat), recipe.bends, project);
+  const nodes = stations.map(s => project(s.lonlat));
+
+  // ---- text: city names on the map, one inscription per station, the timeline
+  const typeLayer = document.getElementById('type');
+  const el = (tag, className, parent, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    parent.appendChild(node);
+    return node;
+  };
+  const cities = stations.map((s, i) => {
+    const [x, y] = nodes[i];
+    const label = el('div', 'city', typeLayer, s.place);
+    label.style.cssText = `left:${x + 22}px;top:${y}px;font-size:${CITY}px`;
+    return label;
   });
 
-  const routePath = document.getElementById('route-active');
-  const totalLen = 960;
-  routePath.style.strokeDasharray = `${totalLen}`;
+  const pt = W / 393;
+  const leaves = stations.map((s, i) => {
+    const leaf = el('div', 'leaf', typeLayer);
+    leaf.style.top = `${LEAF_TOP}px`;
+    const verse = el('div', 'verse', leaf);
+    verse.style.cssText = `font-size:${VERSE}px;line-height:${VERSE * 1.3}px`;
+    const glyphs = [];
+    for (const line of s.verse) {
+      const row = el('div', '', verse);
+      for (const ch of huapingClauses(line).join('')) glyphs.push(el('span', '', row, ch));
+    }
+    const source = el('div', 'source', leaf);
+    source.style.cssText = `font-size:${SMALL}px;line-height:${SMALL * 1.6}px;margin-top:${SMALL * 0.6}px`;
+    el('span', 'author', source, byline(recipe.dynasty, recipe.poet));
+    el('span', '', source, `《${s.poem}》　${s.written}`);
+    const context = el('div', 'context', leaf, `${s.place}　${s.years} · ${s.span}`);
+    context.style.cssText = `font-size:${SMALL}px;line-height:${SMALL * 1.6}px`;
+    // Glyphs ink in over two seconds from arrival; the credit lines follow.
+    const start = s.t0 + 0.35;
+    const times = glyphs.map((_, j) => start + j * Math.min(0.14, 2.0 / glyphs.length));
+    const next = stations[i + 1];
+    return { leaf, glyphs, times, extra: [source, context], extraAt: times.at(-1) + 0.25, out: next ? next.t0 + 0.15 : Infinity };
+  });
 
-  const pcCard = document.getElementById('poem-card');
-  const pcPlace = document.getElementById('pc-place');
-  const pcYear = document.getElementById('pc-year');
-  const pcVerse = document.getElementById('pc-verse');
-  const pcNote = document.getElementById('pc-note');
+  // Timeline: true positions for the ticks, labels in up to two rows that never overlap.
+  const measure = document.createElement('canvas').getContext('2d');
+  measure.font = `${TICK}px SongReg`;
+  const widths = events.map(e => Math.max(measure.measureText(String(e.year)).width, measure.measureText(e.text).width * 1.1) + 8);
+  const ruler = rulerLayout(events, { x0: RULER.x0, x1: RULER.x1, widths });
+  window.WARNINGS = ruler.filter(r => r.left < RULER.x0 - 0.5 || r.right > RULER.x1 + 0.5).map(r => `刻度 ${r.year} 越界`);
+  const ticks = ruler.map(r => {
+    const tick = el('div', 'tick', typeLayer);
+    const labelHeight = TICK * 1.35 * 2;
+    tick.style.cssText = `left:${r.center}px;top:${r.row ? RULER.y - 16 - labelHeight : RULER.y + 16}px;font-size:${TICK}px`;
+    el('div', 'year', tick, String(r.year));
+    el('div', 'event', tick, r.text);
+    return tick;
+  });
+  // Ticks, leader lines and the ruler line itself are drawn on the map canvas (they do not move).
+  mapCtx.strokeStyle = colors.rule;
+  mapCtx.lineWidth = 2;
+  mapCtx.beginPath();
+  mapCtx.moveTo(RULER.x0, RULER.y);
+  mapCtx.lineTo(RULER.x1, RULER.y);
+  mapCtx.stroke();
+  mapCtx.strokeStyle = rgba(colors.ink, 0.35);
+  mapCtx.lineWidth = 1.4;
+  for (const r of ruler) {
+    // A short tick on the line toward its label; a shifted label gets a short leader to its tick.
+    const side = r.row ? -1 : 1;
+    mapCtx.beginPath();
+    mapCtx.moveTo(r.tick, RULER.y);
+    mapCtx.lineTo(r.tick, RULER.y + side * 8);
+    if (Math.abs(r.center - r.tick) > 4) mapCtx.lineTo(r.center, RULER.y + side * 14);
+    mapCtx.stroke();
+  }
 
+  // ---- timeline of the clip
+  const stationAt = t => Math.max(0, stations.findLastIndex(s => t >= s.t0));
+  const reach = i => route.stops[i];
+  // The route grows into each station over the 1.2s before it is named.
+  const routeAt = t => {
+    let f = 0;
+    for (let i = 1; i < stations.length; i++) {
+      const p = easeInOut(clamp((t - (stations[i].t0 - 0.9)) / 1.2));
+      if (p > 0) f = reach(i - 1) + (reach(i) - reach(i - 1)) * p;
+    }
+    return f;
+  };
   window.EV = [
     { t: 0.2, sfx: 'qin-harmonic', gain: -8 },
-    { t: 1.1, sfx: 'seal-stamp', gain: -4 },
-    { t: 7.4, sfx: 'page-turn', gain: -6 },
-    { t: 7.9, sfx: 'seal-stamp', gain: -4 },
-    { t: 13.8, sfx: 'page-turn', gain: -6 },
-    { t: 14.3, sfx: 'seal-stamp', gain: -3.5 },
+    ...stations.map((s, i) => ({ t: Number((s.t0 + 0.35).toFixed(2)), sfx: i ? 'page-turn' : 'ink-drop', gain: -7 })),
   ];
-
-  window.TEXTS = function (t) {
-    const active = STOPS.find((s) => t >= s.t0 && t <= s.t1) || STOPS[0];
-    return [
-      { id: `stop-${active.year}-verse`, text: active.verse },
-      { id: `stop-${active.year}-note`, text: active.note },
-    ];
+  window.TEXTS = t => {
+    const list = [];
+    leaves.forEach((l, i) => {
+      if (t >= l.times[0] + 0.125 && t < l.out - 0.3) list.push({ id: `station-${i + 1}`, text: stations[i].verse.join('，') });
+    });
+    return list;
   };
 
-  window.render = function (t) {
-    const ct = clamp(t, 0, window.DUR);
+  const routeCtx = document.getElementById('route').getContext('2d');
+  const artWrap = document.getElementById('art-wrap');
+  const ink = (node, s, gone = 0) => {
+    const blur = s.blur + gone * 12;
+    node.style.opacity = (s.opacity * (1 - gone)).toFixed(3);
+    node.style.filter = blur > 0.05 ? `blur(${blur.toFixed(2)}px)` : 'none';
+  };
 
-    // 1. 计算朱砂行迹曲线生长进度
-    let routeProg = 0;
-    if (ct < 7.2) {
-      routeProg = lerp(0, 0.34, easeInOut(inv(0.4, 2.2, ct)));
-    } else if (ct < 13.6) {
-      routeProg = lerp(0.34, 0.72, easeInOut(inv(7.2, 9.0, ct)));
-    } else {
-      routeProg = lerp(0.72, 1.0, easeInOut(inv(13.6, 15.4, ct)));
+  window.render = t => {
+    t = Math.max(0, Math.min(window.DUR, t));
+    artWrap.style.transform = `scale(${pushScale(t, window.DUR).toFixed(5)})`;
+    const current = stationAt(t);
+
+    // Route in seal colour, a soft wet edge under a firm line; nodes in ink; ripples at the current city.
+    routeCtx.clearRect(0, 0, W, H);
+    routeCtx.lineCap = routeCtx.lineJoin = 'round';
+    const drawn = routeUpTo(route, routeAt(t));
+    for (const [width, alpha] of [[12, 0.16], [5, 0.92]]) {
+      routeCtx.strokeStyle = rgba(vermilion, alpha);
+      routeCtx.lineWidth = width;
+      routeCtx.beginPath();
+      drawn.forEach(([x, y], i) => (i ? routeCtx.lineTo(x, y) : routeCtx.moveTo(x, y)));
+      if (drawn.length > 1) routeCtx.stroke();
     }
-    routePath.style.strokeDashoffset = `${(totalLen * (1 - routeProg)).toFixed(1)}`;
+    nodes.forEach(([x, y], i) => {
+      const shown = easeOut(clamp((t - (stations[i].t0 - (i ? 0.1 : 0.5))) / 0.5));
+      if (shown <= 0) return;
+      routeCtx.fillStyle = rgba(colors.ink, shown * (i === current ? 0.92 : 0.6));
+      routeCtx.beginPath();
+      routeCtx.arc(x, y, 8, 0, Math.PI * 2);
+      routeCtx.fill();
+      if (i === current) {
+        for (let k = 0; k < 2; k++) {
+          const p = ((t - stations[i].t0) / 2.4 + k / 2) % 1;
+          if (t < stations[i].t0) continue;
+          routeCtx.strokeStyle = rgba(colors.ink, 0.28 * Math.sin(Math.PI * p) * shown);
+          routeCtx.lineWidth = 1.4;
+          routeCtx.beginPath();
+          routeCtx.ellipse(x, y, 14 + 40 * p, (14 + 40 * p) * 0.42, 0, 0, Math.PI * 2);
+          routeCtx.stroke();
+        }
+      }
+      cities[i].style.opacity = shown.toFixed(3);
+      cities[i].style.color = i === current ? 'var(--ink)' : 'var(--muted)';
+    });
+    nodes.forEach((_, i) => { if (t < stations[i].t0 - (i ? 0.1 : 0.5)) cities[i].style.opacity = '0'; });
 
-    // 2. 三处州郡节点点亮与水波呼吸
-    const n1 = easeOut(inv(1.2, 2.0, ct));
-    const n2 = easeOut(inv(7.8, 8.6, ct));
-    const n3 = easeOut(inv(14.2, 15.0, ct));
-    document.getElementById('node-1').style.opacity = lerp(0.25, 1, n1).toFixed(3);
-    document.getElementById('node-2').style.opacity = lerp(0.22, 1, n2).toFixed(3);
-    document.getElementById('node-3').style.opacity = lerp(0.22, 1, n3).toFixed(3);
+    leaves.forEach((l, i) => {
+      const gone = leafGone(t, l);
+      l.leaf.style.visibility = t < l.times[0] || gone >= 1 ? 'hidden' : 'visible';
+      l.glyphs.forEach((g, j) => ink(g, inkGlyphState(t, l.times[j], 0.25, pt), gone));
+      l.extra.forEach(node => ink(node, inkGlyphState(t, l.extraAt, 0.3, pt), gone));
+    });
 
-    const pulse = 24 + Math.sin(ct * 3.6) * 5;
-    document.getElementById('ring-1').setAttribute('r', n1 > 0.5 ? pulse.toFixed(1) : '18');
-    document.getElementById('ring-2').setAttribute('r', n2 > 0.5 ? pulse.toFixed(1) : '18');
-    document.getElementById('ring-3').setAttribute('r', n3 > 0.5 ? pulse.toFixed(1) : '18');
-
-    // 3. 当前站点诗作手卷卡片更新
-    const stopIdx = ct < 7.2 ? 0 : ct < 13.6 ? 1 : 2;
-    const stop = STOPS[stopIdx];
-    const localIn = easeOut(inv(stop.t0 + 0.2, stop.t0 + 0.85, ct));
-    pcPlace.textContent = stop.place;
-    pcYear.textContent = stop.yearLabel;
-    pcVerse.textContent = stop.verse;
-    pcNote.textContent = stop.note;
-    pcCard.style.opacity = localIn.toFixed(3);
-    pcCard.style.transform = `translateY(${((1 - localIn) * 14).toFixed(1)}px)`;
-
-    // 4. 底部纪年刻度尺平滑横移
-    const rulerX = lerp(240, -780, easeInOut(ct / window.DUR));
-    rulerTrack.style.transform = `translateX(${rulerX.toFixed(1)}px)`;
+    ticks.forEach((tick, i) => {
+      const on = ruler[i].station === current;
+      tick.querySelector('.year').style.color = on ? 'var(--ink)' : 'var(--muted)';
+      tick.style.opacity = on ? '1' : '0.55';
+    });
   };
 
-  await document.fonts.ready;
   window.render(0);
   window.READY = true;
+  previewLoop(document.getElementById('stage'), params);
 </script>
 </body>
 </html>
