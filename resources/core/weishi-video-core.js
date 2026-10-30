@@ -256,6 +256,7 @@ export function renderZXArt(canvas, req, workerUrl = '/vendor/zxart/zxart-worker
             verse: data.verse,
             anchors: data.anchors,
             sceneElements: data.sceneElements,
+            ...(data.brushwork ? {brushwork:data.brushwork} : {}),
           });
         } else {
           drawFallbackShanShui(canvas, req);
@@ -302,6 +303,7 @@ export function renderZXArt(canvas, req, workerUrl = '/vendor/zxart/zxart-worker
         scene: req.scene || normVariant,
         params: req.params || { density: 0.9, quiet_top: 0.32, verse_side: 'left', verse_columns: 4, verse_chars: 10 },
         palette: req.palette || { paper: '#DCECEF', ink: '#425066' },
+        paperStrength: req.paperStrength,
         width,
         height,
       });

@@ -18,6 +18,16 @@ test('five-character layout follows native size and keeps inscription within ver
   assert.equal(plan.omittedClauses.length, 0);
 });
 
+test('wide calligraphy cells reserve more horizontal space without dropping a couplet', () => {
+  const ordinary = huapingPlan(input);
+  const wide = huapingPlan({ ...input, columnWidth:1.4 });
+  assert.ok(wide.fontSize < ordinary.fontSize);
+  assert.deepEqual(wide.clauses, ordinary.clauses);
+  assert.deepEqual(wide.omittedClauses, []);
+  const verseWidth = (wide.clauses.length * wide.columnWidth + (wide.clauses.length - 1) * .62) * wide.fontSize;
+  assert.ok(verseWidth + wide.inscriptionSize * wide.columnWidth + wide.fontSize * .9 <= wide.box.width);
+});
+
 test('scaling the canvas scales every layout dimension', () => {
   const a = huapingPlan(input);
   const b = huapingPlan({ ...input, width: 2160, height: 2880 });

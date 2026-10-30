@@ -19,7 +19,7 @@
 /* global importScripts, OffscreenCanvas, ZXArtCompose, Filter */
 'use strict';
 
-importScripts('zxart-compose.js');
+importScripts('zxart-compose.js', 'zxart-ink.js');
 ZXArtCompose.installShims(self);
 
 function css(c) {
@@ -43,7 +43,12 @@ function sameColor(a, b) {
 }
 
 /** Prepared.sameStyle: 填色、线宽相同, 有线宽时描色也相同。 */
+// Separate wash passes accumulate ink; merging their paths would erase that accumulation.
+var paperPatternTile=null,paperPatternTexel=1,inkPaperSeed=0;
+
 function sameStyle(a, b) {
+  if(Boolean(a.paperMask)!==Boolean(b.paperMask))return false;
+  if (a.overprint || b.overprint || a.brush || b.brush || a.wetInk || b.wetInk) return false;
   return sameColor(a.fill, b.fill) && a.lineWidth === b.lineWidth && (a.lineWidth > 0 ? sameColor(a.stroke, b.stroke) : true);
 }
 
@@ -61,6 +66,16 @@ function drawShapes(ctx, shapes) {
 
 function drawRun(ctx, shapes, from, to) {
   var first = shapes[from];
+  if(first.brush) { ZXArtInk.texturedShape(ctx,first,inkPaperSeed); return; }
+  if(first.wetInk && first.fill) {
+    const profile=typeof first.wetInk==='object'?first.wetInk:{bleed:1.7,rim:.06};
+    const t=ctx.getTransform(),shape={...first,overprint:false,wetInk:false};
+    ZXArtInk.draw(ctx,{shapes:[shape],opacity:ctx.globalAlpha,blend:ctx.globalCompositeOperation,ink:{
+      seed:ZXArtCompose.Brush.hash(Math.round(first.points[0]*97),Math.round(first.points[1]*131)),
+      color:first.fill.slice(0,3),bleed:profile.bleed,rim:profile.rim,terrain:profile.terrain
+    }},{paper:{seed:inkPaperSeed}},ctx.canvas.width,ctx.canvas.height,Math.hypot(t.a,t.b),t.e,t.f,drawShapes);
+    return;
+  }
   var stroke = first.lineWidth > 0 ? first.stroke : null;
   if (!first.fill && !stroke) return;
   var any = false;
@@ -75,8 +90,12 @@ function drawRun(ctx, shapes, from, to) {
   }
   if (!any) return;
   if (first.fill) {
-    ctx.fillStyle = css(first.fill);
-    ctx.fill();
+    if(first.paperMask && paperPatternTile) {
+      ctx.save();
+      const pattern=ctx.createPattern(paperPatternTile,'repeat');
+      pattern.setTransform(new DOMMatrix([paperPatternTexel,0,0,paperPatternTexel,0,0]));
+      ctx.fillStyle=pattern;ctx.globalAlpha*=first.fill[3];ctx.imageSmoothingEnabled=false;ctx.fill();ctx.restore();
+    } else {ctx.fillStyle = css(first.fill);ctx.fill();}
   }
   if (stroke) {
     ctx.strokeStyle = css(stroke);
@@ -116,6 +135,7 @@ function bounds(shapes) {
 
 /** PaperGround: 底色 + 纸纹逐像素 (纹素 = floor((x + 0.5 − ox) / texelPx) mod 512)。 */
 function fillGround(ctx, drawing, pw, ph, s, ox, oy) {
+  inkPaperSeed=(drawing.paper?.seed||0)>>>0;
   var bg = drawing.background;
   var img = ctx.createImageData(pw, ph);
   var px = img.data;
@@ -136,6 +156,13 @@ function fillGround(ctx, drawing, pw, ph, s, ox, oy) {
       tile[i * 3 + 1] = Math.round(pg + (tg - pg) * t);
       tile[i * 3 + 2] = Math.round(pb + (tb - pb) * t);
     }
+  }
+  paperPatternTile=null;paperPatternTexel=paper?paper.texel:1;
+  if(tile) {
+    paperPatternTile=new OffscreenCanvas(side,side);
+    const pc=paperPatternTile.getContext('2d'),pi=pc.createImageData(side,side);
+    for(let i=0;i<side*side;i++){pi.data[i*4]=tile[i*3];pi.data[i*4+1]=tile[i*3+1];pi.data[i*4+2]=tile[i*3+2];pi.data[i*4+3]=255;}
+    pc.putImageData(pi,0,0);
   }
   var b0 = Math.round(bg[0] * 255),
     b1 = Math.round(bg[1] * 255),
@@ -397,10 +424,14 @@ function drawWashed(ctx, layer, drawing, pw, ph, s, ox, oy) {
   var noise = ZXArtCompose.WashNoise, unitClamp = ZXArtCompose.Brush.unit, wash = layer.wash;
   var bleed = wash && Number.isFinite(wash.bleed) ? Math.max(0, wash.bleed) : 0;
   var rim = wash && Number.isFinite(wash.rim) ? Math.max(0, wash.rim) : 0;
-  var grain = unitClamp(wash ? wash.grain : 0), unit = wash ? 2 : 1, logicalUnit = unit / s;
+  var grain = unitClamp(wash ? wash.grain : 0), unit = wash && !wash.fullResolution ? 2 : 1, logicalUnit = unit / s;
   var support = 1.73 * bleed + 3 * logicalUnit, strokePad = 0;
   layer.shapes.forEach(function (shape) { strokePad = Math.max(strokePad, shape.lineWidth * 5); });
-  var pad = (support + strokePad) * s;
+  var wetPad = 0;
+  layer.shapes.forEach(function (shape) {
+    if (shape.wetInk && shape.wetInk.terrain) wetPad = Math.max(wetPad, (shape.wetInk.bleed || 0) * 3 + 4 / s);
+  });
+  var pad = Math.max(support + strokePad, wetPad) * s;
   var minX = Math.max(bb.minX * s + ox - pad, -2 * unit), minY = Math.max(bb.minY * s + oy - pad, -2 * unit);
   var maxX = Math.min(bb.maxX * s + ox + pad, pw + 2 * unit), maxY = Math.min(bb.maxY * s + oy + pad, ph + 2 * unit);
   if (!(maxX > minX && maxY > minY)) return;
@@ -425,11 +456,16 @@ function drawWashed(ctx, layer, drawing, pw, ph, s, ox, oy) {
     pixels = null;
     alphaSample = washSamples(alpha, sw, sh, 1, sx0, sy0);
   }
+  // Wet primitives must see their complete footprint when computing diffusion and
+  // pigment recession. Rasterising them inside 64-row strips invents wet edges
+  // at each strip boundary, even when the enclosing fade is fully opaque.
+  var fullColors = layer.shapes.some(function (shape) { return shape.wetInk && shape.wetInk.terrain; })
+    ? washSamples(raster(sx0, sy0, sw, sh), sw, sh, 4, sx0, sy0) : null;
   var width = x1 - x0;
   for (var start = y0; start < y1; start += 64) {
     var end = Math.min(start + 64, y1), top = start - 2, rows = end + 2 - top;
     var colorTop = top - halo, colorRows = rows + 2 * halo;
-    var colors = washSamples(raster(sx0, colorTop, sw, colorRows), sw, colorRows, 4, sx0, colorTop);
+    var colors = fullColors || washSamples(raster(sx0, colorTop, sw, colorRows), sw, colorRows, 4, sx0, colorTop);
     var output = new OffscreenCanvas(width, rows), outctx = output.getContext('2d'), image = outctx.createImageData(width, rows);
     for (var row = 0; row < rows; row++) {
       var gy = top + row, ly = ((gy + 0.5) * unit - oy) / s;
@@ -483,6 +519,10 @@ function render(drawing, pw, ph) {
   var oy = ph / 2 - (drawing.height * s) / 2;
   fillGround(ctx, drawing, pw, ph, s, ox, oy);
   drawing.layers.forEach(function (layer) {
+    if (layer.ink) {
+      ZXArtInk.draw(ctx,layer,drawing,pw,ph,s,ox,oy,drawShapes);
+      return;
+    }
     if (layer.wash || layer.tooth != null || layer.rim || layer.fade) {
       drawWashed(ctx, layer, drawing, pw, ph, s, ox, oy);
       return;
@@ -528,6 +568,11 @@ self.onmessage = function (event) {
         importScripts(ZXArtCompose.SHANSHUI_PAPER_SCRIPT);
       },
     });
+    // Optional study control; existing callers retain the engine's original texture strength.
+    if (req.paperStrength !== undefined) {
+      if (!Number.isFinite(req.paperStrength) || req.paperStrength < 0 || req.paperStrength > 1) throw new Error('paperStrength must be between 0 and 1');
+      if (drawing.paper) drawing.paper.strength *= req.paperStrength;
+    }
     var bitmap = render(drawing, pw, ph);
     self.postMessage({
       ok: true,
@@ -535,7 +580,8 @@ self.onmessage = function (event) {
       ms: Date.now() - t0,
       verse: drawing.verse || null,
       anchors: drawing.anchors || null,
-      sceneElements: drawing.sceneElements || null
+      sceneElements: drawing.sceneElements || null,
+      ...(drawing.brushwork ? {brushwork:drawing.brushwork} : {})
     }, [bitmap]);
   } catch (error) {
     self.postMessage({ ok: false, error: String((error && error.message) || error) });

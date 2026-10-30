@@ -1,0 +1,56 @@
+{
+  "cases": [
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "poem": "明月松间照，清泉石上流。",
+      "artwork": "shanshui",
+      "flower": "自然",
+      "theme": "canglang",
+      "seed": "study-山居秋暝",
+      "appearance": "light",
+      "font": "shufa_liyu",
+      "date": "2026-10-28",
+      "elementTreatment": "painted-v2"
+    },
+    {
+      "title": "山居秋暝",
+      "author": "王维",
+      "poem": "明月松间照，清泉石上流。",
+      "artwork": "shanshui",
+      "flower": "自然",
+      "theme": "canglang",
+      "seed": "study-山居秋暝",
+      "appearance": "dark",
+      "font": "shufa_liyu",
+      "date": "2026-10-28",
+      "elementTreatment": "painted-v2"
+    },
+    {
+      "title": "春日",
+      "author": "朱熹",
+      "poem": "胜日寻芳泗水滨，无边光景一时新。",
+      "artwork": "shanshui",
+      "flower": "自然",
+      "theme": "moon-white",
+      "seed": "theme-art-study-spring-20261028",
+      "appearance": "light",
+      "font": "shufa_liyu",
+      "date": "2026-10-28",
+      "elementTreatment": "painted-v2"
+    },
+    {
+      "title": "春日",
+      "author": "朱熹",
+      "poem": "胜日寻芳泗水滨，无边光景一时新。",
+      "artwork": "shanshui",
+      "flower": "自然",
+      "theme": "moon-white",
+      "seed": "theme-art-study-spring-20261028",
+      "appearance": "dark",
+      "font": "shufa_liyu",
+      "date": "2026-10-28",
+      "elementTreatment": "painted-v2"
+    }
+  ]
+}

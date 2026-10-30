@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/resources/core/huaping-video.css">
+  <title>主题与诗画 · 静态实验</title>
+  <style>
+    #stage { width:1080px; height:1440px; }
+    #art { position:absolute; inset:0; }
+    #paper { position:absolute; inset:0; opacity:.01; pointer-events:none; }
+    #paper svg { width:100%; height:100%; }
+    .reading { position:absolute; left:130px; right:130px; top:110px; text-align:center; }
+    .reading h1 { font-size:64px; font-weight:400; line-height:1.4; }
+    .reading .author { font-size:32px; color:var(--accent); margin:16px 0 48px; }
+    .reading .line { font-size:56px; line-height:76px; letter-spacing:.10em; white-space:nowrap; }
+  </style>
+</head>
+<body>
+  <div id="stage"><canvas id="art"></canvas><div id="paper"></div><div id="type"></div></div>
+  <script src="/vendor/zxart/zxart-compose.js"></script>
+  <script src="/vendor/zxart/zxart-shanshui-v5.js"></script>
+  <script type="module">
+    import { restoreStudy, STUDY_FORMAT } from '/resources/core/theme-art-study.js';
+    import { renderZXArt } from '/resources/core/weishi-video-core.js';
+    import { huapingClauses, mountHuaping } from '/resources/core/huaping-layout.js';
+    import { tintSeals } from '/resources/core/huaping-scene.js';
+    import { deepenInk } from '/resources/core/huaping-video.js';
+
+    const saved = window.STUDY_SNAPSHOT ? restoreStudy(window.STUDY_SNAPSHOT) : null;
+    const config = saved?.config || window.STUDY;
+    const { width, height, colors, poem, title, author, seed, artwork, generator } = config;
+    // The runner supplies verified font bytes; no system-installed font or network download is required.
+    let fontFamily = 'SongReg';
+    if (window.STUDY_FONT) {
+      const face = new FontFace('StudyFont', `url(${JSON.stringify(window.STUDY_FONT)})`);
+      await face.load(); document.fonts.add(face);
+      fontFamily = 'StudyFont, SongReg';
+    }
+    await document.fonts.load('100px SongReg');
+    document.getElementById('type').style.fontFamily = fontFamily;
+    const reading = config.purpose === 'reading';
+    const artHeight = reading ? 440 : height;
+    const artTop = height - artHeight;
+    for (const [key, value] of Object.entries(colors)) document.documentElement.style.setProperty(`--${key}`, value);
+    const clauses = huapingClauses(poem);
+    const params = { quiet_top:.18, verse_side:'right', verse_columns:clauses.length,
+      verse_chars:Math.max(...clauses.map(line => Array.from(line).length)) };
+    if (['refined-v1', 'painted-v2', 'landscape-v3'].includes(config.elementTreatment)) params.element_treatment = config.elementTreatment;
+    const verse = saved?.verse || window.ZXArtCompose.verseLayoutFor('shanshui@5', params, width, height);
+    const canvas = document.getElementById('art');
+    let request = saved?.request || null, result = null;
+    if (generator) {
+      if (!saved && artwork === 'shanshui') {
+        const matched = window.poetryScene(config.fullPoem, title);
+        const recipe = matched.paintingProcedural(seed, { purpose:reading ? 'reading-v1' : 'inscription-v1', quietTop:.18,
+          verseSide:'right', verseColumns:params.verse_columns, verseChars:params.verse_chars });
+        if(config.elementTreatment==='landscape-v3') {
+          recipe.params.scene.cun=/望岳|岱宗|泰山|华山|峭壁|绝壁|千仞/.test(title+config.fullPoem)?'axe':'hemp';
+        }
+        request = { generator, seed, variant:recipe.variant, params:{ ...recipe.params, ...params },
+          palette:config.artColors, paperStrength:config.paperStrength, width, height:artHeight };
+      } else if (!saved) {
+        request = { generator, seed, variant:config.flower, params, palette:config.artColors,
+          paperStrength:config.paperStrength, width, height:artHeight };
+      }
+      const drawing = document.createElement('canvas');
+      result = await renderZXArt(drawing, request);
+      if (!result.ok) throw new Error(`实验绘画失败：${result.error}`);
+      if (!reading && JSON.stringify(result.verse) !== JSON.stringify(verse)) throw new Error('实验绘画的诗句框与固定排字框不一致');
+      if (artwork === 'shanshui' && config.appearance === 'dark' && !['refined-v1', 'painted-v2', 'landscape-v3'].includes(config.elementTreatment)) {
+        const ctx = drawing.getContext('2d'), pixels = ctx.getImageData(0, 0, width, artHeight);
+        deepenInk(pixels.data, colors.paper.match(/[a-f\d]{2}/gi).map(v => parseInt(v, 16)), { gain:1.65 });
+        ctx.putImageData(pixels, 0, 0);
+      }
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext('2d'); ctx.fillStyle = colors.paper; ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(drawing, 0, artTop);
+      if (reading) {
+        // Only the top of the illustration fades into paper; text never sits over the artwork.
+        const fade = ctx.createLinearGradient(0, artTop, 0, artTop + 70);
+        fade.addColorStop(0, colors.paper); fade.addColorStop(1, colors.paper + '00');
+        ctx.fillStyle = fade; ctx.fillRect(0, artTop, width, 70);
+      }
+    } else {
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext('2d'); ctx.fillStyle = colors.paper; ctx.fillRect(0, 0, width, height);
+    }
+    document.getElementById('paper').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg"><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".7" numOctaves="2" seed="17" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#grain)"/></svg>`;
+    const type = document.getElementById('type');
+    let plan;
+    if (reading) {
+      await document.fonts.load('56px SongReg');
+      const body = document.createElement('article'); body.className = 'reading'; type.append(body);
+      const add = (tag, className, text) => { const el = document.createElement(tag); el.className = className; el.textContent = text; body.append(el); };
+      add('h1', '', title); add('p', 'author', author);
+      clauses.forEach(line => add('p', 'line', line));
+      const r = body.getBoundingClientRect();
+      if (r.bottom > artTop - 48) throw new Error('全文超出阅读区，请分篇排版；不会静默删句');
+      plan = { box:{x:r.x, y:r.y, width:r.width, height:r.height}, clauses, omittedClauses:[], fontSize:56, artTop };
+    } else {
+      plan = await mountHuaping(type, { poem, title, author, verse, width, height, accent:colors.accent, fontFamily });
+      tintSeals(type);
+    }
+    await document.fonts.ready;
+    window.STUDY_RESULT = { config, request, verse, plan, fontFamily, sceneElements:result?.sceneElements || [],
+      ...(result?.brushwork ? {brushwork:result.brushwork} : {}),
+      snapshot:{ format:STUDY_FORMAT, config, request, verse } };
+    window.READY = true;
+  </script>
+</body>
+</html>
