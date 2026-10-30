@@ -1653,8 +1653,10 @@ function poetryScene(text, title) {
   }
   // A depicted person/action outranks a seasonal setting selected by the title.
   // Cold water alone is not fishing; a lone vessel needs a water setting.
-  var fishingSubjects = ['独钓', '垂钓', '钓舟', '钓船', '渔舟', '渔船', '渔父', '渔翁', '蓑笠', '箬笠', '钓竿', '钓丝'];
-  if (containsAny(body, fishingSubjects) || (containsAny(body, ['孤舟', '独舟']) && /江|河|湖|溪|浦|水/.test(body))) {
+  var fishingSubjects = ['独钓', '垂钓', '钓舟', '钓船', '渔父', '渔翁', '蓑笠', '箬笠', '钓竿', '钓丝'];
+  var seasonalSetting = !selected || ['winterForest', 'autumnTravel', 'spring'].includes(selected[0]);
+  var fishingVessel = containsAny(body, ['渔舟', '渔船']) || (containsAny(body, ['孤舟', '独舟']) && /江|河|湖|溪|浦|水/.test(body));
+  if (containsAny(body, fishingSubjects) || (seasonalSetting && fishingVessel)) {
     selected = ['fishing', fishingSubjects.concat(['孤舟', '独舟'])];
   }
   var scene = selected ? selected[0] : 'retreat';

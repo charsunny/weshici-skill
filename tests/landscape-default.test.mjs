@@ -60,3 +60,10 @@ test('water rendering uses clipped coordinates and recipe bank scale leaves othe
  assert.ok(small.sceneElements.some(e=>e.motif==='sunset'));
  assert.ok(small.anchors.water);
 });
+
+test('a passing fishing boat does not replace a named mountain retreat',()=>{
+ const poem='空山新雨后，天气晚来秋。明月松间照，清泉石上流。竹喧归浣女，莲动下渔舟。随意春芳歇，王孙自可留。';
+ assert.equal(context.poetryScene(poem,'山居秋暝').scene,'retreat');
+ assert.equal(context.poetryScene('渔舟逐水爱山春，两岸桃花夹古津。','桃源行').scene,'fishing');
+ assert.equal(context.poetryScene('孤舟蓑笠翁，独钓寒江雪。','江雪').scene,'fishing');
+});

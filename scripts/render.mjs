@@ -70,7 +70,7 @@ function runCmd(cmd, cmdArgs) {
       errText += d.toString();
     });
     proc.on('exit', (code) => {
-      if (code === 0) resolve();
+      if (code === 0) resolve(errText);
       else reject(new Error(`${cmd} exited ${code}:\n${errText.slice(-1200)}`));
     });
   });
@@ -301,14 +301,21 @@ async function main() {
       mixLabels.push('[sfx]');
     }
 
-    if (mixLabels.length > 1) {
-      filterParts.push(
-        `${mixLabels.join('')}amix=inputs=${mixLabels.length}:duration=first:dropout_transition=0,loudnorm=I=-14:TP=-1.5:LRA=11[aout]`
-      );
-      ffArgs.push('-filter_complex', filterParts.join(';'), '-map', '0:v:0', '-map', '[aout]', '-c:a', 'aac', '-b:a', '192k');
-    } else if (mixLabels.length === 1) {
-      filterParts.push(`${mixLabels[0]}loudnorm=I=-14:TP=-1.5:LRA=11[aout]`);
-      ffArgs.push('-filter_complex', filterParts.join(';'), '-map', '0:v:0', '-map', '[aout]', '-c:a', 'aac', '-b:a', '192k');
+    if (mixLabels.length) {
+      const mixed = mixLabels.length > 1 ? '[mix]' : mixLabels[0];
+      if (mixLabels.length > 1) {
+        filterParts.push(`${mixLabels.join('')}amix=inputs=${mixLabels.length}:duration=first:dropout_transition=0[mix]`);
+      }
+      // Measure the actual mix before mastering; a single dynamic pass can miss -14 LUFS.
+      const target = 'loudnorm=I=-14:TP=-1.5:LRA=11';
+      const measurement = await runCmd('ffmpeg', [...ffArgs,
+        '-filter_complex', [...filterParts, `${mixed}${target}:print_format=json[aout]`].join(';'),
+        '-map', '[aout]', '-vn', '-f', 'null', '-',
+      ]);
+      const stats = JSON.parse(measurement.match(/\{\s*"input_i"[\s\S]*?\}/)[0]);
+      const measured = `:measured_I=${stats.input_i}:measured_TP=${stats.input_tp}:measured_LRA=${stats.input_lra}:measured_thresh=${stats.input_thresh}:offset=${stats.target_offset}:linear=true`;
+      filterParts.push(`${mixed}${target}${measured}[aout]`);
+      ffArgs.push('-filter_complex', filterParts.join(';'), '-map', '0:v:0', '-map', '[aout]', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000');
     }
 
     ffArgs.push(
