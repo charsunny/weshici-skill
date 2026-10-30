@@ -1,7 +1,7 @@
 ---
 name: weshici-skill
 description: >-
-  Deterministic Oriental-aesthetics & Chinese classical poetry visual & video production studio
+  Open-source JavaScript implementation of ZixiaoKit poetry visuals and video workflows
   (微诗词 · WeShici Skill). Trigger via `/weshici` or use whenever the user wants to plan, direct, preview,
   audit, or render shanshui wallpapers (山水壁纸), static poetry images (诗意画), social poetry posters (诗词海报), motion screens (动态画屏),
   Xiaohongshu 4-card suites (小红书图文), WeChat stickers & daily cards (微信贴图/日签), Douyin videos (抖音短视频),
@@ -32,6 +32,12 @@ metadata:
 2. **高级社媒成片生成 (Platform-Ready Suites)**：小红书 3:4 四联深度卡片与爆款文案、微信透明底印章/水墨贴图与朋友圈日签、抖音 9:16 短视频（安全区避让、App 墨洇入场、-14 LUFS 混音与据实的配套文案）。
 
 ---
+
+## 项目定位与公开实现边界
+
+`zixiao-kit` 保持私有，维护 Swift 原生共享内核；`weshici-skill` 是其诗画与视频能力的开源 JavaScript 实现及 Agent Skill 入口。对外介绍采用这个定位，不把 `zixiao-kit` 称作开源仓库。
+
+公开任务以本仓库的 JS、模板与文档为执行依据，不要求用户克隆或取得私有源码。需要原生对齐且本机已有获授权的源码时，才核对 Swift 实现；否则依据已记录的能力边界说明差异。原生与 JS 按各自实现演进，不把未移植能力或同 seed 当作功能、像素一致的证据。
 
 ## 先选用途：画屏／壁纸与诗词海报
 

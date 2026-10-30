@@ -2,12 +2,18 @@
 
 [![Agent Skill](https://img.shields.io/badge/Agent_Skill-weshici--skill-8A2BE2)](./SKILL.md)
 [![Slash Command](https://img.shields.io/badge/Command-%2Fweshici-007ACC)](./SKILL.md)
-[![ZixiaoKit](https://img.shields.io/badge/Powered_by-ZixiaoKit-9B382B)](https://github.com/charsunny/zixiao-kit)
+[![JavaScript](https://img.shields.io/badge/Implementation-JavaScript-9B382B)](#项目定位)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 
-**微诗词（WeShici Skill，快捷指令 `/weshici`）** 是以 **Agent Skill 为主体** 封装的中国古典诗词、二十四节气画屏与东方水墨美学确定性视觉与短视频制片引擎。
+**微诗词（WeShici Skill，快捷指令 `/weshici`）** 是 **ZixiaoKit 诗画与视频能力的开源 JavaScript 实现及 Agent Skill 入口**，用于生成诗词画屏、壁纸、海报与短视频。
 
-本技能遵循标准 Agent Skill 规范（包含 [`SKILL.md`](./SKILL.md)、[`references/`](./references/)、[`scripts/`](./scripts/)、[`resources/`](./resources/) 与 [`examples/`](./examples/)），借鉴并深化了 [`lemomo-ai/lemo-opuscar`](https://github.com/lemomo-ai/lemo-opuscar) 的「将视频视为时间 $t$ 的纯函数 `window.render(t)` + 三层导演知识库」理念，深度结合 [子晓套件 `ZixiaoKit`](https://github.com/charsunny/zixiao-kit) 的 **ShanShui@5 Web 渲染快照**、中国传统色配色体系、真实人声逐行时间对齐（Audio-First Cue Grid）和程序化东方拟音（古琴泛音、落墨、朱印闷响、宣纸翻页），彻底攻克通用生成式 AI 视频在汉字书法乱码、水墨留白失真与声画脱节上的痛点。
+## 项目定位
+
+- **`zixiao-kit`：私有原生内核。** 维护子晓产品的 Swift 共享实现，服务 Wish 等原生应用。
+- **`weshici-skill`：开源 JavaScript 实现。** 在本仓库公开维护 Web / Canvas 绘图、排版、渲染脚本、模板及 Agent Skill 工作流，供开发者与 Agent 使用。
+- **公开能力以本仓库为准。** 安装和运行不要求访问 `zixiao-kit` 私有仓库；原生与 JS 的功能、笔法和导出能力差异在对应参考文档中记录，不承诺完整移植或跨端像素一致。
+
+本技能遵循标准 Agent Skill 规范（包含 [`SKILL.md`](./SKILL.md)、[`references/`](./references/)、[`scripts/`](./scripts/)、[`resources/`](./resources/) 与 [`examples/`](./examples/)），借鉴并深化了 [`lemomo-ai/lemo-opuscar`](https://github.com/lemomo-ai/lemo-opuscar) 的「将视频视为时间 $t$ 的纯函数 `window.render(t)` + 三层导演知识库」理念，结合本仓库公开的 **ZixiaoArt ShanShui@5 JavaScript 绘图实现**、中国传统色配色体系、真实人声逐行时间对齐（Audio-First Cue Grid）和程序化东方拟音（古琴泛音、落墨、朱印闷响、宣纸翻页），彻底攻克通用生成式 AI 视频在汉字书法乱码、水墨留白失真与声画脱节上的痛点。
 
 ---
 
@@ -71,7 +77,7 @@ graph TD
 
 ## 一、底层算法引擎升级：ZixiaoArt ShanShui@5
 
-内置来自子晓开源套件 [`charsunny/zixiao-kit`](https://github.com/charsunny/zixiao-kit) 的程序化国画 Web 快照：
+本仓库提供 ZixiaoArt 程序化山水能力的 JavaScript 实现，并持续维护 Web 端画法；对应 Swift 原生实现保留在私有 `zixiao-kit` 仓库中。公开版当前包含：
 
 1. **宋元画理三远透视构图（Sanyuan Composition）**：
    - 严格继承北宋郭熙《林泉高致》之「高远」、「深远」、「平远」三大透视法。
@@ -291,12 +297,14 @@ weshici-skill/
 
 ---
 
-## 七、关联开源项目与致谢
+## 七、技术来源与致谢
 
-- **[`charsunny/zixiao-kit`](https://github.com/charsunny/zixiao-kit)**：子晓古典文化产品矩阵的 Swift 共享内核（含 `ZixiaoArt` 原生 CoreGraphics / SwiftUI 程序化山水花鸟、`ZixiaoDesign` 传统色系统、`ZixiaoCalendar` 二十四节气七十二候历法）。
+- **`zixiao-kit`（私有）**：子晓古典文化产品矩阵的 Swift 共享内核（含 `ZixiaoArt` 原生 CoreGraphics / SwiftUI 程序化山水花鸟、`ZixiaoDesign` 传统色系统、`ZixiaoCalendar` 二十四节气七十二候历法）。
 - **[`lemomo-ai/lemo-opuscar`](https://github.com/lemomo-ai/lemo-opuscar)**：确定性纯 Web 视频渲染与三层导演文档工程方法论启发。
 - **[`LingDong-/shan-shui-inf`](https://github.com/LingDong-/shan-shui-inf) & [`LingDong-/nonflowers`](https://github.com/LingDong-/nonflowers)**：`ZixiaoArt` 底层程序化山水与花卉几何生成算法致谢（MIT License）。
 
 ## License
 
 [MIT License](./LICENSE) © 2026 charsunny (Zixiao Studio)
+
+开源范围为本仓库发布的实现；第三方代码、字体和资源保留各自许可证。此声明不开放 `zixiao-kit` 私有仓库中的其余代码。
