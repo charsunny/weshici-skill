@@ -1,6 +1,8 @@
 # Wish iOS 画屏实现基准
 
-核对日期：2026-10-26。源码：`charsunny/wish` 本机 8.0.1 已提交版本 [`9b1328b3ce9ef9727b05c3f196060147266cb72f`](https://github.com/charsunny/wish/tree/9b1328b3ce9ef9727b05c3f196060147266cb72f)，及 ZixiaoArt [`01293ad`](https://github.com/charsunny/zixiao-kit/tree/01293ad) 的五画风实现（[Wish 合并 PR](https://github.com/charsunny/wish/pull/96)、[依赖合并 PR](https://github.com/charsunny/zixiao-kit/pull/13)）。这里记录可从代码确认的行为，不代表真机导出或跨端像素一致性已验收。
+本文件记录原生与开源 JavaScript 实现的对齐依据。`zixiao-kit` 为私有仓库，下文保留原生版本号供获授权的维护者核对；公开使用 `weshici-skill` 无需访问私有源码，也不代表原生全部能力已在 JS 中实现。
+
+核对日期：2026-10-26。源码：`charsunny/wish` 本机 8.0.1 已提交版本 [`9b1328b3ce9ef9727b05c3f196060147266cb72f`](https://github.com/charsunny/wish/tree/9b1328b3ce9ef9727b05c3f196060147266cb72f)，及 ZixiaoArt 私有原生版本 `01293ad` 的五画风实现（[Wish 合并 PR](https://github.com/charsunny/wish/pull/96)、私有依赖合并记录 #13）。这里记录可从代码确认的行为，不代表真机导出或跨端像素一致性已验收。
 
 日期页脚补充基准：Wish [`2f795984`](https://github.com/charsunny/wish/commit/2f795984d3260a6915b1828496bc8b585273e892)，二维码右侧新增公历日期，节气/候在下一行；静图与视频共用且日期纳入缓存键。
 
