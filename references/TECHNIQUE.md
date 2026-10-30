@@ -43,7 +43,7 @@ window.TEXTS = function (t) {
 
 ## 2. 微诗核心动效原语
 
-四个视频模板（`huaping-motion`、`ink-story`、`poem-song-mv`、`poet-footprint`）共用 `resources/core/` 下的模块。纯函数都可在 Node 下单测（`tests/huaping-video.test.mjs`、`tests/footprint.test.mjs`）；iOS 的准确值与各输出类别规则见 [iOS 画屏实现基准](IOS-HUAPING.md)。
+视频模板（`huaping-motion`、`ink-story`）共用 `resources/core/` 下的模块。纯函数都可在 Node 下单测（`tests/huaping-video.test.mjs`）；iOS 的准确值与各输出类别规则见 [iOS 画屏实现基准](IOS-HUAPING.md)。
 
 | 模块 | 内容 |
 |---|---|
@@ -51,7 +51,6 @@ window.TEXTS = function (t) {
 | `huaping-scene.js` | 浏览器端画面管线：载入配方、生成 @5 画、9:16 放置、诗句框上提与清线、余韵取样 |
 | `huaping-afterglow.js` | 天气与余韵的画布绘制（只用墨、纸色与朱砂落日） |
 | `cinnabar-sun.js` | 海报 v2 的朱砂落日，海报与视频共用 |
-| `footprint.js` | 诗人行迹：经纬度投影、行迹线、纪年刻度布局 |
 | `huaping-video.css` | 视频模板共用的纸、画层与 huaping 排字样式 |
 | `weishi-video-core.js` | 旧的公共原语（缓动、PRNG、`renderZXArt` 桥接等） |
 
@@ -62,7 +61,7 @@ window.TEXTS = function (t) {
 - `sealState(t, t0)`：0.2s、scale 1.15→1、三次 ease-out，无回弹。旧 `sealStampState` 已改为同一数值。
 - `videoDuration(字数, 入场结束)`：$\text{DUR} = \lceil \text{入场结束} + \text{clamp}(\text{字数} \times 0.3,\ 6,\ 20) \rceil$；有朗读时模板另取录音时长的较大者。
 - `pushScale(t, DUR)`：背景 1→1.02 线性缓推，文字层不缩放。
-- 叙事与歌词：`storyTimeline`（ink-story，按朗读的逐行起始时间）与 `songTimeline`（poem-song-mv，按歌词时间戳）。朗读库只有逐行时间，没有词级时间。
+- 叙事与歌词：`storyTimeline`（ink-story，按朗读的逐行起始时间）与 `songTimeline`（按歌词时间戳）。朗读库只有逐行时间，没有词级时间。
 
 ### 2.2 程序化山水接入（ShanShui@5）
 
@@ -82,7 +81,7 @@ const frame = await paintFrame(canvas, painting, palette, { width: 1080, height:
 ### 2.3 天气与余韵
 
 - `pickWeather({ text, title, term, motifs })`：先按诗文与诗题、再按节气补一种，最多两种，雨雪互斥、日月互斥；再按画里实有的母题过滤（雨要有雨母题，雪要有雪，画里有月不叠月、有日不叠日，@5 不另加雾）。
-- `afterglowPlan`：涟漪只落在空白水面与船边（按画面像素取样确认，不进天空、不压船身，近小远大），一带淡雾放在山最密的那几行；`poem-song-mv` 的涟漪在拍点上开出。
+- `afterglowPlan`：涟漪只落在空白水面与船边（按画面像素取样确认，不进天空、不压船身，近小远大），一带淡雾放在山最密的那几行。
 - 天气取纸墨色，不用彩色发光粒子；渔灯不做（朱只在印与落日）。
 
 ---

@@ -7,7 +7,7 @@ const poem = { title: '渔父', author: '苏轼', dynasty: '宋', duration: 22, 
 const FALSE = /声画同步|词级|字级|Ducking|闪避/;
 
 test('no recording: the caption and treatment never claim a reading or timing', () => {
-  for (const style of ['ink-story', 'huaping-motion', 'poem-song-mv']) {
+  for (const style of ['ink-story', 'huaping-motion']) {
     const caption = buildCaptionMarkdown(poem, style);
     const treatment = buildTreatmentMarkdown(poem, 'yufu', style);
     assert.doesNotMatch(caption, FALSE);

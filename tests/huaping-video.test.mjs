@@ -250,21 +250,6 @@ test('deepening the ink leaves paper and grain alone and pushes strokes away fro
   assert.ok(night[0] > 110);
 });
 
-test('a sung line inks in across its sung time and the seal lands inside the song', () => {
-  const r = recipe('sumuzhe-fanzhongyan-mv');
-  const glyphCounts = r.lyrics.map(l => huapingClauses(l.text).join('').length);
-  const song = songTimeline({ lyrics: r.lyrics, glyphCounts });
-  song.lines.forEach((line, i) => {
-    assert.equal(line.times.length, glyphCounts[i]);
-    assert.equal(line.times[0], r.lyrics[i].start);
-    assert.equal(line.end, r.lyrics[i + 1]?.start ?? r.lyrics[i].end);
-    assert.ok(line.times.at(-1) + 0.25 <= line.end, `line ${i + 1} is fully inked before the next starts`);
-    assert.ok(line.end - line.times[0] >= Math.max(1.5, glyphCounts[i] * 0.22), 'readcheck dwell');
-  });
-  assert.ok(song.sealAt < r.duration);
-});
-
-
 test('clearing the verse box fades strokes inside it, feathers the edge and keeps the grain', () => {
   const w = 100, h = 20, paper = [240, 240, 240];
   const data = new Uint8ClampedArray(w * h * 4);
