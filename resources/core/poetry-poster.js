@@ -1,13 +1,46 @@
+import fs from 'node:fs';
 import { beijingDay, huapingCalendar } from './huaping-footer.js';
 
-export const posterPalettes = {
-  qinglv: { sky: ['#ebdcb8', '#d5b873'], ink: '#20483e', accent: '#a6422c', back: '#969775', mid: '#4f7965', front: '#234f43', river: '#a6b79b', sun: '#c55234' },
-  yueye: { sky: ['#132f40', '#345668'], ink: '#eee2c4', accent: '#e89970', back: '#536e79', mid: '#31515e', front: '#153744', river: '#81938a', sun: '#e7d7af' },
-  nuanjin: { sky: ['#edcf9a', '#cf975a'], ink: '#394835', accent: '#a23f27', back: '#ad935e', mid: '#7e8051', front: '#495d3f', river: '#cebc8d', sun: '#edddb3' },
-};
+export const appPalettes = JSON.parse(fs.readFileSync(new URL('./app-palettes.json', import.meta.url), 'utf8'));
+export const paletteIds = Object.keys(appPalettes.palettes);
+
 const motifs = new Set(['sun', 'moon', 'reeds', 'maple', 'cottage', 'fortress', 'pine', 'boat', 'heron']);
+const layouts = ['horizontal', 'vertical', 'hero', 'cover'];
 const count = value => Array.from(value).length;
 const cleanPoem = value => value.replace(/[\p{P}\p{Z}\s]/gu, '');
+
+const SEASON_OF_TERM = {
+  spring: ['立春', '雨水', '惊蛰', '春分', '清明', '谷雨'],
+  summer: ['立夏', '小满', '芒种'],
+  lateSummer: ['夏至', '小暑', '大暑', '立秋', '处暑'],
+  autumn: ['白露', '秋分', '寒露', '霜降'],
+  winter: ['立冬', '小雪', '大雪', '冬至', '小寒', '大寒'],
+};
+
+// Same five seasons as ZXSeasonTint / ZXPaletteCatalog.palette(for:).
+export function posterSeason(date) {
+  const { term } = huapingCalendar(date);
+  return Object.keys(SEASON_OF_TERM).find(season => SEASON_OF_TERM[season].includes(term));
+}
+
+export function seasonalPalette(date) {
+  return appPalettes.seasonal[posterSeason(date)];
+}
+
+// palette may be one of the seven ids, `seasonal`, or a deprecated alias that also implies an appearance.
+export function resolvePalette(palette = 'seasonal', date) {
+  const alias = appPalettes.aliases[palette];
+  if (alias) return { id: alias.palette, appearance: alias.appearance, alias: palette };
+  if (palette === 'seasonal') return { id: seasonalPalette(date), seasonal: true };
+  if (!Object.hasOwn(appPalettes.palettes, palette)) throw new Error(`未知 poster palette: ${palette}（可选 ${paletteIds.join(' / ')} / seasonal）`);
+  return { id: palette };
+}
+
+function seedOf(text) {
+  let seed = 2166136261;
+  for (const char of text) seed = Math.imul(seed ^ char.codePointAt(0), 16777619) >>> 0;
+  return seed;
+}
 
 // Explicit excerpts avoid silently dropping verses or reusing an unrelated daily issue.
 export function preparePosterManifest(input) {
@@ -23,7 +56,7 @@ export function preparePosterManifest(input) {
     const author = String(card.author || '').trim();
     const layout = card.layout || 'horizontal';
     const cover = layout === 'cover';
-    if (!['horizontal', 'vertical', 'hero', 'cover'].includes(layout)) throw new Error(`未知 poster layout: ${layout}`);
+    if (!layouts.includes(layout)) throw new Error(`未知 poster layout: ${layout}`);
     if (!title || count(title) > 32 || (!cover && !author) || count(author) > 12) throw new Error('poster 需要诗题（最多 32 字）和作者（最多 12 字）；封面可省略作者');
     const lines = card.lines;
     if (!Array.isArray(lines) || !lines.length || lines.length > (cover ? 1 : 2)
@@ -32,18 +65,28 @@ export function preparePosterManifest(input) {
     }
     if (layout === 'hero' && lines.some(line => count(line) > 5)) throw new Error('hero 大字版每行最多 5 字；长句请用 horizontal 或 vertical');
     if (card.poem && lines.some(line => !cleanPoem(card.poem).includes(cleanPoem(line)))) throw new Error(`摘句不在原诗中：${title}`);
-    const palette = card.palette || 'qinglv';
-    if (!Object.hasOwn(posterPalettes, palette)) throw new Error(`未知 poster palette: ${palette}`);
-    const selectedMotifs = card.motifs || [palette === 'yueye' ? 'moon' : 'sun', 'pine', 'boat'];
-    if (!Array.isArray(selectedMotifs) || selectedMotifs.some(motif => !motifs.has(motif))) throw new Error('poster motifs 包含不支持的画面元素');
+
+    const palette = resolvePalette(card.palette || 'seasonal', date);
+    if (card.appearance !== undefined && !['light', 'dark'].includes(card.appearance)) throw new Error(`poster appearance 只能是 light 或 dark：${card.appearance}`);
+    if (card.motifs !== undefined && (!Array.isArray(card.motifs) || card.motifs.some(motif => !motifs.has(motif)))) throw new Error('poster motifs 包含不支持的画面元素');
+    const appearance = card.appearance || palette.appearance || (card.motifs?.includes('moon') ? 'dark' : 'light');
+    const selectedMotifs = card.motifs || [appearance === 'dark' ? 'moon' : 'sun', 'pine', 'boat'];
     if (selectedMotifs.includes('sun') && selectedMotifs.includes('moon')) throw new Error('同张海报请选择日或月其中之一');
+
     const subtitle = String(card.subtitle || '');
     const caption = String(card.caption || '');
     if (count(subtitle) > 28 || count(caption) > 8) throw new Error('poster 副题最多 28 字，页脚短题最多 8 字');
-    let seed = 2166136261;
-    for (const char of String(card.seed ?? `${date}/${theme}/${index}/${title}`)) seed = Math.imul(seed ^ char.codePointAt(0), 16777619) >>> 0;
-    return { title, author, lines, layout, palette, motifs: selectedMotifs, subtitle, caption, seed,
-      index: cover ? 0 : ++poemIndex, total, date, theme };
+    const seed = seedOf(String(card.seed ?? `${date}/${theme}/${index}/${title}`));
+    const entry = appPalettes.palettes[palette.id];
+    return {
+      title, author, lines, layout, palette: palette.id, appearance, motifs: selectedMotifs, subtitle, caption, seed,
+      index: cover ? 0 : ++poemIndex, total, date, theme,
+      colors: entry[appearance], paint: entry.painting[appearance],
+      // A dark poster still prints its QR code dark-on-light so it scans.
+      qr: { tile: entry.light.surface, ink: entry.light.ink },
+      // The setting sun is cinnabar in both appearances: the light seal warmed toward its ochre.
+      cinnabar: { seal: entry.light.seal, secondary: entry.light.secondary },
+    };
   });
   return { date, theme, cards };
 }
