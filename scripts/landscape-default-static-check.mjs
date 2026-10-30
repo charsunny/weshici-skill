@@ -4,10 +4,17 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {startStudioServer,loadPuppeteer,findChromeExecutable} from './server-util.mjs';
+const original=process.argv.includes('--original');
 const out=process.argv[2]||'out/landscape-default/static';fs.mkdirSync(out,{recursive:true});
 const mountain={title:'山居秋暝',author:'王维',dynasty:'唐',poem:'空山新雨后，天气晚来秋。明月松间照，清泉石上流。'};
 const snow={title:'江雪',author:'柳宗元',dynasty:'唐',poem:'千山鸟飞绝，万径人踪灭。孤舟蓑笠翁，独钓寒江雪。'};
+// Public-domain texts checked against Wikisource (渔歌子) and gushiwen.cn/shiwenv_32c4c7921ebe.aspx.
+const fishingPoems=[
+ {name:'image-yugezi',title:'渔歌子',author:'张志和',dynasty:'唐',poem:'西塞山前白鹭飞，桃花流水鳜鱼肥。青箬笠，绿蓑衣，斜风细雨不须归。'},
+ {name:'image-qiujiang',title:'题秋江独钓图',author:'王士祯',dynasty:'清',poem:'一蓑一笠一扁舟，一丈丝纶一寸钩。一曲高歌一樽酒，一人独钓一江秋。'},
+];
 const jobs=[
+ ...fishingPoems.map(p=>({mode:'image',...p})),
  {name:'image-shanju-light',mode:'image',...mountain},
  {name:'image-jiangxue-light',mode:'image',...snow},
  {name:'image-shanju-dark',mode:'image',scheme:'dark',...mountain},
@@ -24,12 +31,17 @@ try{
   const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   const {name,width=1080,height=1440,...query}=job;
   await page.setViewport({width,height,deviceScaleFactor:1});
-  await page.goto(server.baseUrl+'/resources/templates/media-suite/index.html?'+new URLSearchParams({date:'2026-10-29',...query}));
+  await page.goto(server.baseUrl+'/resources/templates/media-suite/index.html?'+new URLSearchParams({date:'2026-10-29',...(original?{element_treatment:'original'}:{}),...query}));
   await page.waitForFunction(()=>window.READY,{timeout:180000});
   const record=await page.evaluate(()=>({art:window.ART_RESULT,plan:window.__huapingPlan,footer:window.__huapingFooter,exports:window.__exports,
    outside:[...document.querySelectorAll('.hp-glyph,.hp-seal,.xhs-title-group,.xhs-callout,.wc-header')].filter(el=>{const r=el.getBoundingClientRect();return r.left<0||r.top<0||r.right>innerWidth+1||r.bottom>innerHeight+1;}).map(el=>el.textContent||el.className)}));
-  assert.deepEqual(errors,[],name);assert.equal(record.art?.ok,true,name);assert.equal(record.art.brushwork?.version,'landscape-v3',name);assert.deepEqual(record.outside,[],name);
-  if(name.endsWith('axe'))assert.equal(record.art.brushwork.technique,'axe');
+  assert.deepEqual(errors,[],name);assert.equal(record.art?.ok,true,name);assert.equal(record.art.brushwork?.version,original?undefined:'landscape-v3',name);assert.deepEqual(record.outside,[],name);
+  if(!original && name.endsWith('axe'))assert.equal(record.art.brushwork.technique,'axe');
+  if(['江雪','渔歌子','题秋江独钓图'].includes(job.title)) {
+   assert.equal(record.art.request.scene,'fishing',name);
+   assert.ok(record.art.sceneElements.some(e=>e.motif==='angler'),name);
+   assert.ok(record.art.anchors.boats.some(b=>b.length>.12),name);
+  }
   const file=name+'.png',png=await page.screenshot({path:path.join(out,file)});
   records.push({...job,width,height,...record,file,sha256:createHash('sha256').update(png).digest('hex')});await page.close();console.log('PASS '+name);
  }

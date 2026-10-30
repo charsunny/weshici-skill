@@ -13,7 +13,16 @@
   "voiceSeek": 14,
   "procedural": {
     "generator": "shanshui@5",
-    "seed": "sumuzhe-1019"
+    "seed": "sumuzhe-1019",
+    "scene": "fishing",
+    "composition": "oppositeBank",
+    "motifs": [
+      "sunset",
+      "mist"
+    ],
+    "note": "秋色连波、天接水：用平远江面与远岸山影，不取山居近峰；只保留落日和寒烟，不添加渔舟与屋舍。近岸尺度为默认的 35%，留出大幅水面；画高固定以保证浅深同构。",
+    "bankScale": 0.35,
+    "artHeight": 1440
   },
   "lyrics": [
     {

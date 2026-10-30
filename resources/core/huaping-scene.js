@@ -9,7 +9,7 @@ import {
 } from './huaping-video.js';
 import { drawCinnabarSun } from './cinnabar-sun.js';
 
-const OVERRIDES = ['seed', 'scene', 'composition', 'artHeight', 'quietTop', 'verseSide', 'element_treatment', 'cun'];
+const OVERRIDES = ['seed', 'scene', 'composition', 'artHeight', 'quietTop', 'verseSide', 'element_treatment', 'cun', 'motifs', 'bankScale'];
 const SKY = ['moon', 'crescent', 'sunrise', 'sunset', 'stars', 'snow', 'rain', 'afterRain', 'mist'];
 
 export async function loadRecipe(fallback) {
@@ -38,8 +38,12 @@ export function planPainting({ poem, title, procedural, params, verseColumns, ve
     verseColumns,
     verseChars, cun:proc.cun,
   });
+  if (proc.bankScale != null) art.params.scene.bank_scale = Number(proc.bankScale);
   if (proc.element_treatment != null) art.params.element_treatment = proc.element_treatment;
-  if (scene !== matched.scene) {
+  if (proc.motifs) {
+    const list = Array.isArray(proc.motifs) ? proc.motifs : String(proc.motifs).split(',').filter(Boolean);
+    art.params.scene.motifs = window.canonicalMotifs(list);
+  } else if (scene !== matched.scene) {
     // Another scene brings its own motifs; the poem's weather and sky come along.
     art.params.scene.motifs = window.canonicalMotifs([...window.defaultMotifsForScene(scene),
       ...art.params.scene.motifs.filter(m => SKY.includes(m))]);
