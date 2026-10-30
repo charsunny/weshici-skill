@@ -439,7 +439,7 @@ async function main() {
   const origin = `http://127.0.0.1:${server.port}`;
 
   try {
-    if (['wallpaper', 'image', 'xiaohongshu', 'wechat-sticker', 'wechat'].includes(command)) {
+    if (['wallpaper', 'image', 'xiaohongshu', 'wechat-sticker', 'wechat'].includes(command) || (command === 'poster' && !opts.manifest)) {
       await enrichPoemFacts(opts);
       if (!opts.poem) throw new Error(`没有《${opts.title}》的诗句：请用 --poem 传入原文`);
     }
