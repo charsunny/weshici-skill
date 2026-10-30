@@ -237,7 +237,7 @@
   window.READY = false;
 
   document.getElementById('h-title').textContent = recipe.title;
-  document.getElementById('h-poet').textContent = `${recipe.dynasty} · ${recipe.author}`;
+  document.getElementById('h-poet').textContent = [recipe.dynasty, recipe.author].filter(Boolean).join(' · ');
   document.getElementById('h-loc').textContent = `${recipe.location} · 节气${recipe.term}`;
 
   const verseStage = document.getElementById('verse-stage');
@@ -340,7 +340,7 @@
       inscribeTitle: recipe.introTitle || `序章 · ${recipe.author}《${recipe.title}》`,
       inscribeNote:
         recipe.introNote ||
-        `${recipe.dynasty} · ${recipe.author}《${recipe.title}》，字随音落，墨随气行。`,
+        `${[recipe.dynasty, recipe.author].filter(Boolean).join(' · ')}《${recipe.title}》，字随音落，墨随气行。`,
     };
     for (const c of couplets) {
       if (ct >= c.start) curChapter = c;

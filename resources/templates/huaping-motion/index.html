@@ -328,7 +328,7 @@
     const authorEl = document.createElement('div');
     authorEl.className = 'd-author';
     authorEl.style.color = rgba(palette.ink, 0.72);
-    authorEl.textContent = `${recipe.dynasty} · ${recipe.author}`;
+    authorEl.textContent = [recipe.dynasty, recipe.author].filter(Boolean).join(' · ');
     detailStage.appendChild(authorEl);
     units.push(authorEl);
 
@@ -369,7 +369,7 @@
     metaColEl.className = 'v-meta';
     metaColEl.style.color = rgba(palette.ink, 0.76);
     const metaText = document.createElement('span');
-    metaText.textContent = `${recipe.dynasty} · ${recipe.author}《${recipe.title}》`;
+    metaText.textContent = `${[recipe.dynasty, recipe.author].filter(Boolean).join(' · ')}《${recipe.title}》`;
     metaColEl.appendChild(metaText);
 
     sealEl = document.createElement('div');

@@ -55,7 +55,7 @@ function makeSlug(str) {
 function buildTreatmentMarkdown(recipe, slug, style) {
   const title = recipe.title || recipe.poem?.title || '无题';
   const author = recipe.author || recipe.poem?.author || '佚名';
-  const dynasty = recipe.dynasty || recipe.poem?.dynasty || '唐宋';
+  const dynasty = recipe.dynasty || recipe.poem?.dynasty || '';
   const cues = recipe.couplets || recipe.poem?.cues || [];
   const rows = cues
     .map(
@@ -68,7 +68,7 @@ function buildTreatmentMarkdown(recipe, slug, style) {
 
 - **剧目代号**: \`${slug}\`
 - **视觉母版**: \`${style}\`
-- **一句话主旨 (Premise)**: 以东方水墨与程序化山水还原 ${dynasty}·${author}《${title}》的诗境声场，做到字字落音、笔笔生墨。
+- **一句话主旨 (Premise)**: 以东方水墨与程序化山水还原 ${[dynasty, author].filter(Boolean).join('·')}《${title}》的诗境声场，做到字字落音、笔笔生墨。
 - **传统色方案**: \`${recipe.mood || '旷达'}\` · 天气意象 \`${recipe.weather || 'mist'}\` · 算法山水 \`${recipe.procedural?.generator || 'shanshui@2'} (${recipe.procedural?.variant || '远山'})\`
 - **成片总时长**: \`${recipe.duration}s\` (\`1080×1920\`, 30fps, \`-14 LUFS\`)
 
@@ -89,13 +89,13 @@ ${rows || '| #1 | `0.85s – end` | 全诗显影 | 逐字墨洇 + 落印 |'}
 function buildCaptionMarkdown(recipe) {
   const title = recipe.title || recipe.poem?.title || '无题';
   const author = recipe.author || recipe.poem?.author || '佚名';
-  const dynasty = recipe.dynasty || recipe.poem?.dynasty || '唐宋';
+  const dynasty = recipe.dynasty || recipe.poem?.dynasty || '';
   const lines = (recipe.lines || recipe.poem?.lines || (recipe.couplets || []).map((c) => c.text)).join('\n');
   return `【微诗动态画屏 · 《${title}》】
 
 ${lines}
 
-—— ${dynasty} · ${author}《${title}》
+—— ${[dynasty, author].filter(Boolean).join(' · ')}《${title}》
 
 本片由微诗视频工作台（Weishi Video Studio）确定性渲染生成：
 · 视觉意境：采用「${recipe.mood || '旷达'}」传统色纸本与 ZixiaoArt「${recipe.procedural?.variant || '远山'}」算法水墨山水，叠合「${recipe.weather || 'mist'}」自然天气粒子；
