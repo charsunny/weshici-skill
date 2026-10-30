@@ -5,12 +5,10 @@
 export const STYLE_NAMES = {
   'huaping-motion': '动态画屏',
   'ink-story': '写意水墨',
-  'poem-song-mv': '一曲诗词',
-  'poet-footprint': '诗人行迹',
 };
 
 // Templates whose text follows the recording's timestamps; huaping-motion keeps the App's fixed reveal.
-const TIMED = new Set(['ink-story', 'poem-song-mv']);
+const TIMED = new Set(['ink-story']);
 
 // What the clip really has, for the treatment and the caption: only claim a reading when the recipe
 // carries one, and only line-level timing (the reading library has a start time per line, no words).

@@ -11,7 +11,7 @@
  * 用法：
  *   node tools/video-studio/bin/render.mjs --scene huaping-motion --recipe hanlu-dufu --sheet
  *   node tools/video-studio/bin/render.mjs --scene huaping-motion --recipe qingming-dumu --sheet-only
- *   node tools/video-studio/bin/render.mjs --scene poet-footprint --workers 4 --sheet
+ *   node scripts/render.mjs --scene ink-story --recipe wanqing-dufu-story --workers 4 --sheet
  */
 
 import fs from 'node:fs';

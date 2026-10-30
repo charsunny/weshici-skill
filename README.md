@@ -168,9 +168,9 @@ npm run weshici -- douyin --title "使至塞上" --workers 4
 
 ---
 
-## 三、五大东方美学母版与实拍接触表 (`examples/`)
+## 三、视频母版与接触表 (`examples/`)
 
-四个视频模板遵循 `window.render(t)` 确定性契约，输出 `9:16`（`1080×1920`），用 `readcheck` 质检字幕停留时长。原则同诗词海报：主角是诗和画，App 主题色、底近中性，朱只在印与落日；没有页眉、提示框、唱片或声波。以下是各配方的 9 帧接触表：
+两个视频模板遵循 `window.render(t)` 确定性契约，输出 `9:16`（`1080×1920`），用 `readcheck` 质检字幕停留时长。原则同诗词海报：主角是诗和画，App 主题色、底近中性，朱只在印与落日；没有页眉、提示框、唱片或声波。以下是各配方的 9 帧接触表：
 
 | 01 动态画屏 (`huaping-motion`)<br>寒露 · 杜甫《月夜忆舍弟》· 月白深色 | 01 动态画屏 (`huaping-motion`)<br>清明 · 杜牧《清明》· 苍筤浅色 |
 | :---: | :---: |
@@ -179,10 +179,6 @@ npm run weshici -- douyin --title "使至塞上" --workers 4
 | 02 写意水墨 (`ink-story`)<br>苏轼《渔父》· 按朗读逐联题跋 | 02 写意水墨 (`ink-story`)<br>杜甫《晚晴》· 朱砂落日 + 墨晕转场 |
 | :---: | :---: |
 | ![苏轼渔父接触表](./examples/sushi-yufu.sheet.jpg) | ![杜甫晚晴接触表](./examples/ink-story-wanqing-dufu-story.sheet.jpg) |
-
-| 03 诗人行迹 (`poet-footprint`)<br>苏轼 黄州 · 惠州 · 儋州 · 淡墨舆图与印色行迹 | 04 一曲诗词 (`poem-song-mv`)<br>范仲淹《苏幕遮》· 当前唱句 + 节拍涟漪 |
-| :---: | :---: |
-| ![苏轼行迹接触表](./examples/poet-footprint.sheet.jpg) | ![苏幕遮接触表](./examples/poem-song-mv-sumuzhe-fanzhongyan-mv.sheet.jpg) |
 
 ---
 
@@ -205,7 +201,6 @@ npm run preview
 ```bash
 npm run readcheck -- --scene huaping-motion --recipe hanlu-dufu
 npm run readcheck -- --scene ink-story --recipe sushi-yufu
-npm run readcheck -- --scene poet-footprint --recipe sushi-footprint
 ```
 
 ### 4. 秒级生成九宫格关键帧接触表 (`--sheet-only`)
@@ -218,8 +213,6 @@ npm run render -- --scene huaping-motion --recipe hanlu-dufu --sheet-only
 npm run render -- --scene huaping-motion --recipe hanlu-dufu --workers 4 --sheet
 npm run render -- --scene huaping-motion --recipe qingming-dumu --workers 4 --sheet
 npm run render -- --scene ink-story --recipe sushi-yufu --workers 4 --sheet
-npm run render -- --scene poet-footprint --recipe sushi-footprint --workers 4 --sheet
-npm run render -- --scene poem-song-mv --recipe sumuzhe-fanzhongyan-mv --workers 4 --sheet
 ```
 
 ---
@@ -258,11 +251,9 @@ weshici-skill/
 │   ├── DIRECTOR.md                  # 导演企划、TREATMENT 模板与两阶段把关手册
 │   ├── IOS-HUAPING.md               # Wish iOS 8.0.1 源码基准与 Web 差异
 │   ├── TECHNIQUE.md                 # 确定性渲染契约 (window.render(t) / EV / TEXTS(t))
-│   └── styles/                      # 五大东方美学风格手册 (STYLE.md)
+│   └── styles/                      # 风格手册 (STYLE.md)
 │       ├── huaping-motion/STYLE.md  # 01 动态画屏 · 节气与每日一诗
 │       ├── ink-story/STYLE.md       # 02 写意水墨 · 诗题页与逐联题跋
-│       ├── poet-footprint/STYLE.md  # 03 诗人行迹 · 淡墨舆图与站点题跋
-│       ├── poem-song-mv/STYLE.md    # 04 一曲诗词 · 当前唱句与节拍涟漪
 │       └── living-promo/STYLE.md    # 05 活体实机 · 产品与专题宣发（只有风格文档，无模板）
 ├── scripts/                         # 技能可执行自动化脚本
 │   ├── generate.mjs                 # 统一素材与社媒成片生成 CLI (wallpaper/image/xiaohongshu/wechat/douyin)
@@ -274,12 +265,10 @@ weshici-skill/
 │   ├── preview.mjs                  # 启动交互式浏览器工作台 (http://127.0.0.1:4180)
 │   └── server-util.mjs              # 纯 Web 场景本地资源伺服与 Puppeteer 探针
 ├── resources/                       # 模板、核心组件、引擎与配方
-│   ├── core/                        # 视频共用核（App 配色、入场与落印、@5 画面管线、余韵、朱砂落日、行迹舆图）与拟音合成器
+│   ├── core/                        # 视频共用核（App 配色、入场与落印、@5 画面管线、余韵、朱砂落日）与拟音合成器
 │   ├── templates/                   # 纯 Web 场景模板 (HTML + Canvas + SVG)
 │   │   ├── huaping-motion/          # 动态画屏模板
 │   │   ├── ink-story/               # 写意水墨模板
-│   │   ├── poet-footprint/          # 诗人行迹模板
-│   │   ├── poem-song-mv/            # 一曲诗词 MV 模板
 │   │   └── media-suite/             # 社媒套系与素材模板 (小红书/微信贴图/壁纸/诗画)
 │   ├── recipes/                     # 经典剧目导演配方 JSON
 │   ├── vendor/zxart/                # 内置 ZixiaoArt Web Worker 程序化山水模型 (ShanShui@5 / @4)

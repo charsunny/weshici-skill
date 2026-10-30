@@ -5,7 +5,7 @@ description: >-
   (微诗词 · WeShici Skill). Trigger via `/weshici` or use whenever the user wants to plan, direct, preview,
   audit, or render shanshui wallpapers (山水壁纸), static poetry images (诗意画), social poetry posters (诗词海报), motion screens (动态画屏),
   Xiaohongshu 4-card suites (小红书图文), WeChat stickers & daily cards (微信贴图/日签), Douyin videos (抖音短视频),
-  ink-wash poetry stories (写意水墨), poet historical footprint maps (诗人行迹舆图), or poem song MVs (一曲诗词)
+  or ink-wash poetry stories (写意水墨)
   using deterministic pure-web rendering (`window.render(t)`), ZixiaoArt procedural shanshui@5,
   audio-first word-level cue alignment, procedural Oriental foley, and `-14 LUFS` mastering.
 metadata:
@@ -221,7 +221,7 @@ node scripts/generate.mjs douyin --title "使至塞上" --workers 4
 
 1. **[`references/DIRECTOR.md`](./references/DIRECTOR.md)**：导演企划流程（分镜单 → 九宫格接触表 Checkpoint #1 → 关键帧静审 Checkpoint #2 → 全量渲染）。
 2. **[`references/TECHNIQUE.md`](./references/TECHNIQUE.md)**：确定性渲染契约（`window.DUR`、`window.READY`、`window.render(t)`、`window.EV`、`window.TEXTS(t)`）。
-3. **[`references/styles/`](./references/styles/)**：五大风格模板规范（`huaping-motion` 动态画屏、`ink-story` 写意水墨、`poet-footprint` 诗人行迹、`poem-song-mv` 一曲诗词、`living-promo` 活体宣发）。
+3. **[`references/styles/`](./references/styles/)**：风格模板规范（`huaping-motion` 动态画屏、`ink-story` 写意水墨；`living-promo` 活体宣发只有风格文档）。
 
 ---
 

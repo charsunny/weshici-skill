@@ -10,7 +10,6 @@ const jobs = [
   {template:'huaping-motion', recipe:'qingming-dumu', palette:'canglang', appearance:'light'},
   {template:'huaping-motion', recipe:'hanlu-dufu', palette:'moon-white', appearance:'dark'},
   {template:'ink-story', recipe:'wanqing-dufu-story', palette:'yaqing', appearance:'light'},
-  {template:'poem-song-mv', recipe:'sumuzhe-fanzhongyan-mv', palette:'canglang', appearance:'dark'},
 ];
 fs.mkdirSync(out, {recursive:true});
 const sha = b => createHash('sha256').update(b).digest('hex');

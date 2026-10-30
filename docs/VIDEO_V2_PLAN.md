@@ -1,5 +1,7 @@
 # 视频模板 v2：审美升级
 
+> 2026-10-29 更新：`poet-footprint`（诗人行迹）与 `poem-song-mv`（一曲诗词）已从公开仓库移出，转为私有维护，后续作为付费功能提供。本文对这两个模板的描述只作历史记录。
+
 2026-10-28 定。范围是四个视频模板：`huaping-motion`、`ink-story`、`poem-song-mv`、`poet-footprint`（`living-promo` 只有风格文档，没有模板，这次不做）。原则沿用诗词海报 v2（`docs/POSTER_V2_PLAN.md`、`references/POETRY-POSTER.md`）：**主角是诗和画，配色不抢戏；底近中性；颜色只在小处；朱只在印。** 本分支基于 `feat/poster-v2`（PR #4）并合入了 `fix/content-honesty`（PR #5），可以直接用 `resources/core/app-palettes.json` 和 `scripts/poem-lookup.mjs`。
 
 ## 1. 基线问题

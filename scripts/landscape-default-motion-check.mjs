@@ -11,8 +11,6 @@ const jobs = [
   ['huaping-motion','hanlu-dufu','moon-white'],
   ['huaping-motion','daxue-liuzongyuan','moon-white'],
   ['ink-story','wanqing-dufu-story','yaqing'],
-  ['poem-song-mv','sumuzhe-fanzhongyan-mv','moon-white'],
-  ['poet-footprint','sushi-footprint','yaqing'],
 ].flatMap(([template,recipe,palette])=>['light','dark'].map(appearance=>({template,recipe,palette,appearance})));
 
 fs.mkdirSync(out, {recursive:true});
@@ -31,8 +29,7 @@ try {
     await page.goto(`${server.baseUrl}/resources/templates/${job.template}/index.html?${new URLSearchParams({...job,capture:'1'})}`);
     await page.waitForFunction(() => window.READY, {timeout:180000});
     const state = await page.evaluate(() => ({duration:window.DUR, scene:window.SCENE, recipe:window.RECIPE?.id, warnings:window.WARNINGS || []}));
-    if(job.template==='poet-footprint')assert.equal(state.recipe,'sushi-footprint');
-    else assert.equal(state.scene.brushwork?.version,'landscape-v3');
+    assert.equal(state.scene.brushwork?.version,'landscape-v3');
     const duration = state.duration;
     assert.ok(duration > 3);
     const times = Array.from({length:9},(_,i)=>.35+i/8*(duration-.7));
@@ -71,7 +68,7 @@ try {
     await sheet.evaluate(()=>[...document.querySelectorAll('figure')].slice(9).forEach(el=>el.remove()));
     await sheet.setViewport({width:936,height:Math.ceil(frames.length/3)*568+16});
     const canonical=(job.recipe==='hanlu-dufu'?'dark':'light')===job.appearance;
-    if(canonical)await sheet.screenshot({path:job.template==='poet-footprint'?'examples/poet-footprint.sheet.jpg':`examples/${job.template}-${job.recipe}.sheet.jpg`,type:'jpeg',quality:92});
+    if(canonical)await sheet.screenshot({path:`examples/${job.template}-${job.recipe}.sheet.jpg`,type:'jpeg',quality:92});
     await sheet.close(); await page.close();
     records.push({...job,...state,frames,adjacent,seekDeterministic:true});
     console.log(`PASS ${name}; layout flags: ${frames.concat(adjacent).reduce((n,f)=>n+f.problems.length,0)}; warnings: ${state.warnings.length}`);

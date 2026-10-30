@@ -4,7 +4,7 @@
  *
  * 用法：
  *   node tools/video-studio/bin/readcheck.mjs --scene huaping-motion --recipe hanlu-dufu
- *   node tools/video-studio/bin/readcheck.mjs --scene poet-footprint
+ *   node scripts/readcheck.mjs --scene ink-story --recipe wanqing-dufu-story
  */
 
 import {
