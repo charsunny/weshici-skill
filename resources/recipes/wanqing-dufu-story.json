@@ -4,52 +4,35 @@
   "dynasty": "唐",
   "author": "杜甫",
   "term": "秋分",
-  "location": "大历二年 · 夔州峡江",
+  "palette": "seasonal",
   "duration": 22,
   "audioMode": "voice+bgm+foley",
   "voice": "/assets/wish/audio/poetryhub-voicebox-readings/2026-06-22/026-杜甫-晚晴-34086aad/reading_voicebox_male.mp3",
   "bgm": "/artifacts/promo-8.0/assets/audio/radio-calm.m4a",
-  "seal": "少陵",
   "procedural": {
-    "generator": "shanshui@2",
-    "seed": "wanqing-dufu-1019",
-    "variant": "江岸",
-    "params": {
-      "density": 0.88,
-      "quiet_top": 0.42,
-      "verse_side": "left",
-      "verse_columns": 4,
-      "verse_chars": 10
-    }
+    "generator": "shanshui@5",
+    "seed": "wanqing-dufu-1019"
   },
   "couplets": [
     {
       "start": 3.63,
       "end": 6.38,
-      "text": "返照斜初彻，浮云薄未归。",
-      "inscribeTitle": "初章 · 夕照穿云",
-      "inscribeNote": "峡雨初歇，朱砂夕阳斜照江面。"
+      "text": "返照斜初彻，浮云薄未归。"
     },
     {
       "start": 6.39,
       "end": 9.31,
-      "text": "江虹明远饮，峡雨落余飞。",
-      "inscribeTitle": "二章 · 虹饮峡江",
-      "inscribeNote": "长虹饮涧，巫峡残雨带光飞落。"
+      "text": "江虹明远饮，峡雨落余飞。"
     },
     {
       "start": 9.32,
-      "end": 15.20,
-      "text": "凫雁终高去，熊罴觉自肥。",
-      "inscribeTitle": "三章 · 万物自得",
-      "inscribeNote": "秋雁展翅高飞，山林万物各安其命。"
+      "end": 15.2,
+      "text": "凫雁终高去，熊罴觉自肥。"
     },
     {
       "start": 15.21,
       "end": 22.0,
-      "text": "秋分客尚在，竹露夕微微。",
-      "inscribeTitle": "终章 · 竹露客心",
-      "inscribeNote": "秋分孤客滞留异乡，唯见翠竹清露微光。"
+      "text": "秋分客尚在，竹露夕微微。"
     }
   ]
 }

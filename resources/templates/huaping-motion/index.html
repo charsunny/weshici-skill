@@ -3,519 +3,118 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=1080,height=1920,initial-scale=1" />
-<title>微诗 · 动态画屏短视频 (huaping-motion)</title>
-<style>
-  @font-face {
-    font-family: "SongSemi";
-    src: url("/fonts/SourceHanSerifSC-SemiBold.otf") format("opentype");
-    font-weight: 600;
-    font-display: block;
-  }
-  @font-face {
-    font-family: "SongReg";
-    src: url("/fonts/SourceHanSerifSC-Regular.otf") format("opentype");
-    font-weight: 400;
-    font-display: block;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: #0b1113;
-    font-family: "SongReg", "Songti SC", "STSong", serif;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  #stage {
-    position: relative;
-    width: 1080px;
-    height: 1920px;
-    overflow: hidden;
-    transform-origin: top left;
-    user-select: none;
-  }
-
-  /* 背景画与天气层：缓推 <= 2%，文字层不跟着缩放 (HUAPING_MOTION_PLAN §6.2) */
-  #art-wrap {
-    position: absolute;
-    inset: 0;
-    transform-origin: 50% 58%;
-    will-change: transform;
-  }
-  #art-canvas, #weather-canvas {
-    position: absolute;
-    inset: 0;
-    width: 1080px;
-    height: 1920px;
-    display: block;
-  }
-
-  /* 顶部柔光纸纱遮罩，确保题签与诗句对比度 >= 4.5:1 */
-  #paper-veil {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-  }
-
-  /* 左上角固定水印：从第 0 帧起就在、不动 (HUAPING_MOTION_PLAN §6.1) */
-  #watermark {
-    position: absolute;
-    top: 108px;
-    left: 112px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    z-index: 10;
-  }
-  .wm-dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 2px;
-  }
-  .wm-brand {
-    font-family: "SongSemi", serif;
-    font-size: 24px;
-    letter-spacing: 0.28em;
-  }
-  .wm-sep {
-    font-size: 20px;
-    opacity: 0.45;
-  }
-  .wm-term {
-    font-size: 22px;
-    letter-spacing: 0.22em;
-    opacity: 0.78;
-  }
-
-  /* 右上节气题签匣 */
-  #term-badge {
-    position: absolute;
-    top: 104px;
-    right: 112px;
-    padding: 12px 14px;
-    border: 1.5px solid currentColor;
-    border-radius: 4px;
-    writing-mode: vertical-rl;
-    font-family: "SongSemi", serif;
-    font-size: 24px;
-    letter-spacing: 0.28em;
-    z-index: 10;
-  }
-
-  /* 笺样竖排诗栏 (Quote Vertical Mode) */
-  #quote-stage {
-    position: absolute;
-    top: 230px;
-    left: 112px;
-    display: flex;
-    flex-direction: row-reverse;
-    justify-content: flex-end;
-    align-items: flex-start;
-    gap: 32px;
-    z-index: 10;
-  }
-  .v-col {
-    width: 64px;
-    writing-mode: vertical-rl;
-    font-family: "SongSemi", serif;
-    font-size: 54px;
-    line-height: 1.2;
-    letter-spacing: 0.22em;
-    display: flex;
-    align-items: center;
-  }
-  .v-char {
-    display: inline-block;
-    will-change: transform, opacity, filter;
-  }
-  .v-meta {
-    width: 48px;
-    writing-mode: vertical-rl;
-    font-family: "SongReg", serif;
-    font-size: 25px;
-    letter-spacing: 0.28em;
-    margin-top: 36px;
-    display: flex;
-    align-items: center;
-    gap: 22px;
-  }
-  .seal-box {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 48px;
-    border-radius: 5px;
-    font-family: "SongSemi", serif;
-    font-size: 21px;
-    line-height: 1.05;
-    letter-spacing: 0.06em;
-    writing-mode: horizontal-tb;
-    text-align: center;
-    padding: 3px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
-    transform-origin: center center;
-  }
-
-  /* 详情页横排全屏模式 (Detail Fullscreen Mode) */
-  #detail-stage {
-    position: absolute;
-    top: 260px;
-    left: 140px;
-    right: 140px;
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    z-index: 10;
-  }
-  .d-title {
-    font-family: "SongSemi", serif;
-    font-size: 62px;
-    letter-spacing: 0.22em;
-    margin-bottom: 24px;
-  }
-  .d-author {
-    font-size: 28px;
-    letter-spacing: 0.32em;
-    margin-bottom: 56px;
-  }
-  .d-line {
-    font-family: "SongSemi", serif;
-    font-size: 46px;
-    line-height: 1.95;
-    letter-spacing: 0.16em;
-    margin-bottom: 14px;
-  }
-
-  /* 题跋夹注与农历题签：置于左栏诗句下方留白区（shanshui@2 verse_side=left 留白带），不压山水与扁舟 */
-  #inscription-stage {
-    position: absolute;
-    left: 112px;
-    top: 860px;
-    width: 440px;
-    z-index: 10;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-  .ins-lunar {
-    font-size: 22px;
-    letter-spacing: 0.22em;
-  }
-  .ins-divider {
-    width: 56px;
-    height: 1.5px;
-  }
-  .ins-note {
-    font-size: 25px;
-    line-height: 1.75;
-    letter-spacing: 0.08em;
-  }
-</style>
+<link rel="icon" href="data:,">
+<title>微诗 · 动态画屏 (huaping-motion)</title>
+<link rel="stylesheet" href="/resources/core/huaping-video.css">
 </head>
 <body>
   <div id="stage">
     <div id="art-wrap">
-      <canvas id="art-canvas" width="1080" height="1920"></canvas>
-      <canvas id="weather-canvas" width="1080" height="1920"></canvas>
+      <canvas id="art"></canvas>
+      <canvas id="weather" width="1080" height="1920"></canvas>
     </div>
-    <div id="paper-veil"></div>
-
-    <!-- 左上角固定水印 -->
-    <div id="watermark">
-      <span class="wm-dot" id="wm-dot"></span>
-      <span class="wm-brand" id="wm-brand">微诗</span>
-      <span class="wm-sep">·</span>
-      <span class="wm-term" id="wm-term">寒露</span>
-    </div>
-
-    <!-- 右上角节气竖排印签 -->
-    <div id="term-badge">寒露</div>
-
-    <!-- 竖排笺样舞台 -->
-    <div id="quote-stage"></div>
-
-    <!-- 横排详情页舞台 -->
-    <div id="detail-stage"></div>
-
-    <!-- 底部书法题跋/夹注 -->
-    <div id="inscription-stage">
-      <div class="ins-lunar" id="ins-lunar"></div>
-      <div class="ins-divider" id="ins-divider"></div>
-      <div class="ins-note" id="ins-note"></div>
-    </div>
+    <div id="type"></div>
   </div>
 
+<script src="/vendor/zxart/zxart-compose.js"></script>
+<script src="/vendor/zxart/zxart-shanshui-v5.js"></script>
 <script type="module">
+  import { huapingClauses, huapingPlan, mountHuaping } from '/resources/core/huaping-layout.js';
   import {
-    clamp,
-    lerp,
-    inv,
-    easeOut,
-    resolvePalette,
-    rgba,
-    inkUnitState,
-    sealStampState,
-    computeHuapingDuration,
-    renderZXArt,
-    chooseWeather,
-    drawWeather,
-  } from '/tools/video-studio/core/weishi-video-core.js';
+    TYPE_FLOOR, typeFloorIssues, inkRevealPlan, inkGlyphState, sealState, videoDuration, pushScale,
+  } from '/resources/core/huaping-video.js';
+  import { loadRecipe, planPainting, applyPalette, paintFrame, afterglowScene, tintSeals, previewLoop } from '/resources/core/huaping-scene.js';
+  import { drawAfterglow } from '/resources/core/huaping-afterglow.js';
 
-  const params = new URLSearchParams(location.search);
-  const recipeSlug = params.get('recipe') || 'hanlu-dufu';
-
-  const res = await fetch(`/tools/video-studio/recipes/${recipeSlug}.json`);
-  const recipe = await res.json();
-
-  // 允许 URL 参数覆盖版式、深浅色与调色板
-  const layoutMode = params.get('layout') || recipe.layout || 'quote';
-  const scheme = params.get('scheme') || recipe.scheme || 'dark';
-  const paletteId = params.get('palette') || recipe.paletteId || 'lanhui';
-  const palette = resolvePalette(paletteId, scheme);
-
-  const stage = document.getElementById('stage');
-  const artWrap = document.getElementById('art-wrap');
-  const artCanvas = document.getElementById('art-canvas');
-  const weatherCanvas = document.getElementById('weather-canvas');
-  const weatherCtx = weatherCanvas.getContext('2d');
-  const paperVeil = document.getElementById('paper-veil');
-
-  stage.style.background = palette.paper;
-  stage.style.color = palette.ink;
-
-  // 顶部与左侧柔纱托底，确保正文对比度 >= 4.5:1
-  paperVeil.style.background =
-    scheme === 'dark'
-      ? `linear-gradient(180deg, ${rgba(palette.paper, 0.72)} 0%, ${rgba(palette.paper, 0.36)} 46%, ${rgba(palette.paper, 0.12)} 75%, ${rgba(palette.paper, 0.55)} 100%)`
-      : `linear-gradient(180deg, ${rgba(palette.paper, 0.68)} 0%, ${rgba(palette.paper, 0.28)} 46%, ${rgba(palette.paper, 0.08)} 75%, ${rgba(palette.paper, 0.48)} 100%)`;
-
-  document.getElementById('wm-dot').style.background = palette.seal;
-  document.getElementById('wm-term').textContent = `${recipe.term} · ${recipe.name || palette.name}`;
-  const termBadge = document.getElementById('term-badge');
-  termBadge.textContent = recipe.term;
-  termBadge.style.color = palette.seal;
-  termBadge.style.borderColor = rgba(palette.seal, 0.55);
-
-  const insLunar = document.getElementById('ins-lunar');
-  const insDivider = document.getElementById('ins-divider');
-  const insNote = document.getElementById('ins-note');
-  insLunar.textContent = recipe.lunar || '';
-  insLunar.style.color = rgba(palette.ink, 0.64);
-  insDivider.style.background = rgba(palette.seal, 0.65);
-  insNote.textContent = recipe.note || '';
-  insNote.style.color = rgba(palette.ink, 0.84);
-
-  // 构建 DOM 单元（竖排逐字 or 横排逐行）
-  const quoteStage = document.getElementById('quote-stage');
-  const detailStage = document.getElementById('detail-stage');
-  const units = [];
-  let sealEl = null;
-  let metaColEl = null;
-
-  if (layoutMode === 'detail') {
-    quoteStage.style.display = 'none';
-    detailStage.style.display = 'flex';
-    const titleEl = document.createElement('div');
-    titleEl.className = 'd-title';
-    titleEl.textContent = recipe.title;
-    detailStage.appendChild(titleEl);
-    units.push(titleEl);
-
-    const authorEl = document.createElement('div');
-    authorEl.className = 'd-author';
-    authorEl.style.color = rgba(palette.ink, 0.72);
-    authorEl.textContent = [recipe.dynasty, recipe.author].filter(Boolean).join(' · ');
-    detailStage.appendChild(authorEl);
-    units.push(authorEl);
-
-    const lines = recipe.fullLines || recipe.lines || [];
-    for (const line of lines) {
-      const lEl = document.createElement('div');
-      lEl.className = 'd-line';
-      lEl.textContent = line;
-      detailStage.appendChild(lEl);
-      units.push(lEl);
-    }
-
-    sealEl = document.createElement('div');
-    sealEl.className = 'seal-box';
-    sealEl.style.background = palette.seal;
-    sealEl.style.color = '#FAF6F0';
-    sealEl.style.marginTop = '28px';
-    sealEl.textContent = recipe.seal || '微詩';
-    detailStage.appendChild(sealEl);
-  } else {
-    quoteStage.style.display = 'flex';
-    detailStage.style.display = 'none';
-    const lines = recipe.lines || [];
-    for (const line of lines) {
-      const col = document.createElement('div');
-      col.className = 'v-col';
-      for (const ch of Array.from(line)) {
-        const span = document.createElement('span');
-        span.className = 'v-char';
-        span.textContent = ch;
-        col.appendChild(span);
-        units.push(span);
-      }
-      quoteStage.appendChild(col);
-    }
-
-    metaColEl = document.createElement('div');
-    metaColEl.className = 'v-meta';
-    metaColEl.style.color = rgba(palette.ink, 0.76);
-    const metaText = document.createElement('span');
-    metaText.textContent = `${[recipe.dynasty, recipe.author].filter(Boolean).join(' · ')}《${recipe.title}》`;
-    metaColEl.appendChild(metaText);
-
-    sealEl = document.createElement('div');
-    sealEl.className = 'seal-box';
-    sealEl.style.background = palette.seal;
-    sealEl.style.color = '#FAF6F0';
-    sealEl.textContent = recipe.seal || '微詩';
-    metaColEl.appendChild(sealEl);
-    quoteStage.appendChild(metaColEl);
-  }
-
-  // 计算时间线参数 (对齐 HUAPING_MOTION_PLAN §4 & §6.7)
-  const ENTRY_START = 0.35;
-  const MAX_SPAN = 2.15;
-  const probeLast = inkUnitState(999, ENTRY_START, units.length - 1, units.length, {
-    stagger: layoutMode === 'detail' ? 0.28 : 0.11,
-    maxSpan: MAX_SPAN,
-  });
-  const unitsDoneTime = probeLast.doneTime;
-  const stampStartTime = unitsDoneTime + 0.28;
-  const noteStartTime = stampStartTime + 0.24;
-  const entryEnd = noteStartTime + 0.35;
-
-  const totalChars = (recipe.lines || []).join('').length;
-  window.DUR = Number(params.get('dur')) || computeHuapingDuration(totalChars, entryEnd);
+  // The moving huaping: the same painting and typesetting as the static image, with the App's ink
+  // reveal and an afterglow once the poem has settled.
+  const W = 1080, H = 1920;
+  const { params, recipe, palettes } = await loadRecipe('hanlu-dufu');
   window.RECIPE = recipe;
 
-  // 声明式音效触发点 (供 render.mjs 自动合成东方拟音)
+  // Poem and attribution come only from the recipe; an unknown dynasty is simply left out.
+  const lines = recipe.lines || [];
+  const poem = lines.join('，');
+  const { title = '', author = '', dynasty = '' } = recipe;
+  const clauses = huapingClauses(poem);
+  if (!clauses.length) throw new Error('配方缺少诗句 lines');
+  const longest = Math.max(...clauses.map(line => Array.from(line).length));
+
+  const painting = planPainting({ poem, title, procedural: recipe.procedural, params,
+    verseColumns: Math.min(4, clauses.length),
+    verseChars: longest >= 6 && longest <= 8 ? Math.min(10, longest + 2) : longest });
+  const palette = applyPalette(palettes, recipe, params, painting);
+  await document.fonts.load('100px SongReg');
+  await document.fonts.ready;
+  const frame = await paintFrame(document.getElementById('art'), painting, palette, { width: W, height: H });
+
+  let preferredSize = Infinity;
+  if (longest >= 6 && longest <= 8) {
+    preferredSize = huapingPlan({ poem: clauses.map(line => Array.from(line).slice(0, 5).join('')).join('，'),
+      title, author, dynasty, verse: frame.reference({ ...painting.art.params, verse_chars: 5 }), width: W, height: H }).fontSize;
+  }
+  const typeLayer = document.getElementById('type');
+  const plan = await mountHuaping(typeLayer, { poem, title, author, dynasty, verse: frame.verse, width: W, height: H,
+    accent: palette.colors.accent, preferredSize, minInscription: TYPE_FLOOR.small * W / 1080 });
+  const seal = tintSeals(typeLayer);
+  const issues = typeFloorIssues(plan, W);
+  if (plan.omittedClauses.length) issues.push(`未展示的诗句：${plan.omittedClauses.join('，')}`);
+  window.WARNINGS = issues;
+  issues.forEach(issue => console.warn(issue));
+
+  const glyphs = [...typeLayer.querySelectorAll(plan.vertical ? '.hp-verses .hp-glyph' : '.hp-line')];
+  const colophon = typeLayer.querySelector(plan.vertical ? '.hp-colophon' : '.hp-credit');
+  const reveal = inkRevealPlan({ count: glyphs.length });
+  const pt = W / 393;
+  // A recipe with a reading must also hold the whole recording, not just the silent-reading hold.
+  window.DUR = Number(params.get('dur')) || Math.max(videoDuration(plan.clauses.join('').length, reveal.settle),
+    recipe.voice ? Math.ceil(recipe.duration || 0) : 0);
+
   window.EV = [
     { t: 0.12, sfx: 'qin-harmonic', gain: -8 },
-    { t: ENTRY_START, sfx: 'ink-drop', gain: -9 },
-    { t: Number(stampStartTime.toFixed(2)), sfx: 'seal-stamp', gain: -3.5 },
-    { t: Number(noteStartTime.toFixed(2)), sfx: 'bamboo-chime', gain: -11 },
+    { t: reveal.starts[0], sfx: 'ink-drop', gain: -9 },
+    { t: Number(reveal.sealStart.toFixed(2)), sfx: 'seal-stamp', gain: -3.5 },
   ];
 
-  // 自动选择时令天气 (最多 2 种 + 深色渔灯)
-  const weatherKinds = chooseWeather({
-    text: (recipe.fullLines || recipe.lines || []).join(' '),
-    title: recipe.title,
-    term: recipe.term,
-    scheme,
-    hasBoat: true,
-  });
-
-  // 可读文本快照接口 (供 readcheck.mjs 自动审计)
-  window.TEXTS = function (t) {
+  const midGlyph = reveal.starts[Math.floor(glyphs.length / 2)];
+  window.TEXTS = t => {
     const visible = [];
-    if (t >= ENTRY_START + 0.2) {
-      visible.push({
-        id: 'poem-verse',
-        text: (recipe.lines || []).join('，'),
-      });
-    }
-    if (recipe.note && t >= noteStartTime + 0.15) {
-      visible.push({
-        id: 'poem-note',
-        text: recipe.note,
-      });
-    }
+    if (t >= midGlyph) visible.push({ id: 'poem-verse', text: plan.clauses.join('，') });
+    if (t >= reveal.colophonStart + reveal.colophonDuration * 0.5) visible.push({ id: 'colophon', text: [title, plan.attribution].filter(Boolean).join(' ') });
     return visible;
   };
 
-  // 核心确定性帧渲染函数
-  window.render = function (t) {
-    const clampedT = clamp(t, 0, window.DUR);
+  const scene = afterglowScene(frame, palette, { poem: (recipe.fullLines || lines).join(''), title, term: recipe.term,
+    motifs: painting.motifs, avoid: plan.box, seed: painting.art.seed, duration: window.DUR });
+  window.SCENE = { scene: painting.scene, composition: painting.art.params.scene.composition, motifs: painting.motifs,
+    palette: `${palette.id}/${palette.appearance}`, artHeight: frame.artHeight, weather: scene.weather,
+    afterglow: scene.afterglow, anchors: frame.anchors, box: plan.box, fontSize: plan.fontSize, inscriptionSize: plan.inscriptionSize };
+  const weatherCtx = document.getElementById('weather').getContext('2d');
+  const artWrap = document.getElementById('art-wrap');
 
-    // 1. 背景缓推 <= 2%，文字层保持静止
-    const bgScale = lerp(1.0, 1.02, clampedT / window.DUR);
-    artWrap.style.transform = `scale(${bgScale.toFixed(4)})`;
-
-    // 2. 绘制时令天气与水面余韵
-    drawWeather(weatherCtx, {
-      width: 1080,
-      height: 1920,
-      t: clampedT,
-      seed: recipe.procedural?.seed || recipe.id,
-      kinds: weatherKinds,
-      palette,
+  window.render = t => {
+    t = Math.max(0, Math.min(window.DUR, t));
+    artWrap.style.transform = `scale(${pushScale(t, window.DUR).toFixed(5)})`;
+    drawAfterglow(weatherCtx, t, scene);
+    glyphs.forEach((glyph, i) => {
+      const s = inkGlyphState(t, reveal.starts[i], reveal.unit, pt);
+      glyph.style.opacity = s.opacity.toFixed(3);
+      glyph.style.filter = s.blur > 0.05 ? `blur(${s.blur.toFixed(2)}px)` : 'none';
+      glyph.style.transform = `scale(${s.scale.toFixed(4)})`;
     });
-
-    // 3. 诗句逐字/逐行墨洇入场（入场完成后恒等静止）
-    for (let i = 0; i < units.length; i++) {
-      const st = inkUnitState(clampedT, ENTRY_START, i, units.length, {
-        stagger: layoutMode === 'detail' ? 0.28 : 0.11,
-        maxSpan: MAX_SPAN,
-      });
-      units[i].style.cssText = st.style;
+    if (colophon) {
+      const c = inkGlyphState(t, reveal.colophonStart, reveal.colophonDuration, pt);
+      colophon.style.opacity = c.opacity.toFixed(3);
+      colophon.style.filter = c.blur > 0.05 ? `blur(${(c.blur * 0.5).toFixed(2)}px)` : 'none';
     }
-
-    // 4. 题款与朱印落下
-    if (metaColEl) {
-      const metaP = easeOut(inv(unitsDoneTime - 0.15, unitsDoneTime + 0.25, clampedT));
-      metaColEl.style.opacity = metaP.toFixed(3);
-    }
-    if (sealEl) {
-      const sealSt = sealStampState(clampedT, stampStartTime, 0.22);
-      sealEl.style.opacity = sealSt.opacity.toFixed(3);
-      sealEl.style.transform = `scale(${sealSt.scale.toFixed(3)})`;
-    }
-
-    // 5. 题签与底部书法夹注显影（入场后一直保留，不消失）
-    const badgeP = easeOut(inv(0.15, 0.65, clampedT));
-    termBadge.style.opacity = badgeP.toFixed(3);
-
-    const noteP = easeOut(inv(noteStartTime, noteStartTime + 0.35, clampedT));
-    const insStage = document.getElementById('inscription-stage');
-    insStage.style.opacity = noteP.toFixed(3);
-    insStage.style.transform = `translateY(${((1 - noteP) * 10).toFixed(1)}px)`;
+    const s = sealState(t, reveal.sealStart, reveal.sealDuration);
+    seal.style.opacity = s.opacity.toFixed(3);
+    seal.style.transform = `scale(${s.scale.toFixed(4)})`;
   };
-
-  // 预览自适应缩放
-  function fitViewport() {
-    if (params.has('capture')) return;
-    const s = Math.min(window.innerWidth / 1080, window.innerHeight / 1920);
-    stage.style.transform = `scale(${s})`;
-    stage.style.left = `${(window.innerWidth - 1080 * s) / 2}px`;
-    stage.style.top = `${(window.innerHeight - 1920 * s) / 2}px`;
-  }
-  window.addEventListener('resize', fitViewport);
-  fitViewport();
-
-  // 等待字体与 ZixiaoArt 程序化画屏位图生成完毕后再置 READY = true
-  await document.fonts.ready;
-  await renderZXArt(artCanvas, {
-    ...(recipe.procedural || {}),
-    palette: { paper: palette.paper, ink: palette.ink },
-    width: 1080,
-    height: 1920,
-  });
 
   window.render(0);
   window.READY = true;
-
-  // 若在普通浏览器直接打开（非导出模式且未由外层工作台接管），支持空格播放预览
-  if (!params.has('capture') && window.parent === window) {
-    let playing = true;
-    let t0 = performance.now();
-    const tick = (now) => {
-      if (playing) {
-        const elapsed = ((now - t0) / 1000) % window.DUR;
-        window.render(elapsed);
-      }
-      requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }
+  previewLoop(document.getElementById('stage'), params);
 </script>
 </body>
 </html>

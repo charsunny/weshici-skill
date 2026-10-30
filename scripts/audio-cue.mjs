@@ -4,7 +4,7 @@
  *
  * 自动从微诗 Voicebox 朗读音频库 (/Volumes/XiPass/literature/assets/wish/audio/poetryhub-voicebox-readings)
  * 检索诗作，读取 reading_voicebox_male.mp3 与 timed_lyrics.json，通过 ffprobe 测量音频总时长，
- * 自动生成可直接交给 render.mjs 渲染的声画同步 Recipe JSON。
+ * 自动生成可直接交给 render.mjs 渲染的 Recipe JSON（逐行时间戳，朗读库没有词级时间）。
  *
  * 用法：
  *   node tools/video-studio/bin/audio-cue.mjs --query "杜甫-晚晴" --out tools/video-studio/recipes/auto-wanqing.json
@@ -16,6 +16,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { ASSETS_ROOT, STUDIO_ROOT } from './server-util.mjs';
 import { lookupPoem, poemFacts } from './poem-lookup.mjs';
+import { beijingDay, huapingCalendar } from '../resources/core/huaping-footer.js';
 
 const args = process.argv.slice(2);
 const getArg = (k, def) => {
@@ -80,40 +81,27 @@ const couplets = timed.map((item, idx) => {
     start: Number(item.start),
     end: Number(nextStart.toFixed(2)),
     text: item.text,
-    inscribeTitle: `第${['一', '二', '三', '四', '五', '六', '七', '八'][idx] || idx + 1}联 · 声画同步`,
-    inscribeNote: item.text,
   };
 });
 
 const slug = `auto-${matched.split('-').slice(1, 3).join('-')}`;
+// 节气取制作当天（北京时间），不写「时令」之类的占位；视频模板缺省随节气取 App 配色。
+const date = getArg('date', beijingDay());
 const recipe = {
   id: slug,
   poemId,
   title,
   dynasty: facts.dynasty,
   author,
-  term: '时令',
-  mood: '旷达',
-  weather: 'mist',
-  location: '微诗 · 声画同步朗读',
+  date,
+  term: huapingCalendar(date).term,
   duration: dur,
   audioMode: 'voice+bgm+foley',
   voice: `/assets/wish/audio/poetryhub-voicebox-readings/2026-06-22/${matched}/reading_voicebox_male.mp3`,
   bgm: '/artifacts/promo-8.0/assets/audio/radio-calm.m4a',
-  seal: '微詩',
   lines: couplets.map((c) => c.text),
-  procedural: {
-    generator: 'shanshui@2',
-    seed: matched,
-    variant: '远山',
-    params: {
-      density: 0.88,
-      quiet_top: 0.4,
-      verse_side: 'left',
-      verse_columns: Math.min(6, Math.max(2, couplets.length)),
-      verse_chars: 10,
-    },
-  },
+  // ShanShui@5：只记 seed，用途、构图和母题由引擎按诗决定。
+  procedural: { generator: 'shanshui@5', seed: matched },
   couplets,
 };
 

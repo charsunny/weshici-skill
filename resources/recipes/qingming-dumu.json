@@ -4,10 +4,7 @@
   "dynasty": "唐",
   "author": "杜牧",
   "term": "清明",
-  "lunar": "二月廿一 · 清明 · 桐始华",
-  "layout": "quote",
-  "paletteId": "yaluanqing",
-  "scheme": "light",
+  "palette": "seasonal",
   "audioMode": "bgm+foley",
   "bgm": "/artifacts/promo-8.0/assets/audio/radio-calm.m4a",
   "lines": [
@@ -20,18 +17,9 @@
     "清明时节雨纷纷，路上行人欲断魂。",
     "借问酒家何处有，牧童遥指杏花村。"
   ],
-  "note": "江南春雨迷蒙，远山淡去一成，孤村杏花深处自有一盏暖酒。",
-  "seal": "微詩",
   "procedural": {
-    "generator": "shanshui@2",
+    "generator": "shanshui@5",
     "seed": "qingming-dumu-80",
-    "variant": "misty",
-    "params": {
-      "density": 0.85,
-      "quiet_top": 0.34,
-      "verse_side": "left",
-      "verse_columns": 4,
-      "verse_chars": 7
-    }
+    "verseSide": "left"
   }
 }

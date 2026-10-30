@@ -13,22 +13,16 @@
 1. **内容主体（Subject）**：具体诗作（标题、作者、正文、题解/夹注）、节气/主题或产品功能点。
 2. **风格母版（Style Slug）**：从微诗五大母版中选定其一（或混搭）：
    - `huaping-motion`（动态画屏 · 每日一诗 / 节气金句，12–24s）
-   - `ink-story`（写意水墨 · 诗境故事与题跋赏析，45–90s）
-   - `poet-footprint`（诗人行迹 · 舆图考据纪实，60–120s）
-   - `poem-song-mv`（一曲诗词 · 诗音律动 MV，30–60s）
+   - `ink-story`（写意水墨 · 诗题页与逐联题跋，按朗读出字，20–60s）
+   - `poet-footprint`（诗人行迹 · 淡墨舆图与站点题跋，20–60s）
+   - `poem-song-mv`（一曲诗词 · 当前唱句为主角，节拍驱动水面，20–60s）
    - `living-promo`（活体实机 · 产品与专题宣发，30–60s）
-3. **画幅比例（Aspect Ratio）**：
-   - `9:16`（`1080×1920`）：抖音 / 视频号 / 快手 / 详情页全屏短视频（默认）
-   - `3:4`（`1080×1440`）：小红书竖幅画屏分享
-   - `1:1`（`1080×1080`）：朋友圈方幅画屏分享
-   - `16:9`（`1920×1080`）：B 站 / 官网 / App Store 横屏宣传片
+3. **画幅比例（Aspect Ratio）**：四个视频模板只做 `9:16`（`1080×1920`），文字避开右侧 140px、底部 380px 的平台控件区。`3:4` / `1:1` 用静态 `image` / `poster`。
 4. **声音策略（Audio Mode）**：
-   - `silent`：无声导出（供抖音/小红书直接挂平台正版曲库，遵循 `docs/HUAPING_MOTION_PLAN.md` §6.4）
-   - `bgm+foley`：内置电台配乐（`RadioMusic-{calm,warm,expansive,wistful}`）+ `window.EV` 程序化东方拟音（古琴泛音、水墨滴落、朱印落下）
-   - `voice+bgm+foley`：Voicebox / 阿里云 TTS 诗词朗读 + 字级时间戳对齐 + BGM 自动闪避（Ducking）+ 拟音
-5. **色彩与外观（Palette & Scheme）**：
-   - 情绪配色（取自 `ios/Shared/Huaping/mood-palettes.json`：`yuebai` 月白、`lanhui` 蓝灰、`xiangse` 缃色、`qiuxiang` 秋香、`zhuqing` 竹青等）或传统色身份（`yaqing` 鸦青默认）
-   - `light`（浅色宣纸）或 `dark`（夜色苍黑）
+   - `silent`：无声导出（供平台曲库配乐）
+   - `bgm+foley`：内置配乐 + `window.EV` 程序化拟音（古琴泛音、落墨、落印、翻页）
+   - `voice+bgm+foley`：朗读库人声 + 配乐（整体压低，不做动态闪避）+ 拟音。朗读库只有逐行起始时间，`ink-story` 按它出字；`huaping-motion` 仍用 App 的固定入场
+5. **色彩与外观（Palette & Appearance）**：App 七套主题色（`resources/core/app-palettes.json`：`yaqing` 鸦青、`moon-white` 月白、`xiang-leaf` 缃叶、`canglang` 苍筤、`ousi` 藕丝、`qingdai` 青黛、`rouge` 胭脂）× `light` / `dark`。缺省 `seasonal`，按配方 `term` 或 `date` 的节气取色；月夜题材缺省深色。诗中没有节气时写明所选配色与理由。
 
 ---
 
@@ -37,10 +31,10 @@
 在编写复杂的长视频（`ink-story`、`poet-footprint`、`living-promo`）代码前，先在输出目录生成简明的 `TREATMENT.md`：
 
 1. **Logline（一句话主旨）**：全片要立住的那口气（如：「寒露夜色下，孤舟渔火与南飞秋雁衬出杜甫乱世思乡的沉郁顿挫」）。
-2. **Visual Motif & Weather（核心意象与天气）**：最多选 **2 种** 互不冲突的天气点缀（参照 `HUAPING_MOTION_PLAN.md` §3.3：雨×雪互斥、月×落日互斥；渔灯在深色有船时自动附着）。
+2. **Visual Motif & Weather（核心意象与天气）**：天气由模板按诗与画里实有的母题选（最多 2 种，雨×雪互斥、月×落日互斥，见 `TECHNIQUE.md` §2.3），只用纸墨色；不做渔灯。
 3. **Shot List & Timing（分镜与时间线表）**：
    - 明确每一幕的起止秒数 `[t0, t1]`、画面构图、文字内容、入场方式（逐字墨洇 / 按行墨洇 / 书法题跋）及音效触发点 `window.EV`。
-   - **时长红线**：单屏中文阅读停留必须满足 `readcheck` 标准（`clamp(字数 × 0.3s, 6s, 20s)`，或解说题跋至少 `0.25s/字` 且单条 `≥ 1.5s`）。
+   - **时长红线**：每段文字的停留必须满足 `readcheck` 标准（至少 `0.22s/字` 且单段 `≥ 1.5s`）；金句视频总长另按 `ceil(入场结束 + clamp(字数 × 0.3s, 6s, 20s))`。
 
 ---
 
@@ -55,7 +49,7 @@ node tools/video-studio/bin/readcheck.mjs --scene <path>
 node tools/video-studio/bin/render.mjs --scene <path> --sheet-only
 ```
 使用 `view_file` 检视接触表，重点排查：
-- 诗句/题跋是否压住山峰主视觉或超出安全区（竖屏左右各留 ≥12%，底部留出平台文案遮挡区）？
+- 诗句/题跋是否压住画的实处或进入平台控件区（右侧 140px、底部 380px）？
 - 浅色/深色模式下正文对比度是否 ≥ 4.5:1？
 - 印章（朱印）是否在诗句落定后才盖下？
 

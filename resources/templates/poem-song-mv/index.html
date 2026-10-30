@@ -3,409 +3,171 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=1080,height=1920,initial-scale=1" />
-<title>微诗 · 一曲诗词 MV (poem-song-mv)</title>
+<link rel="icon" href="data:,">
+<title>微诗 · 一曲诗词 (poem-song-mv)</title>
+<link rel="stylesheet" href="/resources/core/huaping-video.css">
 <style>
-  @font-face {
-    font-family: "SongSemi";
-    src: url("/fonts/SourceHanSerifSC-SemiBold.otf") format("opentype");
-    font-weight: 600;
-    font-display: block;
-  }
-  @font-face {
-    font-family: "SongReg";
-    src: url("/fonts/SourceHanSerifSC-Regular.otf") format("opentype");
-    font-weight: 400;
-    font-display: block;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: #0b1113;
-    font-family: "SongReg", "Songti SC", serif;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  #stage {
-    position: relative;
-    width: 1080px;
-    height: 1920px;
-    overflow: hidden;
-    background: #121E21;
-    color: #EBF0F2;
-    transform-origin: top left;
-    user-select: none;
-  }
-
-  #art-wrap {
-    position: absolute;
-    inset: 0;
-    transform-origin: 50% 60%;
-  }
-  #art-canvas, #weather-canvas {
-    position: absolute;
-    inset: 0;
-    width: 1080px;
-    height: 1920px;
-    display: block;
-  }
-
-  #veil {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      180deg,
-      rgba(18, 30, 33, 0.88) 0%,
-      rgba(18, 30, 33, 0.72) 56%,
-      rgba(18, 30, 33, 0.35) 82%,
-      rgba(18, 30, 33, 0.75) 100%
-    );
-    pointer-events: none;
-  }
-
-  /* 顶部唱片栏 */
-  #top-bar {
-    position: absolute;
-    top: 104px;
-    left: 108px;
-    right: 108px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    z-index: 10;
-  }
-  .album-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 22px;
-    letter-spacing: 0.26em;
-    color: rgba(235, 240, 242, 0.72);
-  }
-  .album-pill::before {
-    content: "";
-    width: 9px;
-    height: 9px;
-    border-radius: 2px;
-    background: #EE9C88;
-  }
-  .seal-badge {
-    width: 52px;
-    height: 52px;
-    background: #B04A3A;
-    color: #FAF6F0;
-    border-radius: 6px;
-    font-family: "SongSemi", serif;
-    font-size: 21px;
-    line-height: 1.08;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-  }
-
-  /* 团扇/黑胶雅集圆窗 + 歌曲标题 */
-  #disc-stage {
-    position: absolute;
-    top: 210px;
-    left: 108px;
-    right: 108px;
-    display: flex;
-    align-items: center;
-    gap: 42px;
-    z-index: 10;
-  }
-  .vinyl-outer {
-    width: 176px;
-    height: 176px;
-    border-radius: 50%;
-    background: radial-gradient(circle, #24353A 0%, #162226 42%, #0B1214 100%);
-    border: 2px solid rgba(238, 156, 136, 0.38);
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    flex-shrink: 0;
-  }
-  .vinyl-grooves {
-    position: absolute;
-    inset: 16px;
-    border-radius: 50%;
-    border: 1px dashed rgba(235, 240, 242, 0.16);
-  }
-  .vinyl-center {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #D9B678 0%, #9B382B 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: "SongSemi", serif;
-    font-size: 26px;
-    color: #FAF6F0;
-    box-shadow: inset 0 0 0 6px rgba(18, 30, 33, 0.55);
-  }
-  .song-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .song-title {
-    font-family: "SongSemi", serif;
-    font-size: 56px;
-    letter-spacing: 0.16em;
-    color: #F4F5F3;
-  }
-  .song-author {
-    font-size: 26px;
-    letter-spacing: 0.28em;
-    color: rgba(235, 240, 242, 0.65);
-  }
-
-  /* 水波纹细线声波 (Water-Ripple Waveform) */
-  #waveform {
-    position: absolute;
-    top: 438px;
-    left: 108px;
-    right: 108px;
-    height: 68px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    z-index: 10;
-  }
-  .w-bar {
-    width: 3px;
-    border-radius: 3px;
-    background: #D9B678;
-    height: 12px;
-  }
-
-  /* 逐句高亮歌词舞台 (Lyric Stage) */
-  #lyric-stage {
-    position: absolute;
-    top: 560px;
-    left: 108px;
-    right: 108px;
-    display: flex;
-    flex-direction: column;
-    gap: 34px;
-    z-index: 10;
-  }
-  .lyric-line {
-    font-family: "SongSemi", serif;
-    font-size: 46px;
-    letter-spacing: 0.14em;
-    line-height: 1.4;
-    transform-origin: left center;
-    will-change: transform, opacity;
-  }
-
-  /* 典故题解卡片 */
-  #note-card {
-    position: absolute;
-    top: 1050px;
-    left: 108px;
-    right: 108px;
-    padding: 30px 36px;
-    background: rgba(24, 38, 42, 0.78);
-    border: 1px solid rgba(235, 240, 242, 0.14);
-    border-left: 5px solid #D9B678;
-    border-radius: 10px;
-    z-index: 10;
-  }
-  .nc-tag {
-    font-size: 21px;
-    letter-spacing: 0.24em;
-    color: #D9B678;
-    margin-bottom: 12px;
-  }
-  .nc-body {
-    font-size: 27px;
-    line-height: 1.7;
-    letter-spacing: 0.08em;
-    color: rgba(235, 240, 242, 0.88);
-  }
+  /* Two lines at most: the line being sung, large and solid; the one before, small and pale. */
+  .lyric { position: absolute; left: 0; right: 0; text-align: center; white-space: nowrap; letter-spacing: .12em;
+    transform-origin: 50% 50%; }
+  .lyric span { display: inline-block; }
+  .lyric .gap { width: .8em; }
+  .credit { position: absolute; left: 0; right: 0; display: flex; justify-content: center; align-items: center;
+    gap: .9em; color: var(--muted); letter-spacing: .14em; white-space: nowrap; }
+  .credit .author { color: var(--accent); }
 </style>
 </head>
 <body>
   <div id="stage">
     <div id="art-wrap">
-      <canvas id="art-canvas" width="1080" height="1920"></canvas>
-      <canvas id="weather-canvas" width="1080" height="1920"></canvas>
+      <canvas id="art"></canvas>
+      <canvas id="weather" width="1080" height="1920"></canvas>
     </div>
-    <div id="veil"></div>
-
-    <div id="top-bar">
-      <div class="album-pill" id="album-pill">一曲诗词 · 宋词秋声</div>
-      <div class="seal-badge" id="seal-badge">微詩</div>
-    </div>
-
-    <div id="disc-stage">
-      <div class="vinyl-outer" id="vinyl-disc">
-        <div class="vinyl-grooves"></div>
-        <div class="vinyl-center">詞</div>
-      </div>
-      <div class="song-meta">
-        <div class="song-title" id="song-title">苏幕遮 · 怀旧</div>
-        <div class="song-author" id="song-author">宋 · 范仲淹</div>
-      </div>
-    </div>
-
-    <div id="waveform"></div>
-
-    <div id="lyric-stage"></div>
-
-    <div id="note-card">
-      <div class="nc-tag">曲意赏析 · 逐句同步</div>
-      <div class="nc-body" id="nc-body"></div>
-    </div>
+    <div id="type"></div>
   </div>
 
+<script src="/vendor/zxart/zxart-compose.js"></script>
+<script src="/vendor/zxart/zxart-shanshui-v5.js"></script>
 <script type="module">
-  import {
-    clamp,
-    lerp,
-    inv,
-    easeOut,
-    resolvePalette,
-    renderZXArt,
-    drawWeather,
-  } from '/tools/video-studio/core/weishi-video-core.js';
+  import { huapingClauses } from '/resources/core/huaping-layout.js';
+  import { TYPE_FLOOR, byline, inkGlyphState, sealState, pushScale, easeOut, clamp, songTimeline } from '/resources/core/huaping-video.js';
+  import { loadRecipe, planPainting, applyPalette, paintFrame, afterglowScene, sealElement, previewLoop } from '/resources/core/huaping-scene.js';
+  import { drawAfterglow } from '/resources/core/huaping-afterglow.js';
 
-  const params = new URLSearchParams(location.search);
-  const recipeSlug = params.get('recipe') || 'sumuzhe-fanzhongyan-mv';
-  const res = await fetch(`/tools/video-studio/recipes/${recipeSlug}.json`);
-  const recipe = await res.json();
-
-  window.DUR = Number(recipe.duration) || 20;
+  // A song in ink: the painting carries the music (ripples open on the beat), the sung line is the
+  // one large thing on the page, and the line before it steps back, small and pale.
+  const W = 1080, H = 1920;
+  const { params, recipe, palettes } = await loadRecipe('sumuzhe-fanzhongyan-mv');
   window.RECIPE = recipe;
-  window.READY = false;
+  const { title = '', author = '', dynasty = '' } = recipe;
+  const lyrics = (recipe.lyrics || []).map(l => ({ start: Number(l.start), end: Number(l.end), clauses: huapingClauses(l.text), text: l.text }))
+    .filter(l => l.clauses.length);
+  if (!lyrics.length) throw new Error('配方缺少 lyrics');
+  const poem = lyrics.map(l => l.text).join('');
+  const lengths = lyrics.map(l => l.clauses.join('').length + (l.clauses.length - 1) * 0.6);
 
-  const palette = resolvePalette(recipe.paletteId || 'yaqing', recipe.scheme || 'dark');
-  document.getElementById('album-pill').textContent = recipe.album || '一曲诗词';
-  document.getElementById('song-title').textContent = recipe.title;
-  document.getElementById('song-author').textContent = [recipe.dynasty, recipe.author].filter(Boolean).join(' · ');
+  const painting = planPainting({ poem, title, procedural: recipe.procedural, params, verseSide: 'top',
+    verseColumns: 2, verseChars: Math.min(10, Math.ceil(Math.max(...lengths))) });
+  const palette = applyPalette(palettes, recipe, params, painting);
+  await document.fonts.load('100px SongReg');
+  await document.fonts.ready;
+  const frame = await paintFrame(document.getElementById('art'), painting, palette, { width: W, height: H });
 
-  // 构建 44 根金墨细线声波
-  const waveEl = document.getElementById('waveform');
-  const bars = [];
-  const BAR_COUNT = 44;
-  for (let i = 0; i < BAR_COUNT; i++) {
-    const b = document.createElement('div');
-    b.className = 'w-bar';
-    waveEl.appendChild(b);
-    bars.push(b);
-  }
+  // The lyric box is the engine's verse box. The sung line is the one large thing: each clause on its
+  // own row, all lines at one size, the largest the longest clause allows. The line before it comes
+  // back as a single small pale row above; the credit sits under the sung line's rows.
+  const r = frame.verse.rect;
+  const box = { x: (r.x + r.width * 0.04) * W, y: (r.y + r.height * 0.03) * H, width: r.width * 0.92 * W, height: r.height * 0.94 * H };
+  const longestClause = Math.max(...lyrics.flatMap(l => l.clauses.map(c => Array.from(c).length)));
+  const rowsMax = Math.max(...lyrics.map(l => l.clauses.length));
+  const large = Math.floor(Math.min(112, box.width / (longestClause * 1.12)));
+  const small = Math.max(36, Math.round(large * 0.4));
+  const creditSize = 30;
+  const area = rowsMax * large * 1.25;
+  // The block fills the verse box from its top: the box was lifted through bare paper, and the
+  // engine painted nothing in it.
+  const blockTop = box.y;
+  const prevTop = blockTop;
+  const currentTop = prevTop + small * 1.8;
+  const creditTop = currentTop + area + creditSize * 0.35;
+  window.WARNINGS = [large < 64 && `当前句字号 ${large}px 小于 64px`, small < 36 && `上一句字号 ${small}px 小于 36px`,
+    small * 1.8 + area + creditSize * 1.95 > box.height && '歌词块高于诗句框'].filter(Boolean);
 
-  // 构建歌词行
-  const lyricStage = document.getElementById('lyric-stage');
-  const lyrics = recipe.lyrics || [];
-  const lineEls = lyrics.map((item) => {
-    const d = document.createElement('div');
-    d.className = 'lyric-line';
-    d.textContent = item.text;
-    lyricStage.appendChild(d);
-    return d;
+  const typeLayer = document.getElementById('type');
+  const lyricBox = document.createElement('div');
+  lyricBox.style.cssText = `position:absolute;left:${box.x}px;top:0;width:${box.width}px;height:${H}px`;
+  typeLayer.appendChild(lyricBox);
+  const span = (parent, text, className) => parent.appendChild(Object.assign(document.createElement('span'), { textContent: text, className: className || '' }));
+  const lines = lyrics.map(l => {
+    const big = document.createElement('div');
+    big.className = 'lyric';
+    big.style.cssText = `font-size:${large}px;line-height:${large * 1.25}px;top:${currentTop + (area - l.clauses.length * large * 1.25) / 2}px`;
+    const glyphs = [];
+    for (const clause of l.clauses) {
+      const row = big.appendChild(document.createElement('div'));
+      for (const ch of clause) glyphs.push(span(row, ch));
+    }
+    const back = document.createElement('div');
+    back.className = 'lyric';
+    back.style.cssText = `font-size:${small}px;line-height:${small * 1.3}px;top:${prevTop}px;color:var(--muted)`;
+    l.clauses.forEach((clause, i) => { if (i) span(back, '', 'gap'); span(back, clause); });
+    lyricBox.append(big, back);
+    return { big, back, glyphs };
   });
+  const credit = document.createElement('div');
+  credit.className = 'credit';
+  credit.style.cssText = `top:${creditTop}px;font-size:${creditSize}px;line-height:${creditSize * 1.6}px`;
+  credit.innerHTML = '<span class="title"></span><span class="author"></span>';
+  credit.querySelector('.title').textContent = title;
+  credit.querySelector('.author').textContent = byline(dynasty, author);
+  const seal = sealElement(creditSize * 0.9, creditSize * 0.9 * 354 / 173);
+  credit.appendChild(seal);
+  lyricBox.appendChild(credit);
 
-  const vinylDisc = document.getElementById('vinyl-disc');
-  const ncBody = document.getElementById('nc-body');
-  const artWrap = document.getElementById('art-wrap');
-  const artCanvas = document.getElementById('art-canvas');
-  const weatherCanvas = document.getElementById('weather-canvas');
-  const weatherCtx = weatherCanvas.getContext('2d');
+  const song = songTimeline({ lyrics, glyphCounts: lines.map(l => l.glyphs.length) });
+  window.DUR = Number(params.get('dur')) || Math.max(Math.ceil(Number(recipe.duration) || 0), Math.ceil(song.sealAt + 1));
+  const pt = W / 393;
 
   window.EV = [
     { t: 0.2, sfx: 'qin-harmonic', gain: -9 },
-    ...lyrics.map((l) => ({ t: Number(l.start.toFixed(2)), sfx: 'bamboo-chime', gain: -12 })),
+    ...lyrics.map(l => ({ t: Number(l.start.toFixed(2)), sfx: 'bamboo-chime', gain: -12 })),
+    { t: Number(song.sealAt.toFixed(2)), sfx: 'seal-stamp', gain: -4 },
   ];
 
-  window.TEXTS = function (t) {
-    const active = lyrics.find((l) => t >= l.start && t <= l.end) || lyrics[0];
-    if (!active) return [];
-    return [
-      { id: `lyric-${active.start}`, text: active.text },
-      { id: `note-${active.start}`, text: active.note },
-    ];
+  window.TEXTS = t => {
+    const list = [{ id: 'credit', text: `${title} ${byline(dynasty, author)}` }];
+    song.lines.forEach((line, i) => { if (t >= line.times[0] + 0.125 && t < line.end) list.push({ id: `lyric-${i + 1}`, text: lyrics[i].text }); });
+    return list;
   };
 
-  const bpm = Number(recipe.bpm) || 76;
-  const beatOmega = (bpm / 60) * Math.PI * 2;
+  const bpm = Number(recipe.bpm) || 0;
+  const scene = afterglowScene(frame, palette, { poem, title, term: recipe.term, motifs: painting.motifs,
+    avoid: { x: box.x, y: blockTop, width: box.width, height: creditTop + creditSize * 2 - blockTop },
+    seed: painting.art.seed, duration: window.DUR });
+  // The beat drives the water: each ring opens on a beat (no beat given: free-running ripples).
+  if (bpm > 0) scene.beat = 60 / bpm;
+  window.SCENE = { scene: painting.scene, composition: painting.art.params.scene.composition, motifs: painting.motifs,
+    palette: `${palette.id}/${palette.appearance}`, artHeight: frame.artHeight, weather: scene.weather,
+    afterglow: scene.afterglow, box, large, small };
+  const weatherCtx = document.getElementById('weather').getContext('2d');
+  const artWrap = document.getElementById('art-wrap');
+  const STEP = 0.5;
 
-  window.render = function (t) {
-    const ct = clamp(t, 0, window.DUR);
-
-    // 1. 背景缓推与黑胶匀速旋转
-    artWrap.style.transform = `scale(${lerp(1.0, 1.02, ct / window.DUR).toFixed(4)})`;
-    vinylDisc.style.transform = `rotate(${(ct * 18).toFixed(1)}deg)`;
-
-    // 2. 绘制斜阳 + 秋雁 + 寒烟 + 渔灯
-    drawWeather(weatherCtx, {
-      width: 1080,
-      height: 1920,
-      t: ct,
-      seed: recipe.id,
-      kinds: ['sunset', 'geese', 'mist', 'lantern'],
-      palette,
+  window.render = t => {
+    t = Math.max(0, Math.min(window.DUR, t));
+    artWrap.style.transform = `scale(${pushScale(t, window.DUR).toFixed(5)})`;
+    drawAfterglow(weatherCtx, t, scene);
+    lines.forEach((line, i) => {
+      const timing = song.lines[i];
+      // The last line stays. Just before the next line is sung, this one dissolves upward and comes
+      // back small and pale above; that small copy fades once another line steps back over it.
+      const next = song.lines[i + 1];
+      const back = next ? easeOut((t - (timing.end - 0.35)) / STEP) : 0;
+      const gone = next && song.lines[i + 2] ? clamp((t - (next.end - 0.6)) / 0.3) : 0;
+      line.big.style.visibility = t >= timing.times[0] && back < 1 ? 'visible' : 'hidden';
+      line.big.style.opacity = (1 - back).toFixed(3);
+      line.big.style.filter = back > 0.01 ? `blur(${(back * 10).toFixed(2)}px)` : 'none';
+      line.big.style.transform = `translateY(${(-back * large * 0.3).toFixed(1)}px)`;
+      const shown = clamp((back - 0.3) / 0.7) * (1 - gone);
+      line.back.style.visibility = shown > 0 ? 'visible' : 'hidden';
+      line.back.style.opacity = (shown * 0.62).toFixed(3);
+      line.glyphs.forEach((g, j) => {
+        const s = inkGlyphState(t, timing.times[j], 0.25, pt);
+        g.style.opacity = s.opacity.toFixed(3);
+        g.style.filter = s.blur > 0.05 ? `blur(${s.blur.toFixed(2)}px)` : 'none';
+        g.style.transform = `scale(${s.scale.toFixed(4)})`;
+      });
     });
-
-    // 3. BPM 节拍网格驱动金线声波
-    const beatPulse = 0.65 + 0.35 * Math.pow(Math.max(0, Math.sin(ct * beatOmega)), 2);
-    for (let i = 0; i < BAR_COUNT; i++) {
-      const centerWeight = 1 - Math.abs(i - BAR_COUNT / 2) / (BAR_COUNT / 2);
-      const wave =
-        Math.abs(Math.sin(ct * 5.2 + i * 0.42)) * 0.6 +
-        Math.abs(Math.cos(ct * 3.1 - i * 0.27)) * 0.4;
-      const h = Math.round(8 + 52 * centerWeight * wave * beatPulse);
-      bars[i].style.height = `${h}px`;
-      bars[i].style.opacity = (0.35 + 0.65 * centerWeight * wave).toFixed(2);
-    }
-
-    // 4. 逐句高亮歌词与同步曲意赏析
-    let activeLyric = lyrics[0];
-    lyrics.forEach((item, idx) => {
-      const isActive = ct >= item.start && ct < item.end;
-      if (isActive) activeLyric = item;
-      const enterP = easeOut(inv(item.start, item.start + 0.45, ct));
-      const el = lineEls[idx];
-      if (isActive) {
-        const sc = lerp(1.0, 1.06, enterP);
-        el.style.opacity = '1';
-        el.style.color = '#F4F5F3';
-        el.style.transform = `scale(${sc.toFixed(3)})`;
-      } else if (ct >= item.end) {
-        el.style.opacity = '0.36';
-        el.style.color = '#A8B8BE';
-        el.style.transform = 'scale(1)';
-      } else {
-        el.style.opacity = '0.24';
-        el.style.color = '#88989E';
-        el.style.transform = 'scale(1)';
-      }
-    });
-
-    if (activeLyric) {
-      const np = easeOut(inv(activeLyric.start, activeLyric.start + 0.45, ct));
-      ncBody.textContent = activeLyric.note;
-      ncBody.style.opacity = np.toFixed(3);
-    }
+    const c = easeOut((t - 0.3) / 0.6);
+    credit.querySelectorAll('.title, .author').forEach(el => { el.style.opacity = c.toFixed(3); });
+    const s = sealState(t, song.sealAt);
+    seal.style.opacity = s.opacity.toFixed(3);
+    seal.style.transform = `scale(${s.scale.toFixed(4)})`;
   };
-
-  await document.fonts.ready;
-  await renderZXArt(artCanvas, {
-    ...(recipe.procedural || {}),
-    palette: { paper: palette.paper, ink: palette.ink },
-    width: 1080,
-    height: 1920,
-  });
 
   window.render(0);
   window.READY = true;
+  previewLoop(document.getElementById('stage'), params);
 </script>
 </body>
 </html>

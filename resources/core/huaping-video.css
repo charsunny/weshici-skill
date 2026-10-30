@@ -1,0 +1,43 @@
+/* Shared by the 9:16 video templates: paper stage, painting layers and the huaping verse/colophon
+   (huaping-layout.js), coloured from the App palette slots set on :root. */
+@font-face {
+  font-family: "SongReg";
+  src: url("/resources/assets/fonts/SourceHanSerifSC-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-display: block;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: var(--paper); }
+body { font-family: "SongReg", serif; -webkit-font-smoothing: antialiased; }
+
+#stage {
+  position: relative;
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+  transform-origin: top left;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* The painting and its weather push together (≤ 2%); the text layer never scales. */
+#art-wrap { position: absolute; inset: 0; transform-origin: 50% 60%; }
+#art-wrap canvas { position: absolute; inset: 0; width: 1080px; height: 1920px; display: block; }
+#type { position: absolute; inset: 0; }
+
+.hp-box { position: absolute; display: flex; justify-content: center; align-items: flex-start; }
+.hp-block { display: flex; align-items: flex-end; flex: none; font-weight: 400; }
+.hp-columns { display: flex; flex-direction: row-reverse; align-items: flex-start; flex: none; }
+.hp-column { position: relative; flex: none; }
+.hp-glyph { position: absolute; width: 100%; text-align: center; white-space: pre; }
+.hp-colophon, .hp-author-seal { display: flex; flex-direction: column; align-items: center; flex: none; }
+.hp-colophon-wide { flex-direction: row; align-items: flex-end; }
+.hp-title { color: var(--muted); }
+.hp-horizontal { flex-direction: column; align-items: center; align-self: center; width: 100%; }
+.hp-line { line-height: 1.82; letter-spacing: .14em; white-space: nowrap; }
+.hp-footer { display: flex; align-items: center; justify-content: center; gap: .6em; margin-top: .5em; max-width: 100%; color: var(--muted); }
+/* The App's vertical seal, tinted with the palette's seal colour: the only red in the frame. */
+.hp-seal { display: block; flex: none; background: var(--seal);
+  -webkit-mask: url('/resources/assets/huaping/jianyang-seal.png') center / contain no-repeat;
+  mask: url('/resources/assets/huaping/jianyang-seal.png') center / contain no-repeat; }

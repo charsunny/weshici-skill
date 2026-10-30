@@ -1,4 +1,5 @@
 import { posterRandom, ridgeAt } from '/resources/core/poster-terrain.js';
+import { drawCinnabarSun } from '/resources/core/cinnabar-sun.js';
 
 const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
 export function mix(a, b, t) {
@@ -126,25 +127,7 @@ export function paintPoster(canvas, card, terrain, boxes = []) {
         g.stroke();
       }
     } else if (has('sun')) {
-      // Cinnabar, not a pink disc: solid at the heart, the edge bleeding into the paper.
-      const sr = W * 0.035;
-      const tone = mix(card.cinnabar.seal, card.cinnabar.secondary, 0.22);
-      const disc = g.createRadialGradient(cx, cy, 0, cx, cy, sr * 1.12);
-      disc.addColorStop(0, rgba(tone, dark ? 0.86 : 0.82));
-      disc.addColorStop(0.62, rgba(tone, dark ? 0.8 : 0.74));
-      disc.addColorStop(0.86, rgba(tone, 0.45));
-      disc.addColorStop(1, rgba(tone, 0));
-      g.fillStyle = disc;
-      g.beginPath();
-      g.arc(cx, cy, sr * 1.12, 0, Math.PI * 2);
-      g.fill();
-      for (let k = 0; k < 260; k++) {
-        const a = rand() * Math.PI * 2, d = Math.sqrt(rand()) * sr * 0.9;
-        g.globalAlpha = r(0.04, 0.12);
-        g.fillStyle = rand() < 0.5 ? paper : mix(tone, ink, 0.3);
-        g.fillRect(cx + Math.cos(a) * d, cy + Math.sin(a) * d, r(1, 2.5), r(1, 2));
-      }
-      g.globalAlpha = 1;
+      drawCinnabarSun(g, { cx, cy, width: W, seal: card.cinnabar.seal, secondary: card.cinnabar.secondary, ink, paper, dark, rand });
     }
     g.restore();
   }

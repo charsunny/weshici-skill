@@ -4,10 +4,7 @@
   "dynasty": "唐",
   "author": "柳宗元",
   "term": "大雪",
-  "lunar": "十月廿六 · 大雪 · 鹖鴠不鸣",
-  "layout": "quote",
-  "paletteId": "yuebai",
-  "scheme": "light",
+  "palette": "seasonal",
   "audioMode": "bgm+foley",
   "bgm": "/artifacts/promo-8.0/assets/audio/radio-calm.m4a",
   "lines": [
@@ -20,18 +17,13 @@
     "千山鸟飞绝，万径人踪灭。",
     "孤舟蓑笠翁，独钓寒江雪。"
   ],
-  "note": "永州十年，天地凛冽皆白，唯寒江一叶扁舟与渔翁孤影不动。",
-  "seal": "微詩",
   "procedural": {
-    "generator": "shanshui@2",
-    "seed": "daxue-liuzongyuan-80",
-    "variant": "distant",
-    "params": {
-      "density": 0.78,
-      "quiet_top": 0.36,
-      "verse_side": "left",
-      "verse_columns": 4,
-      "verse_chars": 5
-    }
+    "generator": "shanshui@5",
+    "seed": "daxue-liuzongyuan-82",
+    "verseSide": "left",
+    "scene": "fishing",
+    "composition": "corner",
+    "artHeight": 1400,
+    "note": "孤舟独钓是这首诗的主角。按诗题匹配的冬雪寒林（winterForest，seed -80）让老树压住了孤舟和钓者，所以指定江行渔隐（fishing）场景、corner 构图，换用 seed -82：舟、蓑笠翁与钓竿都清楚，诗里的雪照常保留。"
   }
 }
