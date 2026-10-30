@@ -64,7 +64,7 @@ function drawSun(ctx, t, scene, k) {
 }
 
 // One thin band of mist drifting slowly across the mountains' waist.
-function drawMist(ctx, t, { width: W, height: H, afterglow, seed, beat }, color, dark, k) {
+function drawMist(ctx, t, { width: W, height: H, afterglow, seed, beat, brushwork }, color, dark, k) {
   const { y, height, direction } = afterglow.mist;
   const cy = y * H;
   const band = height * H;
@@ -78,7 +78,7 @@ function drawMist(ctx, t, { width: W, height: H, afterglow, seed, beat }, color,
     const g = ctx.createRadialGradient(x, cy + dy, 0, x, cy + dy, span);
     // On a song the band breathes with the bar (four beats): the far hills come and go a little.
     const breath = beat ? 1 + 0.18 * Math.sin((t / (beat * 4)) * Math.PI * 2) : 1;
-    const a = (dark ? 0.05 : 0.22) * (0.6 + 0.4 * rand()) * breath;
+    const a = (dark ? 0.05 : 0.22) * (brushwork?.version === 'landscape-v3' ? .35 : 1) * (0.6 + 0.4 * rand()) * breath;
     g.addColorStop(0, rgba(color, a));
     g.addColorStop(0.55, rgba(color, a * 0.45));
     g.addColorStop(1, rgba(color, 0));
@@ -171,17 +171,18 @@ function goose(ctx, x, y, span, flap, k) {
 }
 
 // Fine slanted ink lines, held back from the verse box so the poem stays clean.
-function drawRain(ctx, t, { width: W, height: H, avoid, seed }, ink, dark, k) {
+function drawRain(ctx, t, { width: W, height: H, avoid, seed, weatherBounds }, ink, dark, k) {
   const rand = seeded(`${seed}-rain`);
+  const top = (weatherBounds?.top ?? 0) * H, span = ((weatherBounds?.bottom ?? 1) * H) - top;
   ctx.save();
   ctx.lineCap = 'round';
   for (let i = 0; i < 84; i++) {
     const x0 = rand() * (W + 200 * k);
-    const y0 = rand() * H;
+    const y0 = rand() * span;
     const speed = (620 + 240 * rand()) * k;
     const len = (16 + 14 * rand()) * k;
     const alpha = (dark ? 0.26 : 0.24) * (0.55 + 0.45 * rand());
-    const y = (y0 + t * speed) % (H + len) - len;
+    const y = top + (y0 + t * speed) % (span + len) - len;
     const x = x0 - y * 0.16;
     if (inside(x, y, avoid, 24 * k)) continue;
     ctx.strokeStyle = rgba(ink, alpha);
@@ -195,18 +196,19 @@ function drawRain(ctx, t, { width: W, height: H, avoid, seed }, ink, dark, k) {
 }
 
 // Flakes are paper-white; on light paper each one gets a faint ink rim so it reads at all.
-function drawSnow(ctx, t, { width: W, height: H, avoid, seed }, ink, paper, dark, k) {
+function drawSnow(ctx, t, { width: W, height: H, avoid, seed, weatherBounds }, ink, paper, dark, k) {
   const rand = seeded(`${seed}-snow`);
+  const top = (weatherBounds?.top ?? 0) * H, span = ((weatherBounds?.bottom ?? 1) * H) - top;
   ctx.save();
   for (let i = 0; i < 88; i++) {
     const x0 = rand() * W;
-    const y0 = rand() * H;
+    const y0 = rand() * span;
     const r = (1.8 + 2.2 * rand()) * k;
     const speed = (36 + 30 * rand()) * k;
     const sway = (12 + 14 * rand()) * k;
     const phase = rand() * Math.PI * 2;
     const alpha = 0.5 + 0.5 * rand();
-    const y = (y0 + t * speed) % H;
+    const y = top + (y0 + t * speed) % span;
     const x = (x0 + Math.sin(t * 0.8 + phase) * sway + W) % W;
     if (inside(x, y, avoid, 12 * k)) continue;
     ctx.beginPath();

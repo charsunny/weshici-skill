@@ -1594,6 +1594,11 @@ function resolveSceneOptionsForPainting(options, scene, seed) {
   };
 }
 
+function landscapeCun(text, title, explicit) {
+  if (explicit === 'axe' || explicit === 'hemp') return explicit;
+  return /望岳|岱宗|泰山|华山|峭壁|绝壁|千仞/.test(String(title || '') + String(text || '')) ? 'axe' : 'hemp';
+}
+
 function poetryScene(text, title) {
   title = String(title || '');
   text = String(text || '');
@@ -1729,6 +1734,7 @@ function poetryScene(text, title) {
             composition: resolved.composition,
             lotus_state: resolved.lotusState,
             donkey: resolved.donkey || null,
+            cun: landscapeCun(text, title, opts.cun),
           },
         },
       };
@@ -11261,6 +11267,7 @@ class PaintingStageV5 {
 }
 
 function generatePoetryPaintingV5(req, palette) {
+  req = { ...req, elementTreatment:req.elementTreatment ?? 'landscape-v3' };
   const seed = req.seed || 'seed';
   const width = req.width || 420;
   const height = req.height || 420;
@@ -11278,7 +11285,7 @@ function generatePoetryPaintingV5(req, palette) {
   if (req.elementTreatment === 'landscape-v3') {
     stage.engine.landscapeSeed = String(seed);
     stage.waterEngine.landscapeSeed = String(seed);
-    stage.engine.landscapeTechnique = req.options?.cun === 'axe' ? 'axe' : 'hemp';
+    stage.engine.landscapeTechnique = landscapeCun(req.text, req.title, req.options?.cun);
   }
   stage.compose(scene, options);
 
