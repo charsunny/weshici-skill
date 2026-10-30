@@ -124,7 +124,7 @@
 
   const scene = afterglowScene(frame, palette, { poem, title, term: recipe.term, motifs: painting.motifs,
     avoid: leaves.at(-1).plan.box, seed: painting.art.seed, duration: window.DUR });
-  window.SCENE = { scene: painting.scene, composition: painting.art.params.scene.composition, motifs: painting.motifs,
+  window.SCENE = { brushwork:frame.brushwork, weatherBounds:frame.weatherBounds, anchors:frame.anchors, sceneElements:frame.sceneElements, scene: painting.scene, composition: painting.art.params.scene.composition, motifs: painting.motifs,
     palette: `${palette.id}/${palette.appearance}`, artHeight: frame.artHeight, weather: scene.weather,
     afterglow: scene.afterglow, box: leaves.at(-1).plan.box, fontSize: common };
   const weatherCtx = document.getElementById('weather').getContext('2d');

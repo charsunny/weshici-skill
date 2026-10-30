@@ -2268,7 +2268,7 @@
     var generator = effectiveGenerator(req.generator, req.allowsShanShuiV3);
     var palette = makePalette(req.palette || {});
     var ep = engineParams(req.params);
-    var elementTreatment = (req.params && req.params.element_treatment) || 'original';
+    var elementTreatment = req.params?.element_treatment ?? (generator === 'shanshui@5' ? 'landscape-v3' : 'original');
     if (!['original', 'refined-v1', 'painted-v2', 'landscape-v3'].includes(elementTreatment)) throw new Error('unknown element_treatment');
     var base = {
       width: req.width,

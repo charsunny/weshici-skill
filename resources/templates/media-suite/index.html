@@ -386,18 +386,20 @@
     verseColumns: Math.min(4, clauses.length),
     verseChars: longest >= 6 && longest <= 8 ? Math.min(10, longest + 2) : longest,
   });
+  if (params.has('element_treatment')) recipe.params.element_treatment = params.get('element_treatment');
   if (scene !== matched.scene) recipe.params.scene.motifs = window.defaultMotifsForScene(scene);
   let art;
   if (!(mode === 'wechat-sticker' && subType === 'seal')) {
     art = await renderZXArt(artCanvas, {
       generator: 'shanshui@5', seed, scene,
       // 小红书四张共用同一份配方，第 3 张才能如实标注画里的构图与母题。
-      ...(inscribed || mode === 'xiaohongshu' ? { params: recipe.params } : {}),
+      params: recipe.params,
       palette: { paper: palette.paper, ink: palette.ink }, width, height,
     });
     if (inscribed && !art.ok) throw new Error(`画屏渲染失败: ${art.error}`);
   }
 
+  window.ART_RESULT = { request:{generator:'shanshui@5',seed,scene,params:recipe.params}, ...art };
   if (inscribed) {
     const isPure = mode === 'wallpaper' && (params.get('pure') === 'true' || subType === 'pure');
     if (!isPure) {
@@ -434,6 +436,13 @@
           <div class="cinnabar-seal" style="font-size: 24px; padding: 6px 10px;">${sealText}</div>
         </div>
       `;
+      if (art?.brushwork?.version === 'landscape-v3' && art.verse?.rect) {
+        const r = art.verse.rect, group = card.querySelector('.xhs-title-group');
+        // Use the engine's quiet text area instead of laying the cover title over the mountain.
+        Object.assign(group.style, { position:'absolute', left:`${r.x * width}px`, top:`${r.y * height + 40}px`,
+          width:`${r.width * width}px`, marginTop:'0' });
+        group.querySelector('.xhs-main-title').style.fontSize = `${Math.min(80, Math.floor(r.width * width / (Array.from(title).length * 1.18)))}px`;
+      }
       contentLayer.appendChild(card);
     } else if (cardIndex === 2) {
       const card = document.createElement('div');
@@ -472,6 +481,12 @@
         reeds: ['芦苇', '水岸芦荻，见秋江'], lotus: ['荷', '荷叶田田，点出夏塘'],
         stream: ['溪泉', '山间流泉，画中有声'], moon: ['月', '一轮明月，定下夜色'],
       };
+      if (art?.brushwork?.version === 'landscape-v3') {
+        const mountain = art.brushwork.technique === 'axe'
+          ? ['斧劈皴', '侧锋短促斜切，集中于山石转面'] : ['披麻皴', '顺坡长短线束，阴面聚墨'];
+        for (const motif of ['mainMountain', 'middleMountain', 'guestMountain']) MOTIF_NOTES[motif] = mountain;
+        MOTIF_NOTES.groundBank = ['折带石岸', '横笔转锋向下，薄染与苔点相接'];
+      }
       const scheme = recipe.params?.scene || {};
       const breakdown = [];
       if (COMPOSITION_NOTES[scheme.composition]) {
@@ -503,8 +518,22 @@
       const placed = [];
       drawn.forEach(el => {
         const [label, text] = MOTIF_NOTES[el.motif];
-        const cx = (el.bounds.x + el.bounds.width / 2) * width;
-        const cy = (el.bounds.y + el.bounds.height / 2) * height;
+        let cx = (el.bounds.x + el.bounds.width / 2) * width;
+        let cy = (el.bounds.y + el.bounds.height / 2) * height;
+        // An enclosing rock-bank box includes blank water. Point at a visible stroke
+        // inside its lower face, not at that empty geometric centre.
+        if (el.motif === 'groundBank') {
+          const pixels = artCanvas.getContext('2d').getImageData(0, 0, width, height).data;
+          const paper = palette.paper.match(/[a-f\d]{2}/gi).map(v => parseInt(v, 16));
+          const targetY = (el.bounds.y + el.bounds.height * .8) * height;
+          let nearest = Infinity;
+          for (let y = Math.max(0, Math.floor((el.bounds.y + el.bounds.height * .55) * height)); y < Math.min(height, (el.bounds.y + el.bounds.height) * height); y += 3) {
+            for (let x = Math.max(0, Math.floor(el.bounds.x * width)); x < Math.min(width, (el.bounds.x + el.bounds.width) * width); x += 3) {
+              const i = (y * width + x) * 4, d = Math.hypot(x - (el.bounds.x + el.bounds.width / 2) * width, y - targetY);
+              if (d < nearest && Math.hypot(...paper.map((v,k) => pixels[i+k] - v)) > 65) { nearest = d; cx = x; cy = y; }
+            }
+          }
+        }
         const boxW = 300, boxH = 76;
         const right = cx < width / 2;
         const x = Math.min(Math.max(right ? cx + 70 : cx - 70 - boxW, 60), width - 60 - boxW);
@@ -561,6 +590,7 @@
   } else if (mode === 'wechat-card') {
     const card = document.createElement('div');
     card.className = 'wechat-daily-card';
+    if (art?.brushwork?.version === 'landscape-v3') card.style.backdropFilter = 'blur(2px)';
     // 日期由 CLI 固定传入（缺省北京时间当天），节气与候按同一日期计算，可复现。
     const cal = huapingCalendar(params.get('date') || beijingDay());
     const [, monthNumber, dayNumber] = cal.day.split('-');

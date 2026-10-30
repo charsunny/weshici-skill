@@ -4,7 +4,7 @@
 
 ## 1. 画面
 
-- 与 [动态画屏](../huaping-motion/STYLE.md) 共用同一套画面管线（`resources/core/huaping-scene.js`）：ShanShui@5 完整配方、9:16 下置构图、App 主题色、浅色墨色加实、朱砂落日。诗句框缺省在右（`verseSide: 'right'`），裁出右侧 140px 安全区。
+- 与 [动态画屏](../huaping-motion/STYLE.md) 共用同一套画面管线（`resources/core/huaping-scene.js`）：ShanShui@5 完整配方、9:16 下置构图、App 主题色、landscape-v3 原生墨阶与落日（显式 original 保留旧加墨及朱砂落日替换）。诗句框缺省在右（`verseSide: 'right'`），裁出右侧 140px 安全区。
 - 配色缺省随节气（配方 `term`）。诗中没有节气的作品写明 `palette` 与理由（例：渔父取鸦青，纯水墨）。
 - 朱只在印与落日。
 

@@ -6,8 +6,8 @@
 
 - **画**：ShanShui@5，`poetryScene(诗句, 诗题).paintingProcedural(seed, { purpose: 'inscription-v1' })` 得到完整场景配方；配方只记 `generator` 与 `seed`，用途、构图、母题由引擎按诗决定。引擎所选场景遮住诗的主角时，配方可写 `scene` / `composition` / `motifs`，并在 `procedural.note` 写明理由（例：江雪改用渔隐场景，让孤舟钓者可见）。`renderZXArt` 返回 `ok: false` 时直接报错，不用简化山水顶替。
 - **9:16 构图**：画在 1440 / 1560 / 1680 高的画布上生成（取墨量最大者，配方可用 `artHeight` 固定），不缩放、底边对齐放进 1080×1920；画的最后一笔若停在平台底栏之上，就裁掉下面的空纸往下移。诗句框经空白纸面上提到约 11% 高度：诗在上、画在下。画上方的纸面用画自己的空白纸条续铺，没有接缝。不拉伸画。
-- **配色**：App 七套主题色 × 浅深（`resources/core/app-palettes.json`）。`palette` 缺省 `seasonal`，按配方 `term`（或 `date`）的节气取季；月夜题材缺省深色。页面纸色平铺，不用米黄与渐变。浅色画在合成时墨色加实（纸纹与构图不变），缩略图里能看清。
-- **朱只在印**：App 竖印「微詩」按配色 `seal` 着色。引擎画的落日换成海报 v2 的朱砂落日（`resources/core/cinnabar-sun.js`），只在引擎原落日露出的范围内画，山前仍遮住它。
+- **配色**：App 七套主题色 × 浅深（`resources/core/app-palettes.json`）。`palette` 缺省 `seasonal`，按配方 `term`（或 `date`）的节气取季；月夜题材缺省深色。页面纸色平铺，不用米黄与渐变。默认 landscape-v3 保留引擎墨阶，不做整幅 2.4 倍加墨；深色仍为反相，在线条与淡染的图元层分别提高可读性，纸纹不增亮。显式 original 保留旧加墨处理。
+- **朱只在印**：App 竖印「微詩」按配色 `seal` 着色。landscape-v3 保留引擎落日及其遮挡；显式 original 仍换成海报 v2 的朱砂落日（`resources/core/cinnabar-sun.js`），只在引擎原落日露出的范围内画，山前仍遮住它。
 
 ## 2. 字与层级
 

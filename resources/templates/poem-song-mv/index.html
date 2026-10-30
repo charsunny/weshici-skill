@@ -126,7 +126,7 @@
     seed: painting.art.seed, duration: window.DUR });
   // The beat drives the water: each ring opens on a beat (no beat given: free-running ripples).
   if (bpm > 0) scene.beat = 60 / bpm;
-  window.SCENE = { scene: painting.scene, composition: painting.art.params.scene.composition, motifs: painting.motifs,
+  window.SCENE = { brushwork:frame.brushwork, weatherBounds:frame.weatherBounds, anchors:frame.anchors, sceneElements:frame.sceneElements, scene: painting.scene, composition: painting.art.params.scene.composition, motifs: painting.motifs,
     palette: `${palette.id}/${palette.appearance}`, artHeight: frame.artHeight, weather: scene.weather,
     afterglow: scene.afterglow, box, large, small };
   const weatherCtx = document.getElementById('weather').getContext('2d');

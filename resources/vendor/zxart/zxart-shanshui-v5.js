@@ -1591,7 +1591,13 @@ function resolveSceneOptionsForPainting(options, scene, seed) {
     composition: composition,
     lotusState: options.lotusState || options.lotus_state || 'flowering',
     donkey: Boolean(options.donkey),
+    bankScale: options.bankScale ?? options.bank_scale ?? 1,
   };
+}
+
+function landscapeCun(text, title, explicit) {
+  if (explicit === 'axe' || explicit === 'hemp') return explicit;
+  return /望岳|岱宗|泰山|华山|峭壁|绝壁|千仞/.test(String(title || '') + String(text || '')) ? 'axe' : 'hemp';
 }
 
 function poetryScene(text, title) {
@@ -1615,7 +1621,7 @@ function poetryScene(text, title) {
     ['winterForest', ['江雪', '寒江雪', '风雪', '积雪', '白雪', '寒林', '暮雪', '宿芙蓉山']],
     ['autumnTravel', ['秋思', '羁旅', '古道', '枯藤', '昏鸦', '秋江', '枫桥', '客愁', '秋浦']],
     ['village', ['田园', '村居', '归园田居', '田家', '墟里', '炊烟', '稻', '麦', '桑麻', '农家', '柴门']],
-    ['fishing', ['渔', '钓', '蓑', '箬笠', '泛舟', '行舟', '泊舟', '独舟', '独钓']],
+    ['fishing', ['渔', '钓', '箬笠', '泛舟', '行舟', '泊舟', '独舟', '独钓']],
     ['waterTown', ['小桥', '水村', '江南', '流水人家', '水乡', '乌衣巷', '秦淮']],
     ['retreat', ['山居', '竹里', '幽篁', '松间', '清泉', '瀑', '溪', '山中', '空山', '隐居']],
     ['spring', ['寻花', '花满', '桃花', '杏花', '春日', '春游', '春色', '芳菲', '踏青']],
@@ -1644,6 +1650,12 @@ function poetryScene(text, title) {
       var src = rules[j][0] === 'moonNight' ? moonText : body;
       if (containsAny(src, rules[j][1])) { selected = rules[j]; break; }
     }
+  }
+  // A depicted person/action outranks a seasonal setting selected by the title.
+  // Cold water alone is not fishing; a lone vessel needs a water setting.
+  var fishingSubjects = ['独钓', '垂钓', '钓舟', '钓船', '渔舟', '渔船', '渔父', '渔翁', '蓑笠', '箬笠', '钓竿', '钓丝'];
+  if (containsAny(body, fishingSubjects) || (containsAny(body, ['孤舟', '独舟']) && /江|河|湖|溪|浦|水/.test(body))) {
+    selected = ['fishing', fishingSubjects.concat(['孤舟', '独舟'])];
   }
   var scene = selected ? selected[0] : 'retreat';
   var motifs = defaultMotifsForScene(scene).slice();
@@ -1729,6 +1741,7 @@ function poetryScene(text, title) {
             composition: resolved.composition,
             lotus_state: resolved.lotusState,
             donkey: resolved.donkey || null,
+            cun: landscapeCun(text, title, opts.cun),
           },
         },
       };
@@ -8479,6 +8492,7 @@ class PaintingStageV5 {
     this.selectedMotifs = new Set(options.motifs || []);
     this.lotusState = options.lotusState || 'flowering';
     this.donkey = Boolean(options.donkey);
+    this.bankScale = options.bankScale ?? 1;
 
     let layoutHash = 2166136261 >>> 0;
     const lStr = 'painting-layout-v1:' + this.seed;
@@ -9543,7 +9557,7 @@ class PaintingStageV5 {
         points = clipped;
       }
       if (points.length > 2) {
-        result.push({ ...poly, pts: points });
+        result.push({ ...poly, pts: points, ...(this.engine.landscapeSeed ? { p:points } : {}) });
       }
     }
     return result;
@@ -10057,6 +10071,9 @@ class PaintingStageV5 {
 
     if (scene === 'historic') {
       box = new CRect(box.minX, box.maxY - box.height * 0.35, box.width, box.height * 0.35);
+    }
+    if (this.bankScale !== 1) {
+      box = new CRect(box.minX, box.maxY - box.height * this.bankScale, box.width * this.bankScale, box.height * this.bankScale);
     }
 
     if (prepareOnly) {
@@ -11261,6 +11278,7 @@ class PaintingStageV5 {
 }
 
 function generatePoetryPaintingV5(req, palette) {
+  req = { ...req, elementTreatment:req.elementTreatment ?? 'landscape-v3' };
   const seed = req.seed || 'seed';
   const width = req.width || 420;
   const height = req.height || 420;
@@ -11278,7 +11296,7 @@ function generatePoetryPaintingV5(req, palette) {
   if (req.elementTreatment === 'landscape-v3') {
     stage.engine.landscapeSeed = String(seed);
     stage.waterEngine.landscapeSeed = String(seed);
-    stage.engine.landscapeTechnique = req.options?.cun === 'axe' ? 'axe' : 'hemp';
+    stage.engine.landscapeTechnique = landscapeCun(req.text, req.title, req.options?.cun);
   }
   stage.compose(scene, options);
 
@@ -11290,8 +11308,21 @@ function generatePoetryPaintingV5(req, palette) {
     const shapes = [];
     const record = stage.celestialLayers.find(r => r.layer === index);
     appendPaintingShapesV5(part.canv, ['refined-v1', 'painted-v2', 'landscape-v3'].includes(req.elementTreatment) ? record?.motif : 'scene', palette, shapes);
-    // Night ink stays subordinate to type; preserve celestial colour and atmospheric distance.
-    if (['refined-v1', 'painted-v2', 'landscape-v3'].includes(req.elementTreatment) && palette.isDark && !record && !part.mist) {
+    // Inversion needs readable distant washes as well as dry strokes. Adjust pigment,
+    // not the finished paper image; masks and celestial colours keep their own mapping.
+    if (req.elementTreatment === 'landscape-v3' && palette.isDark && !record) {
+      for (const shape of shapes) {
+        const brush = shape.brush || shape.wetInk;
+        const gain = part.mist ? 1.65 : brush ? 1 : 1.3;
+        for (const key of ['fill', 'stroke']) {
+          if (!shape[key] || (key === 'fill' && shape.paperMask)) continue;
+          shape[key] = shape[key].map((v, channel) => channel < 3
+            ? Math.max(Math.min(palette.paper[channel], palette.ink[channel]),
+              Math.min(Math.max(palette.paper[channel], palette.ink[channel]), palette.paper[channel] + (v - palette.paper[channel]) * gain))
+            : 1 - Math.pow(1 - v, brush ? 1.12 : 1.8));
+        }
+      }
+    } else if (['refined-v1', 'painted-v2'].includes(req.elementTreatment) && palette.isDark && !record && !part.mist) {
       for (const shape of shapes) {
         for (const key of ['fill', 'stroke']) {
           if (shape[key]) shape[key] = shape[key].map((v, channel) => channel < 3

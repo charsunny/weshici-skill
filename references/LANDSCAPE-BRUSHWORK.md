@@ -1,6 +1,6 @@
 # 山水笔法与种子生成 · landscape-v3
 
-这是 weshici-skill 的程序绘画验证。用户取消了 iOS 对齐、旧 seed 像素兼容和渲染速度约束；保留同输入、同一实现版本可复现，以及对照原画审图两条原则。尚待用户统一视觉验收，不迁移 App，不以测试通过宣称达到原画水平。
+这是 weshici-skill 的程序绘画验证。用户取消了 iOS 对齐、旧 seed 像素兼容和渲染速度约束；保留同输入、同一实现版本可复现，以及对照原画审图两条原则。自然感基线已获阶段性验收，用户同意将其设为 shanshui@5 默认画法；不迁移 App，不以测试通过宣称达到原画水平。
 
 ## 资料与判断依据
 
@@ -11,6 +11,8 @@
 - 第 43–45 页：提按、侧锋、含水量与装墨。笔宽、墨量和湿度分别控制，不将三者混成一个透明度参数。
 
 [博物馆作品条目](https://searchcollection.asianart.org/objects/14/thatched-houses-among-bamboo-and-pines)记录作品为查士标，1686 年，纸本水墨，编号 B69D41。[原画局部](https://education.asianart.org/wp-content/uploads/sites/6/2019/09/B69D41_Landscape_Detail.jpg)仅供并排观察，绝不进入生成器或作为输出背景。
+
+所有 shanshui@5 入口缺省使用 `landscape-v3`，显式 `original` 保留旧画法。披麻／斧劈选择集中在 `poetryScene().paintingProcedural()`，模板不另猜皴法。各入口适配与样张见 [默认画法验收](../docs/LANDSCAPE_DEFAULT_REVIEW.md)。
 
 ## 当前实现
 

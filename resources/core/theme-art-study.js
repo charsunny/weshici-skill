@@ -72,7 +72,7 @@ export function resolveStudy(input, palettes) {
   if (!poem || huapingClauses(poem).some(line => !huapingClauses(fullPoem).includes(line))) throw new Error('摘句必须出自原诗');
   const colors = { ...palettes.palettes[theme][appearance] };
   colors.paper = (appearance === 'dark' ? DARK_PAPER : LIGHT_PAPER)[theme] || colors.paper;
-  const elementTreatment = input.elementTreatment || 'refined-v1';
+  const elementTreatment = input.elementTreatment ?? (artwork === 'shanshui' ? 'landscape-v3' : 'refined-v1');
   if (!['original', 'refined-v1', 'painted-v2', 'landscape-v3'].includes(elementTreatment)) throw new Error('未知元素处理版本');
   return {
     theme, appearance, artwork, artPalette, flower, seed, title, author, poem, fullPoem, date, purpose,

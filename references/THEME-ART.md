@@ -1,6 +1,6 @@
 # 主题与诗画：Skill 实验及迁移规则
 
-本入口用于验证主题、绘画和阅读用途的关系。当前是 1080×1440 静态 PNG 实验，现有 App、poster、image、wallpaper 和视频模板不自动采用这些新默认值。
+本入口用于验证主题、绘画和阅读用途的关系。当前是 1080×1440 静态 PNG 实验。山水 `landscape-v3` 已成为所有 shanshui@5 入口默认画法；本入口的主题纸色、字体与阅读配置仍独立。App 和 poetry-poster 不变。
 
 ## 使用
 
@@ -70,7 +70,7 @@ node scripts/theme-art-motion-check.mjs out/theme-art-validation/motion
 | flower | 显式自然、梅、荷、菊、兰优先；未指定时使用识别到的花卉，否则自然。用户要独立荷花时同时设 artwork=flowers、flower=荷 |
 | artPalette | 默认 follow-theme；显式七套 id 可锁定墨色与点染色。绘画 paper 始终与界面纸色相同，花瓣原色不取 accent |
 | purpose | inscription 题诗画屏：用显式 excerpt，否则用 poem；reading 全文：使用完整 poem（或 fullPoem），不采用 excerpt |
-| elementTreatment | 新作默认 refined-v1，修正花茎明暗、景物淡出与深色高亮，并启用局部主题点染；original 保留原处理，供对照；painted-v2 显式试验山体块面与树冠墨簇，尚非默认 |
+| elementTreatment | 山水新作默认 landscape-v3，花卉默认 refined-v1；original 保留原处理，供对照；painted-v2 仍可显式选择 |
 | font | 独立于主题和题材，默认 source_han_serif；可选下表中的 App 字体 id 或自定义本地文件对象 |
 
 摘句每一行必须在原诗中存在；全文超出固定阅读区直接报错，交由调用方明确分篇。此入口不自动分页，也没有动态字体/任意画幅适配。
@@ -112,9 +112,9 @@ node scripts/theme-art-motion-check.mjs out/theme-art-validation/motion
 
 ## 元素处理与局部点染
 
-山势与笔法联动验证使用 `elementTreatment: "landscape-v3"`。详见 [教材到生成规则的对应说明](LANDSCAPE-BRUSHWORK.md)；包含披麻／斧劈近似、提按与枯湿、结构化种子及多种子审图入口。允许更新山体和景物边界，天气锚点随实际几何更新；不再沿用 painted-v2 的固定轮廓限制。默认处理与 App 不变。
+山势与笔法联动默认使用 `elementTreatment: "landscape-v3"`。详见 [教材到生成规则的对应说明](LANDSCAPE-BRUSHWORK.md)；包含披麻／斧劈近似、提按与枯湿、结构化种子及多种子审图入口。允许更新山体和景物边界，天气锚点随实际几何更新；不再沿用 painted-v2 的固定轮廓限制。App 不变。
 
-`refined-v1` 通过 Worker 的 `params.element_treatment` 显式启用；现有其他入口不传此参数，仍走 original。此字段和实际点染色随请求保存，不在重放时重新解析。
+Worker 的 `params.element_treatment` 未指定时，shanshui@5 使用 landscape-v3，其余生成器保持 original；显式指定 original 不会被新默认值覆盖。此字段和实际点染色随请求保存，不在重放时重新解析。
 
 - 山水在已放置景物的范围内筛选少量细笔：山体上段用 accent，屋顶上半部用 secondary，树冠与枝干细笔用 accent。保留大面积纸色遮罩和主要墨骨，不给整幅画加色罩。
 - 被选中的笔触仅部分混入主题色；最低不透明度限制为 0.26（屋顶 0.30），极淡的底层晕染不加重。深色点染使用主题深色配色。
@@ -129,7 +129,7 @@ node scripts/theme-art-motion-check.mjs out/theme-art-validation/motion
 
 试验先用旧生成过程固定构图所需的随机序列与外形边界，再用独立种子生成块面和墨簇；因此更换笔触不移动题字、景物范围或天气锚点。山体采用连续淡染、阴面分区、较短且不均匀的皴笔与断续轮廓；松冠减少放射状细针，保留少量提示线。这个过渡实现仍计算原笔触以保持布局，不宣称已经优化生成耗时。
 
-当前四张固定浅深样本用于比较方向。山势沿用旧轮廓，仍可能偏柱状；墨簇仍可见程序化形状。默认保留 refined-v1，用户验收前不自动替换其他配方或 App。后续应继续从山势、山石转折、皴染关系与树冠疏密改进，不把添加噪点、提高细节数量或整体模糊等同于传统笔法。
+当前四张固定浅深样本用于比较方向。山势沿用旧轮廓，仍可能偏柱状；墨簇仍可见程序化形状。这是 painted-v2 阶段的历史对照；当前山水默认已切换为通过验收的 landscape-v3，App 尚未迁移。后续应继续从山势、山石转折、皴染关系与树冠疏密改进，不把添加噪点、提高细节数量或整体模糊等同于传统笔法。
 
 技法参考：[亚洲艺术博物馆《Brushstrokes》](https://education.asianart.org/wp-content/uploads/sites/6/2019/09/Brushstrokes.pdf) 对线、墨与干湿用笔的说明；[大都会博物馆《夏山图》](https://www.metmuseum.org/art/collection/search/39915) 对皴笔与墨染配合的说明。这里是据此选择的程序试验方向，不是对某一名家笔法的完整复原。
 

@@ -9,7 +9,7 @@ import {
 } from './huaping-video.js';
 import { drawCinnabarSun } from './cinnabar-sun.js';
 
-const OVERRIDES = ['seed', 'scene', 'composition', 'artHeight', 'quietTop', 'verseSide', 'motifs'];
+const OVERRIDES = ['seed', 'scene', 'composition', 'artHeight', 'quietTop', 'verseSide', 'motifs', 'element_treatment', 'cun', 'bankScale'];
 const SKY = ['moon', 'crescent', 'sunrise', 'sunset', 'stars', 'snow', 'rain', 'afterRain', 'mist'];
 
 export async function loadRecipe(fallback) {
@@ -36,8 +36,10 @@ export function planPainting({ poem, title, procedural, params, verseColumns, ve
     quietTop: Number(proc.quietTop ?? 0.06),
     verseSide: proc.verseSide || verseSide,
     verseColumns,
-    verseChars,
+    verseChars, cun:proc.cun,
   });
+  if (proc.bankScale != null) art.params.scene.bank_scale = Number(proc.bankScale);
+  if (proc.element_treatment != null) art.params.element_treatment = proc.element_treatment;
   if (proc.motifs) {
     // An explicit list (recipe or URL, comma-separated) replaces the scene's defaults entirely.
     const list = Array.isArray(proc.motifs) ? proc.motifs : String(proc.motifs).split(',').filter(Boolean);
@@ -162,10 +164,17 @@ export async function paintFrame(target, plan, palette, { width: W, height: H, c
     const i = (y * W + x) * 4;
     return Math.hypot(pixels[i] - paper[0], pixels[i + 1] - paper[1], pixels[i + 2] - paper[2]) > threshold;
   };
+  const land = (best.result.sceneElements || []).filter(e => e.bounds && !SKY.includes(e.motif) && e.motif !== 'water');
+  const weatherBounds = best.result.brushwork?.version === 'landscape-v3' && land.length ? {
+    top: Math.max(0, Math.min(...land.map(e => place.rect(e.bounds).y)) - .12),
+    bottom: Math.min(1, Math.max(...land.map(e => { const r = place.rect(e.bounds); return r.y + r.height; })) + .04),
+  } : null;
   return {
-    width: W, height: H, place, inked, lift, artHeight: best.artHeight,
+    width: W, height: H, place, inked, lift, artHeight: best.artHeight, weatherBounds,
     verse: { ...best.result.verse, rect: verseRect },
     anchors: place.anchors(best.result.anchors),
+    brushwork: best.result.brushwork || null,
+    sceneElements: best.result.sceneElements || [],
     reference: (params) => {
       const reference = window.ZXArtCompose.verseLayoutFor('shanshui@5', params, W, place.height);
       return { ...reference, rect: lift(reference.rect) };
@@ -174,12 +183,14 @@ export async function paintFrame(target, plan, palette, { width: W, height: H, c
 }
 
 /**
- * Light paper: the ink is made more solid so the painting carries in a thumbnail (the paper and the
+ * Legacy light paper: the ink is made more solid so the painting carries in a thumbnail (the paper and the
  * composition are untouched). The engine paints its sun as a translucent pink disc over a disc of flat
  * paper; the sun is found in that render, the same painting is rendered again without the sun motif,
  * and the poster's cinnabar sun goes where the engine put its own.
  */
 async function finishPainting(best, plan, palette, W) {
+  // Landscape-v3 owns its ink scale and celestial layers, including occlusion.
+  if (best.result.brushwork?.version === 'landscape-v3') return;
   const suns = ['sunset', 'sunrise'];
   let sun = null;
   if (plan.motifs.some(m => suns.includes(m))) {
@@ -271,6 +282,7 @@ export function afterglowScene(frame, palette, { poem, title, term, motifs, avoi
   };
   return {
     width: W, height: H, colors: palette.colors, appearance: palette.appearance, cinnabar: palette.cinnabar,
+    brushwork: frame.brushwork, weatherBounds: frame.weatherBounds,
     weather: pickWeather({ text: poem, title, term, motifs }),
     afterglow: afterglowPlan({ anchors: frame.anchors, seed, open, rowInk,
       avoid: { x: avoid.x / W, y: avoid.y / H, width: avoid.width / W, height: avoid.height / H } }),
